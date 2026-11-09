@@ -5,7 +5,8 @@
 - 2026-11-06, session 1: course requirements extracted, first research pass done (4 files), state files created.
 - 2026-11-09, session 2: Batch 1 answered (see `decisions.md` D1–D13, F1–F7). Git started, private repo `lukaJiglic/lukaJiglic-acs-project` pushed. Deep research on training, network/browser inference and explanations started (`research/05–07`). Rule-switch list drafted (`rule-switches.md`).
 - 2026-11-09, later: Batch 2 answered (D14–D26), C1–C4 answered (D27–D29). Report source copied to `report/`.
-- **Batch 3 (product and screens) is written and waiting for answers.** Clarification C5 is open.
+- 2026-11-09, later: Batch 3 answered (D31–D42), C5 answered (D30). A Figma connector is available in the user's setup.
+- **Batch 4 (rules) is written and waiting for answers**, plus C6 (Figma timing).
 - The proposal, Figma wireframe and pitch slide are due Wed 18 Nov. The product batch must follow soon after the bots batch.
 
 ## Clarifications
@@ -16,7 +17,53 @@ Open:
 
 - **C5. "Exact inference bits" (D18).** Claude reads this as the facts known for certain from play: which seats are void in which suit, the revealed partner seat, the cards already accounted for, the talon cards seen, whether the called king has fallen. Is that the meaning, or do you also mean derived counts (trumps still out per seat, points so far)?
 
-## Batch 3 — product and screens (asked 2026-11-09, unanswered)
+## Batch 4 — rules (asked 2026-11-09, unanswered)
+
+Source: `rule-switches.md` (39 toggles, presets, incompatibilities, left-out list), derived from `research/01`. Claude read the whole file. Facts in it come from the research subagent's reading of pagat.com, the Tarok.net rulebook, the TARZS rules and others; a few cells are marked unverified. Context: 4-player (D4), first model on one default preset with play-changing toggles fixed (D20).
+
+**B4-1. Default preset.**
+- a) Your own table's rules. You answer the 11 open defaults below; the result is saved as the preset "Default" and is the rule set the first model is trained on.
+- b) pagat.com's 4-player description.
+- c) The "Majority" preset (per toggle, the option most Slovenian sources support).
+- Recommendation: **a**. You are the one who checks the agent's play and the rule tests. A rule set you know by heart is the one you can verify. pagat.com and Majority stay as named presets.
+
+**B4-2. The 11 open defaults** (from `rule-switches.md` section 6). Answer each with a letter.
+1. S14 discarding taroks: a) allowed, shown face up; b) only when forced.
+2. S25 rounding: a) nearest 5; b) exact.
+3. S29 mondfang: a) −20; b) −21.
+4. S28 klop "full": a) more than 35 points; b) 35 or more.
+5. S26 partner's share: a) same as declarer; b) half.
+6. S33 radelc cancellation: a) only when the declarer wins; b) after the next game as declarer, won or lost.
+7. S34/S35 session: unused radelci a) −100 each, b) none; session end a) škis round, b) fixed deal count (how many), c) open-ended.
+8. S6 odprti berač in the first model: a) yes, on by default; b) in the engine but pinned off until T1.
+9. S7 barvni valat: a) in the engine, pinned off until T1 (proposed); b) in the first model.
+10. S1 compulsory klop at a cumulative score of exactly 0: a) yes (pagat.com); b) none.
+11. S18 kontra depth: a) four levels (kontra, re, sub, mort, ×16); b) two (×4).
+- Recommendation: answer from your table. Where your table has no habit: 1b, 2b, 3b, 4b, 5a, 6a, 7 none + škis round, 8a, 9a, 10b, 11a. Reason: these are the options with the most Slovenian sources behind them; 8a and 9a keep the first model's action space small.
+
+**B4-3. The toggle list and tiers.** 39 toggles: T0 12 (S6, S14, S15, S18, S22, S25, S26, S28, S29, S31, S32, S33), T1 13, T2 14 (incl. four 3-player-only).
+- a) Accept. b) Changes (name the toggle and the new tier or option).
+- Recommendation: **a**.
+
+**B4-4. The left-out list** (15 variation points dropped, 12 partly, each with a reason in section 5).
+- a) Accept. b) Bring back a point (name it).
+- Recommendation: **a**.
+
+**B4-5. Scoring-only T0 toggles in the first model.**
+- a) Feed the T0 scoring-only toggles (S15, S22, S25, S26, S28, S29, S31, S32, S33) to the network as inputs and randomise them in self-play, so one model covers all their values.
+- b) Fix them to the default preset for the first model; add them to the input later with the rule vector.
+- Recommendation: **a**. They change the payoff only, not the legal moves, so they cost no new actions. D20 allows this. Risk: slightly more to learn; mitigated by evaluating per preset.
+
+**B4-6. Incompatibility handling in the UI.**
+- a) Dependent toggles are greyed out and forced (e.g. klop off forces radelci off); presets set every toggle; the share code encodes all toggle values; a warning lists what a preset leaves unspecified.
+- b) No enforcement; a warning only.
+- Recommendation: **a**. The 13 rules in section 3 are mechanical.
+
+**B4-7. All pass with klop off (S4 = off).** No source says what happens. a) Redeal by the next dealer. b) Keep klop always on in T0 and T1 (S4 moves to T2). Recommendation: **b**; it removes a source-less rule from the first releases.
+
+**C6. Figma wireframe timing.** The connector is available (D41). a) Next session: Claude writes the screen spec, then builds the wireframe in Figma, with the pitch slide text after it. b) After Batch 5 (architecture). Recommendation: **a**; the screens depend on Batches 1–3 only, which are decided.
+
+## Batch 3 — product and screens (asked 2026-11-09, answered 2026-11-09; see D31–D42)
 
 Context: Learn → Play → Table (D2), Learn screens built first (D29), live adviser in the core (D3), adviser asks for the learner's card first (D17), explanations layered (D16), own SVG cards (D11), 4-player (D4). Sources: `research/02` (existing apps, borrowable features), `research/07` (explanation display). No new research was run for this batch; the options are Claude's design proposals.
 
@@ -222,8 +269,6 @@ Sources: `research/05` (training method), `research/06` (network, browser), `res
 ## Backlog — later batches (not asked yet)
 
 **Batch 2: bots (next).** Training method. Network and input encoding. How the hidden partner and the phases are handled. Rule-set conditioning. Training budget and stages. Explanation methods (per D1). Benchmark bots (rule-based, search). Difficulty levels and styles from one trained model. Evaluation protocol.
-
-**Batch 4: rules.** Confirm the toggle list in `rule-switches.md`: defaults, tiers, presets, the left-out list.
 
 **Batch 5: architecture.** Engine language (one Rust engine compiled to WASM and used natively for training, vs TypeScript engine plus a separate training engine). UI framework. Where the model runs. Hosting. Storage. Model export path.
 

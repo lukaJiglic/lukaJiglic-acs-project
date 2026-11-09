@@ -38,9 +38,18 @@ Done by four research subagents. Claude did not re-read the sources itself. Each
 
 ## 1. Product
 
-Not decided. To cover: every mode and screen, rule switches, difficulty, each expansion with its tier.
+Decided in Batch 3 (D31–D42). Screen specs and the Figma wireframe are the next product step.
 
-### Idea pool (none chosen)
+- **User (D31).** A player who knows the rules and wants to play better. Beginners get a rules layer on top (rule cards when a rule triggers).
+- **Form (D32).** Phone-first web app, portrait, installable PWA, usable on desktop. Slovenian first, English as a translation pass, i18n keys from the first screen (D40). Own simple SVG cards (D11).
+- **Tier 0 screens (D33).** Home · Learn hub · Table component in three modes (Lesson, Play, Adviser) with the layered explanation panel (D16) · Post-game review · Rules and presets · Levels · Settings.
+- **Learn (D34–D36).** Coached free play first: the learner plays; when the intended card loses more than a threshold against the agent's choice, the app shows the contrast. Scripted lessons on seeded deals come second. T0: review, coached play, a small lesson set. T1: bidding adviser, what-if replays, puzzles from key moments, progress tracking. T2: card-counting trainer, spaced-repetition puzzles from own mistakes. Teaching text: Claude drafts from rules and agent signals, the user corrects.
+- **Play (D38).** T0: play vs bots, levels (random, rule bot, measured checkpoints; D24). T1: daily deal, share a deal by code. T2: beat-the-bot duplicate mode. T3: online play with friends.
+- **Table / adviser (D3, D17, D37).** T0: full entry: hand on a 54-card grid, every bid per seat, king call, talon if declarer, trick by trick with the grid hiding seen cards; the learner taps the intended card before each own play, then sees the agent's card and the contrast. T1: scoring calculator, house-rules share code (D39). T2: session score sheet, rules arbiter.
+- **Rules (D12, D20).** Toggles per `rule-switches.md`; one default preset for the first model; presets and share code.
+- **Tiers (D42).** T0 demo, T1 planned, T2 stretch, T3 after the course.
+
+### Idea pool (kept for the record; tiers above supersede the "none chosen" status)
 
 Origin: U = user, C = Claude.
 

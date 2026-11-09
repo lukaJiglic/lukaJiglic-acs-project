@@ -63,6 +63,19 @@ Status values: **given** (stated by the user in the brief), **decided** (user ch
 | D27 | 2026-11-09 | **General libraries are allowed** (PyTorch, UI framework, RL helpers, etc.). Only code from other tarok engines is banned (D9). | — | User (C2) | |
 | D28 | 2026-11-09 | **Only the report source is committed** (`project_report.tex`, `erk.sty`), copied to `report/`. The course PDFs stay out of the repo. | — | User (C3) | `project/` is gitignored. |
 | D29 | 2026-11-09 | **Learn screens are built first** (tutorial and review), free play behind them. | — | User (C4) | |
+| D30 | 2026-11-09 | **State token = flat features + exact inference bits.** Exact inference bits mean both the facts known for certain (void suits per seat, revealed partner, cards accounted for, talon seen, called king fallen) and derived counts (trumps still out per seat, points so far). **Learned positional encoding includes trick number and position within the trick.** | — | User (C5, plus spec) | Refines D18. |
+| D31 | 2026-11-09 | **Primary user: a player who knows the rules and wants to play better.** Beginners get a rules layer on top. | B3-1 a–c | User (a) | |
+| D32 | 2026-11-09 | **Phone-first web app**, portrait, installable as a PWA, usable on desktop. | B3-2 a–c | User (a) | |
+| D33 | 2026-11-09 | **Tier 0 screens:** Home · Learn hub · Table component in three modes (Lesson, Play, Adviser) with the explanation panel · Post-game review · Rules and presets · Levels · Settings. | B3-3 a–c | User (b) | |
+| D34 | 2026-11-09 | **Teaching as you go: coached free play first** (interrupt when the learner's intended card loses more than a threshold against the agent), **then scripted lessons** on seeded deals. | B3-4 a–c | User (b first, then a) | |
+| D35 | 2026-11-09 | **Lesson and teaching text: Claude drafts** from the rules and the agent's signals; **the user corrects.** | B3-5 a–b | User (a) | |
+| D36 | 2026-11-09 | **Learn tiers:** review, coached play, small lesson set = T0; bidding adviser, what-if replays, puzzles from key moments, progress tracking = T1; card-counting trainer, spaced-repetition puzzles from own mistakes = T2. | B3-6 | User (accept) | |
+| D37 | 2026-11-09 | **Adviser input in T0 is full entry:** hand on a 54-card grid, every bid per seat, king call, talon if declarer, then trick by trick with the grid hiding seen cards; intended card before each own play. | B3-7 a–c | User (a) | Claude had recommended b for T0. |
+| D38 | 2026-11-09 | **Play tiers:** play vs bots, levels = T0; daily deal, share deal by code = T1; beat-the-bot duplicate = T2; **online play with friends = T3** (after the course). | B3-8 a–c | User (b) | |
+| D39 | 2026-11-09 | **Table tools:** scoring calculator, house-rules share code = T1; session score sheet, rules arbiter = T2. | B3-9 a–b | User (a) | |
+| D40 | 2026-11-09 | **Slovenian first.** i18n keys from the first screen; English as a translation pass. Tarok terms stay Slovenian in both. | B3-10 a–c | User (b) | Claude had recommended a (English first). The report and demo are in English; the UI is Slovenian first. |
+| D41 | 2026-11-09 | **Figma wireframe through the Figma connector** available in the user's Claude setup. Claude writes the screen spec, then builds the wireframe in Figma. | B3-11 a–c | User (c) | Figma MCP tools appeared in the session on 2026-11-09. Timing of the wireframe work is open. |
+| D42 | 2026-11-09 | **Tier scheme:** T0 = must work for the demo; T1 = planned; T2 = stretch; T3 = after the course. | B3-12 | User (a) | |
 
 ## Provisional choices by Claude (need confirmation)
 
