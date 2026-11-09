@@ -27,9 +27,9 @@ Bots range from simple to self-play-trained on the user's PC. The app can show w
 - Explanations come from ML explanation methods applied to the trained agent (D1). See `research/07`.
 - No code from other tarok engines (D9). Own simple SVG cards (D11).
 
-## 0b. Research so far (first pass, 2026-11-06)
+## 0b. Research so far
 
-Done by four research subagents. Claude did not re-read the sources itself. Each file lists what was read directly and what is inferred.
+First pass 2026-11-06 by four research subagents (`research/01–04`), summarised below. Second pass 2026-11-09 (`research/05` training method, `06` network and browser inference, `07` explaining the trained agent) is summarised in sections 2–3 through the decisions it informed. Claude did not re-read the sources itself. Each file lists what was read directly and what is inferred.
 
 - **Rules** (`research/01`). An official ruleset exists for 3 players only: TARZS "Pravila tekmovalnega taroka", 2010, amended 2017, 2018, 2022. No official 4-player ruleset; pagat.com and the Tarok.net rulebook are the references. 55 variation points found. Neighbouring games (Königrufen, tarokk, taroky) are separate games.
 - **Existing software** (`research/02`). Play-against-bots exists (TAROK.net, Tarock Palčka, Tarok Counter). No app teaches Slovenian tarok. No app advises at a real table. Only KubiTarock (Königrufen) has "ask the bot why". OpenSpiel has a tarok engine (C++/Python, Apache-2.0, lightly tested, single round). StockŠkis is copyleft (GPL/AGPL). Prior academic work: Silicon Tarokist 2003 (3-player, sampling + alpha-beta), Marinčič 2006 (bidding), Lapajne 2011 (MCTS), Požrl 2021 (tabular Q-learning). No deep-RL tarok result found.

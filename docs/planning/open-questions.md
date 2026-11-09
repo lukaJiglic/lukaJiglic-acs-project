@@ -496,7 +496,10 @@ None. Batch 8 was the last planned batch. New questions go to "Loose questions" 
 
 ## Loose questions noticed along the way
 
-- The `project/` folder holds course material (instructions PDF, template). Should it go into the public repo, or only the report source?
-- Who draws the Figma wireframe, and with what help?
-- OpenSpiel's tarok engine (Apache-2.0) is marked "lightly tested" and may lack announcements. Worth a closer look before Batch 4.
-- Tarok's per-deal score variance is unknown. It sets how many deals a strength comparison needs. Can be measured once an engine exists.
+- ~~The `project/` folder: public repo or only the report source?~~ Answered: only the report source (D28), `project/` gitignored.
+- ~~Who draws the Figma wireframe?~~ Answered: Claude through the Figma connector, from an approved screen spec (D50).
+- ~~OpenSpiel's tarok engine worth a closer look before Batch 4.~~ Closed: no code from other engines (D9); rules were derived from research/01 instead.
+- Tarok's per-deal score variance is unknown. It sets how many deals a strength comparison needs. Measured early in stage 0 (D25). Still open; needs an engine.
+- Proposal format for 18 Nov: the course text gives no length or template for the proposal itself. Ask the user, or check Moodle.
+- Weight file size for the 4-layer, 256-wide transformer is not estimated; G14's 15 MB budget assumes it fits. Measure at the first export.
+- Git warns LF→CRLF on every commit (`.gitattributes` has `* text=auto`). Harmless; decide at step 0 whether to force LF.
