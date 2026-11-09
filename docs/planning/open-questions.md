@@ -8,21 +8,20 @@
 - 2026-11-09, later: Batch 3 answered (D31–D42), C5 answered (D30). A Figma connector is available in the user's setup.
 - 2026-11-09, later: Batch 4 answered (D43–D49), C6 answered (D50: next session does the screen spec, the Figma wireframe, the pitch slide text).
 - 2026-11-09, later: Batch 5 answered (D51–D64), all recommendations accepted.
-- 2026-11-09, later: Batch 6 answered (D65–D69); goals G1–G19 with lowered thresholds are in `plan-draft.md` section 4.
-- 2026-11-10: Batch 7 answered (D70–D79), all recommendations accepted; plan-draft section 5 written. The commit convention (D74) applies from this point.
-- **Batch 8 (tiers and demo) is written and waiting for answers.** It is the last planned batch. After it: finalise the plan draft, write the compliance mapping (plan-draft section 6), then D50 (screen spec, Figma wireframe, pitch slide text).
-- Next session plan: (1) take Batch 8 answers; (2) compliance mapping; (3) screen spec; (4) Figma wireframe via the connector; (5) pitch slide text.
+- 2026-11-09, later: Batch 6 answered (D65–D69); goals G1–G19 with lowered thresholds are in `plan.md` section 4.
+- 2026-11-10: Batch 7 answered (D70–D79), all recommendations accepted; plan.md section 5 written. The commit convention (D74) applies from this point.
+- 2026-11-10: Batch 8 answered (D80–D87), C7 confirmed (D88). **All eight batches are answered.** `plan-draft.md` renamed `plan.md`; tiers, compliance mapping (section 6), fixed points and demo (section 7), not-in-scope (section 8) written.
+- **No batch is open.** Two actions sit with the user: confirm the topic with the lecturer on 16 Nov (R2); make the repo public or add the instructor by 23 Nov (R5).
+- Next: D50 — screen spec, then the Figma wireframe through the connector, then the pitch slide text. Due Wed 18 Nov with the proposal.
 - The proposal, Figma wireframe and pitch slide are due Wed 18 Nov. The product batch must follow soon after the bots batch.
 
 ## Clarifications
 
-Answered 2026-11-09: C1 (by D16), C2 (D27), C3 (D28), C4 (D29), C5 (D30: both certain facts and derived counts), C6 (D50).
+Answered 2026-11-09: C1 (by D16), C2 (D27), C3 (D28), C4 (D29), C5 (D30: both certain facts and derived counts), C6 (D50). Answered 2026-11-10: C7 (D88: explicit end-session action settles leftover radelci at −70 each).
 
-Open:
+Open: none.
 
-- **C7. "End session" action (D44).** Claude read "open-ended session + unused radelci cost −70" as: the app has an explicit "end session" action, and leftover radelci are settled at −70 each when the user ends the session. Is that right?
-
-## Batch 8 — tiers and demo (asked 2026-11-10, unanswered)
+## Batch 8 — tiers and demo (asked 2026-11-10, answered 2026-11-10; see D80–D87 and plan.md sections 1, 5–8)
 
 Context: this is the last planned batch. It fixes what the proposal promises (tiers), the order in which work happens (no calendar, D26), what the 10-minute demo shows (R3), and what the checkpoint deliverable contains (D2 in `course-requirements.md`). Sources: the course text for the deadlines and formats; everything else is Claude's proposal built on D1–D79.
 
@@ -35,7 +34,7 @@ Claude's reading of D31–D64 gives this T0 set:
 - Adviser: full entry of a real deal (G16).
 - Explanations: default layer and tap layer (D16), review contrast with one counterfactual, faithfulness goals G8–G13.
 - Process: CI, specs, progress file, AI log, trailers (G19).
-- a) Accept this T0 list as final for the proposal. T1–T3 as in plan-draft section 1.
+- a) Accept this T0 list as final for the proposal. T1–T3 as in plan.md section 1.
 - b) Trim: name the items to move to T1.
 - c) Extend: name the items to pull into T0.
 - Recommendation: **a**. It matches the goals already fixed in Batch 6; moving items would reopen them.
@@ -72,11 +71,11 @@ Claude's reading of D31–D64 gives this T0 set:
 - Recommendation: **a**. It tells the reader what the goals do not claim.
 
 **B8-8. Plan document for the proposal.**
-- a) After Batch 8, `plan-draft.md` is renamed `plan.md` and tidied: decisions referenced by number, open items marked, sections 6 (compliance mapping) and 7 (fixed points only) completed. The proposal text is derived from it.
+- a) After Batch 8, `plan.md` is renamed `plan.md` and tidied: decisions referenced by number, open items marked, sections 6 (compliance mapping) and 7 (fixed points only) completed. The proposal text is derived from it.
 - b) Keep the draft as is and write the proposal separately.
 - Recommendation: **a**. One source for the proposal, README and report.
 
-## Batch 7 — working with agents day to day (asked 2026-11-09, answered 2026-11-10; see D70–D79 and plan-draft section 5)
+## Batch 7 — working with agents day to day (asked 2026-11-09, answered 2026-11-10; see D70–D79 and plan.md section 5)
 
 Context: the course grades the process (R4, R9, R14, R17): how work was split, which files carried state, how output was verified before each commit, and which prompt and model produced which part. Primary tool: Claude Code with Claude Fable 5.1 (F6). The user reviews TypeScript/Vue, Python, Rust, C++ (F5). Progress is recorded thoroughly instead of dates (D26). These are Claude's proposals; the course text is the only source.
 
@@ -128,7 +127,7 @@ Context: the course grades the process (R4, R9, R14, R17): how work was split, w
 - b) Weights outside git.
 - Recommendation: **a**, with weights kept small (one f16 file per release). Large intermediate checkpoints stay out of git.
 
-## Batch 6 — measurement: the numbered goals (asked 2026-11-09, answered 2026-11-09; see D65–D69 and plan-draft section 4)
+## Batch 6 — measurement: the numbered goals (asked 2026-11-09, answered 2026-11-09; see D65–D69 and plan.md section 4)
 
 Context: the course wants goals someone can check (R7, R12). They go into `README.md` and the report as G1, G2, …. Every goal below names a number, how it is measured, and where the measurement lives. Thresholds are Claude's proposals; the ones most worth adjusting are marked. Sources: research/05 (evaluation protocol), research/07 (faithfulness checks D1–D8, D10).
 

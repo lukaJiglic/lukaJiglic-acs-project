@@ -1,6 +1,6 @@
-# Plan draft
+# Plan
 
-Draft 0, 2026-11-06. Nothing here is chosen unless `decisions.md` says so. Sections fill in as batches get answered.
+Started 2026-11-06 as a draft; all eight decision batches answered by 2026-11-10 (D1–D88). Every item here points at its decision number; anything without one is a note by Claude, not a choice. The proposal, `README.md` and the report derive from this file (D87).
 
 ## 0. The starting idea (from the user, open to challenge)
 
@@ -101,7 +101,17 @@ Origin: U = user, C = Claude.
 
 ### Tiers
 
-Not defined. Proposed scheme (to be confirmed): Tier 0 = core that must work for the demo; Tier 1 = planned; Tier 2 = stretch; Tier 3 = after the course.
+T0 = must work for the demo, T1 = planned, T2 = stretch, T3 = after the course (D42). The T0 list is final for the proposal (D80):
+
+- **Engine:** 4-player rules on the Default preset, the 12 T0 toggles, scoring, seeded deals, game records, CLI. Goals G1–G2.
+- **Bots:** random, rule-based, trained transformer through stages 1–2 (card play, talon, bidding, announcements, kontra, klop, berač). Levels from checkpoints (D24). The MLP control (G7) and the search benchmark (G6) are measured and reported, not demoed.
+- **App:** Home, Learn hub, Table in Lesson / Play / Adviser modes, Review, Rules and presets, Levels, Settings. Offline PWA on GitHub Pages.
+- **Learn:** coached play, review, at least 3 lessons and 8 rule cards (G17).
+- **Adviser:** full entry of a real deal (G16), with the end-session action that settles radelci (D88).
+- **Explanations:** default and tap layers (D16), review contrast with one counterfactual, faithfulness goals G8–G13.
+- **Process:** CI, specs, progress file, AI log, commit trailers (G19).
+
+T1–T3 per feature are listed in the bullets above (D34–D39). The app always ships the best measured checkpoint, whatever its strength (D81).
 
 ## 2. Architecture and technology
 
@@ -186,12 +196,59 @@ Decided in Batch 7 (D70–D79). This section is the answer to course requirement
 - **Branching (D77).** Trunk-based on `main`. A branch only for a long or risky change, merged with a merge commit.
 - **Session routine (D78).** Start: read `docs/planning/README.md`, `docs/progress.md`, the open specs; work in spec order. End: update `docs/progress.md`, spec status, `ai-log.md`; commit; push.
 - **Training runs (D79).** Config per run in `src/train/configs/`. Run log in `docs/progress.md` (steps, hours, metrics, checkpoint hash). Released weights in `models/` with a `MODEL.md` (config, data, date, metrics), one `model:` commit each. Intermediate checkpoints stay out of git.
+- **Order of work (D82).** A sequence, not a calendar: (0) repo skeleton: README with goals, `CLAUDE.md`, `docs/progress.md`, CI, licences; (1) engine stage 0: rules, Default preset, T0 toggles, tests, CLI, records, random and rule bots, seeded deals, speed harness and gate; (2) training pipeline: PyO3 actors, learner, stage-1 card-play run started; (3) app shell while training runs: Table component, Play vs rule bot, cards, PWA, Pages; (4) WASM export of engine and forward pass, first checkpoint in the browser, levels; (5) stage-2 training with monitors; (6) explanations: signals, templates, aux-head readouts, attributions, counterfactuals; (7) Learn: coached play, review, lessons, rule cards; (8) adviser entry; (9) evaluation: benchmarks, MLP control, faithfulness checks, phone measurements; (10) report and demo script. Training runs are long and unattended, so app work fills the GPU time.
+- **Report cadence (D85).** Skeleton in `report/` from the start of building. Stack table and method updated at the end of each session that changes them. Results filled as measurements land in `docs/progress.md`. Final pass at the end.
 - **Goal G19** measures this section: every commit on `main` carries the trailer, every session has an AI-log row, `README.md` lists every tool with a pinned tag.
 
 ## 6. Course compliance
 
-See `course-requirements.md`. A mapping from each requirement (R1–R20) to the plan item that satisfies it will be added here once the plan has content.
+Mapping from each requirement in `course-requirements.md` to the plan item that satisfies it. "Action" marks items that still need a step by the user.
 
-## 7. Timeline
+| Req | What it asks | Satisfied by | Status |
+|-----|--------------|--------------|--------|
+| R1 | One topic | Trained tarok agent with a platform around it (D1, D13) | done |
+| R2 | Topic from the Moodle list or approved at consultation before 18 Nov | "Browser game" fits the list; confirm at the 16 Nov scoping session | **Action: user confirms the topic with the lecturer on 16 Nov** |
+| R3 | Small enough, agent-buildable, demoable in 10 minutes | Tiers (D80), demo script (D83), fallback (D81) | planned |
+| R4 | Process and results graded, not polish | Section 5; G19; honest results (D81) | planned |
+| R5 | Repo `lukaJiglic-acs-project`, accessible to the instructor | Exists, private (D6) | **Action: make public, or add the instructor, by 23 Nov** |
+| R6 | Repo live from 23 Nov | D6; order-of-work step 0 (D82) | planned |
+| R7 | README: what, numbered goals, stack with pinned tags, install/run/demo | Goals G1–G19 (section 4), stack (D76), `docs/demo.md` (D83), not-in-scope (D86) | planned |
+| R8 | `src/` for code, `docs/` for screenshots and architecture | Layout D56; `docs/architecture.md` (D71) | planned |
+| R9 | Commit history graded; frequent, real messages | D74, D77; one commit per task (D70) | in use since 0d5045d |
+| R10 | Abstract ≤ 200 words | Report skeleton (D85); one result from section 4 | later |
+| R11 | Introduction: problem and user | D31 (user), section 0 | later |
+| R12 | Goals numbered and testable | Section 4, G1–G19 (D65) | done; frozen at the proposal (D69) |
+| R13 | Stack table: tool, pinned model, what it did | D76; `ai-log.md` rows (D75) | in use |
+| R14 | Method: task split, state files, verification, commit log as replication record | Section 5 (D70–D79) | decided |
+| R15 | Results: what works, how known, failures too | Goals table with measured values in `docs/progress.md` (D71, D84); D81 | planned |
+| R16 | Limitations and next steps | Not in scope (section 8, D86); T1–T3 lists | planned |
+| R17 | AI-use declaration: agents vs student, every model with tag and dates | `ai-log.md` (D75), trailers (D74), stack rows with date ranges (D76) | in use |
+| R18 | Bibliography entry for the repo with the demo branch or tag | A git tag on the demo commit, named when tagging (step 10, D82) | later |
+| R19 | Everything declared, including local models | D76 (Ollama only with a declared role), `ai-log.md` | in use |
+| R20 | Optional ERK 2027 submission | No action | — |
 
-Fixed points: 18 Nov (proposal, Figma wireframe, pitch slide), 23 Nov (repo live, pitch), 13–14 Dec (sprint-1 milestone, checkpoint), 11 Jan (everything). Sprint contents not decided.
+## 7. Fixed points, demo and checkpoint
+
+No calendar is planned against (D26). The course fixes these points:
+
+| Date | Course event | What the plan brings |
+|------|--------------|----------------------|
+| Mon 16 Nov | Scoping and Figma session | Topic confirmation (R2); wireframe questions |
+| Wed 18 Nov | Proposal, Figma wireframe, one-slide pitch (10%) | Derived from this file (D87); screen spec → wireframe → pitch text (D50) |
+| Mon 23 Nov | Pitch; repo live; sprint 1 starts | Repo public (R5); order-of-work step 0 (D82) |
+| Sun 13 Dec / Mon 14 Dec | Sprint-1 milestone; lightning talk and written deliverable (10%) | `docs/sprint-1.md` (D84): goals table with measured values, what was built, stage-0 measurements, what broke, next sprint, AI-log excerpt. Aim: steps 0–3, shown as it stands |
+| Mon 21 Dec | Sprint review | `docs/progress.md` |
+| Mon 11 Jan | Report (25%), code and 10-minute demo (25%) | Demo per D83; report per D85; tag for R18 |
+
+**Demo (D83).** Scripted on a seeded deal, phone in hand, laptop as fallback. Intro 1 min; a deal against the agent with the explanation layers 3 min; coached play contrast and one counterfactual 2 min; adviser on a real deal with physical cards 2 min; numbers (goals table, tests, CI, commit log, AI log) 2 min. Script in `docs/demo.md`. The seed is fixed so the demo repeats.
+
+## 8. Not in scope (D86)
+
+Stated in `README.md` and the report so the goals do not over-claim:
+
+- 3-player tarok: after T0, only if time allows (D4).
+- Online multiplayer: T3, after the course (D38).
+- LLM narration of explanations: never (D16).
+- Code from other tarok engines: never (D9). General libraries are allowed (D27).
+- Rule variants in the left-out list of `rule-switches.md` (D12).
+- Play styles as fine-tuned copies: T2 (D24).
