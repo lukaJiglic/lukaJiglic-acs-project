@@ -3,10 +3,96 @@
 ## Where planning stands
 
 - 2026-11-06, session 1: course requirements extracted, first research pass done (4 files), state files created.
-- **Batch 1 is waiting for the user's answers.** Nothing is decided yet.
-- Next after Batch 1: Batch 2 (product core and screens), because the proposal and Figma wireframe are due Wed 18 Nov.
+- 2026-11-09, session 2: Batch 1 answered (see `decisions.md` D1–D13, F1–F7). Git started, private repo `lukaJiglic/lukaJiglic-acs-project` pushed. Deep research on training, network/browser inference and explanations started (`research/05–07`). Rule-switch list drafted (`rule-switches.md`).
+- **Batch 2 (bots) is written and waiting for answers.** Clarifications C1–C4 are also open (C1 is answered by B2-3).
+- The proposal, Figma wireframe and pitch slide are due Wed 18 Nov. The product batch must follow soon after the bots batch.
 
-## Batch 1 — foundations (asked 2026-11-06, unanswered)
+## Clarifications asked on 2026-11-09 (unanswered)
+
+- **C1. Explanation methods.** D1 says "ML explaining methods". Which kinds do you have in mind: per-move expected scores from the network's own outputs; attribution (which cards drove the choice); counterfactuals ("why not X"); concept probes (e.g. who the agent thinks the partner is); natural-language narration over those signals? Research 07 will give options; an early steer helps.
+- **C2. Library reuse.** D9 bans code from other tarok engines. General libraries (PyTorch, ONNX Runtime, a UI framework, RL helper code) are assumed allowed. Correct?
+- **C3. `project/` folder.** The course PDF and the report template are not committed yet. Commit them, or keep only the report source (`.tex`, `.sty`) in the repo?
+- **C4. Learn first.** D2 puts Learn before Play. Does that mean the first screens built are the tutorial and review screens, with free play behind them, or only that Learn gets priority when time is short?
+
+## Batch 2 — bots (asked 2026-11-09, unanswered)
+
+Sources: `research/05` (training method), `research/06` (network, browser), `research/07` (explanations). Claude read the method, failure-mode, evaluation and recommendation sections of all three; the subagents read the papers. Key numbers that are inferred, not measured: pipeline step rates, training hours, tarok's per-deal score spread. Nothing in the literature trains a rule-conditioned card-game policy, and no user study of explanations exists for any card game.
+
+**B2-1. Training method.**
+- a) PPO actor-critic with a full-information critic (critic sees all hands, talon and true partner during training; actor sees only its own view), self-play with 20% past checkpoints. Plus a Deep Monte Carlo (DouZero-style) run on the same pipeline as a control and fallback.
+- b) Deep Monte Carlo only.
+- c) PPO with a behaviour-cloning warm start from a search bot from day one.
+- d) AlphaZero-style with determinisation.
+- Recommendation: **a**. PerfectDou's ablation (read by the subagent): vanilla PPO against DouZero reached win rate 0.509; the same PPO with a full-information critic reached 0.738. The hidden partner is exactly what the critic can be told. DMC needs 10^9–10^10 steps in Dou Dizhu. AlphaZero-style lost at student scale without supervised pretraining (Jass, Klaverjas). c is kept as a fallback if the agent loses badly to the benchmark.
+
+**B2-2. Heads on the network (what explanations are built from).**
+- a) Actor trunk with: policy head (masked logits), an observation-only Q-per-action head regressed on returns (usable in the browser, gives "expected score per card"), a decomposed value head (trick points / king / pagat / announcements / penalties), auxiliary heads for partner seat and unseen-card location at low loss weight. Full-information critic is a separate network, training only.
+- b) Policy and value only. Explanations post hoc (probes, perturbation).
+- c) Q-per-action only (DMC style).
+- Recommendation: **a**. The PPO critic needs hidden information, so it cannot produce expected scores on the phone; an observation-only Q head fills that gap. Research 07's methods 1, 4, 11 and 12 need these heads. Cost at inference is negligible. Risk: auxiliary losses can weaken play; mitigation is to measure strength with and without and keep weights ≤ 0.1.
+
+**B2-3. Explanation methods and order** (this also answers C1).
+- a) In order: (1) intrinsic signals (Q per card, margin, reward components) rendered through templates bound to thresholds; (2) belief and concept readouts (partner estimate, trumps out, pagat safety, final score) via auxiliary heads and post-hoc probes; (3) perturbation attribution by card swaps and single-edit counterfactuals; (4) review replays and key-moment summaries. LLM narration optional and last, local Ollama model, review mode only, with a hallucination check.
+- b) Only (1) and (2).
+- c) LLM narration as a core feature.
+- Recommendation: **a**. Each method has a numbered faithfulness check (research 07, D1–D10), which feeds the course's checkable goals. Evidence from chess: a good action-specific attribution raised puzzle accuracy from 57% to 72%; two older saliency methods lowered it. LLM commentary has documented hallucination even with strong models and does not run on phones.
+- Sub-decision: in adviser mode the learner enters their intended card first, then sees the agent's card and the contrast. Reason: studies on human-AI decisions show people copy the AI otherwise. Recommendation: yes.
+
+**B2-4. Network and encoding.**
+- a) Flat encoding of about 620 features (own hand, cards played per seat, current trick, talon seen, discards, contract, called king, partner seat if revealed, announcements, counts, phase, rule vector), seat-relative. MLP 620→512→512→256, about 0.8 M parameters (1.5 MB fp16). GRU over the play history as a measured ablation later.
+- b) GRU over history from the start.
+- c) Transformer over card tokens.
+- Recommendation: **a**. Every credible trick-taking net is a shallow wide MLP of 1–7 M parameters; the Skat imitation net at 2.4 M ran at 2.5 ms per move on one CPU thread. A card-aligned flat encoding keeps attributions readable per card. Start simple, measure, add order information only if the ablation says so.
+
+**B2-5. Phases and action space.**
+- a) One network for all phases. Phase one-hot in the input. One masked action vector of about 140 logits (bids, king call, talon choice, single-card discards in sequence, announcements and kontra one at a time, 54 cards).
+- b) Separate networks per phase.
+- Recommendation: **a**. Masking is a valid policy gradient (Huang and Ontañón). Separate heads are an optimisation to try only if bidding underperforms.
+
+**B2-6. Rule switches inside the agent.**
+- a) One network with a rule vector, trained on a mixture of presets from the start.
+- b) One model per preset.
+- c) First model on one default preset with play-changing toggles fixed; rule vector and preset mixture added in a later stage (research 05 stage 3). Scoring-only toggles can be inputs from the start.
+- Recommendation: **c**. Rule-conditioned card-game policies have no published precedent, so start without that risk and add it once the basic loop is proven. The rule list and the default preset come in Batch 4.
+
+**B2-7. Curriculum.**
+- a) Phase by phase: card play with a fixed contract and a rule-called king → talon exchange → bidding → announcements and kontra → klop and berač last. Each phase has monitors (declare rate, pass rate, announcement rate, partner-prediction accuracy, legal-move violations).
+- b) Whole game from the start.
+- Recommendation: **a**. Bidding collapse ("never bid") is documented three times in this game family; kontra must exist before bidding is trained or the agent over-bids.
+
+**B2-8. Training pipeline.**
+- a) Rust engine with the forward pass in Rust; self-play actors on 12 CPU threads; PyO3 hands batches to a PyTorch learner on the GPU. Gate: at least 20,000 steps/s end to end, measured in week 1.
+- b) Rust engine, Python actors with batched GPU inference.
+- c) Python environment.
+- Recommendation: **a**, decided by measurement. Research 05 and 06 differ on where inference runs during self-play (GPU batches vs CPU in Rust); both agree the engine must be Rust. A 10^9-step run is estimated at 3–9 h with a fast pipeline and 2–6 days in Python. These rates are inferred; no Rust trick-taking engine publishes a benchmark. PyTorch still ships CUDA wheels for this GPU (Turing). torch.compile is not usable on it under Windows; eager mode is fine. 6 GB VRAM is not a constraint for a 0.8 M-parameter net.
+
+**B2-9. Other bots.**
+- a) Random bot and a rule-based bot (per-contract heuristics) in stage 0; PIMC/ISMCTS search bot in stage 3 as the benchmark and, if needed, a behaviour-cloning teacher; a cheating full-information version of the agent as an upper bound; past checkpoints as yardsticks.
+- b) Search bot early (stage 0–1).
+- Recommendation: **a**. The search bot is only needed when there is something to benchmark (D10). Build it early only if bidding collapse needs seeding with non-passive games.
+
+**B2-10. Difficulty levels and styles.**
+- a) Levels = random bot, rule bot, and checkpoints of the trained agent at measured strengths; styles (e.g. aggressive bidder, cautious) = fine-tuned copies with small reward changes, later tier.
+- b) Levels by sampling temperature only.
+- c) Separate training runs per level.
+- Recommendation: **a**. Checkpoints give measured strength for free from the evaluation harness. Temperature alone produces random blunders rather than weaker play.
+
+**B2-11. Evaluation protocol.**
+- a) Fixed seeded deal files. Each deal played in 8 seatings (A in each seat with B elsewhere, and the reverse). Mean, standard error, paired t-test. 2,000 deals for routine checks, 10,000 for release claims, recomputed once the per-deal spread is measured. Behaviour monitors from day one. Human sessions of 50–200 deals reported as anecdote with standard error.
+- b) Simpler: 4-seat rotation, 1,000 deals.
+- Recommendation: **a**. Sample-size formula n = (1.96·σ/d)². With an assumed σ of 50 points per deal, ±5 points needs about 400 deals, ±2 points about 2,400. σ for tarok is unknown and must be measured.
+
+**B2-12. Stages and budget** (research 05, G2; weeks counted from the start of building).
+- Stage 0 (wk 1–2): engine, rules tests, harness, random and rule bots, pipeline speed gate.
+- Stage 1 (wk 2–3): card play only, 10^7 then 10^8 steps. Gate: beats random widely by 10^7; beats the rule bot at card play by 10^8.
+- Stage 2 (wk 3–5): talon, bidding, announcements, kontra, then klop and berač.
+- Stage 3 (wk 5–6): search benchmark, tournament, rule vector on a preset mixture; BC warm start if the agent loses badly.
+- Stage 4 (wk 6–8): one or two 10^9 runs overnight, export to WASM, phone test, human sessions.
+- Stage 5 (wk 8–9): evaluation tables, ablations, writing.
+- Options: a) accept as the draft schedule; b) compress stages 1–2; c) other.
+- Recommendation: **a** as a draft; the sprint plan in Batch 8 will align it with 23 Nov, 13 Dec and 11 Jan. Note: 66 days from 2026-11-06 is about 9.4 weeks including planning, so the stages overlap the proposal and checkpoint dates.
+
+## Batch 1 — foundations (asked 2026-11-06, answered 2026-11-09; kept for the record)
 
 ### Facts only the user knows
 
@@ -66,13 +152,13 @@
 
 ## Backlog — later batches (not asked yet)
 
-**Batch 2: product core and screens.** Target user. Phone-first or desktop-first. Screen list for the Figma wireframe. What "teaching as you go" means in practice. Tier scheme and what Tier 0 contains. Languages (SL/EN) and when.
+**Batch 2: bots (next).** Training method. Network and input encoding. How the hidden partner and the phases are handled. Rule-set conditioning. Training budget and stages. Explanation methods (per D1). Benchmark bots (rule-based, search). Difficulty levels and styles from one trained model. Evaluation protocol.
 
-**Batch 3: rules.** Which of the 55 variation points become switches, and in which tier. Presets. Whether a switch may change play or scoring only. Reference source per rule. Direction of play, radelci, klop, kontra depth, rounding.
+**Batch 3: product core and screens.** Target user. Phone-first or desktop-first. Screen list for the Figma wireframe (due 18 Nov). What "teaching as you go" means in practice. The live adviser's input flow. Tier scheme and Tier 0 contents. Languages (SL/EN) and when.
 
-**Batch 4: architecture.** Engine language (one Rust engine compiled to WASM and used natively for training, vs a TypeScript engine plus a separate training engine, vs reusing OpenSpiel's tarok for training). UI framework. Where bots run. Hosting. Storage. Card artwork route (own index-only SVG cards vs public-domain scans as a skin).
+**Batch 4: rules.** Confirm the toggle list in `rule-switches.md`: defaults, tiers, presets, the left-out list.
 
-**Batch 5: bots.** Bot list. Search bot settings. Whether a trained bot is in Tier 0 or Tier 1. Training method (Deep Monte Carlo vs PPO with a full-information critic vs distilling the search bot). Training budget. Explanation format. Difficulty levels and styles.
+**Batch 5: architecture.** Engine language (one Rust engine compiled to WASM and used natively for training, vs TypeScript engine plus a separate training engine). UI framework. Where the model runs. Hosting. Storage. Model export path.
 
 **Batch 6: measurement.** The numbered goals. Deals per comparison. Rules test counts. Phone speed targets. How explanations are checked. Whether to test with real learners.
 

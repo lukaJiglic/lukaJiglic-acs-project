@@ -12,13 +12,20 @@ An app for the card game tarok that works well on a phone or in a browser. Three
 
 Bots range from simple to self-play-trained on the user's PC. The app can show why a bot chose a move. Each commonly varying rule is a player-settable switch.
 
-### Challenges to the idea (raised by Claude, not resolved)
+### Challenges raised by Claude, and their outcome (2026-11-09)
 
-- **Size.** The course asks for a project "small enough to finish" and "demoable in 10 minutes". Three uses plus trained bots is closer to three products and a research task. 66 days remain, 12 to the proposal. The plan needs a small core and tiers.
-- **One engine, three faces.** All three uses need the same things: a rules engine, a bot that can score every legal move, and an explanation of that score. If the plan treats that as the core, the three uses become thin layers on top. This is the main argument that the idea is feasible at all.
-- **Real-life adviser.** Getting advice during a live game is cheating unless the table agrees. Entering 48 cards per deal is slow. Possible reframes: a training tool for one learner with the table's consent; a "replay the hand afterwards" tool; a score sheet and rules arbiter that the whole table uses. Needs a user decision on who it is for.
-- **Rule switches multiply work.** Every switch must be handled by the engine, the bots, the teaching texts and the tests. Bots trained under one rule set may play badly under another. The plan needs a rule for which switches affect play and which affect scoring only.
-- **Trained bots vs deadline.** Self-play training is the highest-risk part. A search-based bot may be stronger, cheaper and easier to explain. See `research/03`.
+- **Size.** Closed by D8: the user says it is doable. Not raised again.
+- **One engine, three faces.** Accepted in spirit by D1 and D13: the trained agent is the core; the three uses are built around it.
+- **Real-life adviser.** Resolved by D3: it is in the core, and its purpose is learning (the game, the thinking, the strategies).
+- **Rule switches multiply work.** Still true. Handled by D12: a toggle list with tiers and incompatibilities (`rule-switches.md`). Toggles that change play affect the agent's training; toggles that change scoring only are cheap.
+- **Trained bots vs deadline.** Resolved by D1/D10: the trained agent is the core; a search bot is only a benchmark. Risk is managed in the bots batch.
+
+### Direction after Batch 1
+
+- 4-player tarok with a called king. 3-player later if time allows (D4).
+- Uses in priority order: Learn → Play → Table (D2).
+- Explanations come from ML explanation methods applied to the trained agent (D1). See `research/07`.
+- No code from other tarok engines (D9). Own simple SVG cards (D11).
 
 ## 0b. Research so far (first pass, 2026-11-06)
 
@@ -93,9 +100,21 @@ Not decided. Questions to settle: language of the rules engine; whether one engi
 
 ## 3. Bots
 
-Not decided. To cover: the list of bots, how each is built or trained, training time on the user's hardware, explanations.
+Decided: the trained agent is the core (D1). A search bot is a benchmark only (D10). Explanations come from ML explanation methods on the trained agent (D1).
 
-Hardware read from this PC on 2026-11-06 (to be confirmed as the training machine): AMD Ryzen 5 5600 (6 cores / 12 threads), 32 GB RAM, NVIDIA GTX 1660 SUPER 6 GB, 1.2 TB free disk, Windows 11.
+Draft design, pending Batch 2 answers (sources: `research/05`, `06`, `07`; `rule-switches.md` for which toggles touch play):
+
+- **Method.** PPO with a full-information critic, self-play, 20% past checkpoints. Deep Monte Carlo run as control and fallback.
+- **Network.** Flat card-aligned encoding (~620 features), MLP 512-512-256, ~0.8 M parameters. One network for all phases, phase one-hot, ~140-way masked action vector. Heads: policy, observation-only Q per action, decomposed value, partner-seat and card-location auxiliaries. Full-information critic separate, training only.
+- **Curriculum.** Card play → talon → bidding → announcements and kontra → klop and berač. Rule vector and preset mixture in stage 3.
+- **Pipeline.** Rust engine and forward pass, self-play actors on CPU, PyO3 to a PyTorch learner on the GPU. Gate: ≥ 20,000 steps/s measured in week 1. Same Rust crate compiles to WASM for the browser; weights shipped as a ~1.5 MB f16 file; no ONNX runtime in the browser.
+- **Explanations.** Layered: default = chosen card, expected score, margin, belief strip; tap = Q bars, reward components, top-3 perturbation attributions; review = contrastive vs the learner's move, one counterfactual, concept readouts, replay. Faithfulness checks D1–D10 from research 07 become numbered goals. Adviser asks for the learner's move first.
+- **Other bots.** Random, rule-based, PIMC/ISMCTS benchmark (stage 3), cheating full-information agent as upper bound, checkpoints.
+- **Levels and styles.** Levels = random, rule bot, measured checkpoints. Styles = fine-tuned copies, later tier.
+- **Evaluation.** Seeded deal files, 8-seating duplicate scheme, 2,000 routine / 10,000 release deals, paired t-test, behaviour monitors, per-deal spread measured early.
+- **Training time (inferred, to be measured).** With the Rust pipeline: 10^8 steps in 17 min–0.9 h, 10^9 in 3–9 h. With a Python environment: 10^9 in 2–6 days. Budget: 5–10 runs of 10^8, 2–3 runs of 10^9.
+
+Hardware (confirmed as the training machine, F4): AMD Ryzen 5 5600 (6 cores / 12 threads), 32 GB RAM, NVIDIA GTX 1660 SUPER 6 GB (Turing, sm_75, supported by current PyTorch CUDA wheels), 1.2 TB free disk, Windows 11.
 
 ## 4. Measurement
 
