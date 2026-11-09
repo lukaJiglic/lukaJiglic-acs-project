@@ -8,8 +8,9 @@
 - 2026-11-09, later: Batch 3 answered (D31–D42), C5 answered (D30). A Figma connector is available in the user's setup.
 - 2026-11-09, later: Batch 4 answered (D43–D49), C6 answered (D50: next session does the screen spec, the Figma wireframe, the pitch slide text).
 - 2026-11-09, later: Batch 5 answered (D51–D64), all recommendations accepted.
-- **Batch 6 (measurement goals) is written and waiting for answers.**
-- Next session plan: (1) take Batch 6 answers; (2) screen spec; (3) Figma wireframe via the connector; (4) pitch slide text; then Batches 7–8.
+- 2026-11-09, later: Batch 6 answered (D65–D69); goals G1–G19 with lowered thresholds are in `plan-draft.md` section 4.
+- **Batch 7 (agent workflow) is written and waiting for answers.**
+- Next session plan: (1) take Batch 7 answers; (2) screen spec; (3) Figma wireframe via the connector; (4) pitch slide text; then Batch 8.
 - The proposal, Figma wireframe and pitch slide are due Wed 18 Nov. The product batch must follow soon after the bots batch.
 
 ## Clarifications
@@ -20,7 +21,59 @@ Open:
 
 - **C5. "Exact inference bits" (D18).** Claude reads this as the facts known for certain from play: which seats are void in which suit, the revealed partner seat, the cards already accounted for, the talon cards seen, whether the called king has fallen. Is that the meaning, or do you also mean derived counts (trumps still out per seat, points so far)?
 
-## Batch 6 — measurement: the numbered goals (asked 2026-11-09, unanswered)
+## Batch 7 — working with agents day to day (asked 2026-11-09, unanswered)
+
+Context: the course grades the process (R4, R9, R14, R17): how work was split, which files carried state, how output was verified before each commit, and which prompt and model produced which part. Primary tool: Claude Code with Claude Fable 5.1 (F6). The user reviews TypeScript/Vue, Python, Rust, C++ (F5). Progress is recorded thoroughly instead of dates (D26). These are Claude's proposals; the course text is the only source.
+
+**B7-1. Unit of work: task specs.**
+- a) Every task is a spec file `docs/specs/NNN-short-name.md`: goal, acceptance criteria (the tests or checks that prove it), files expected to change, out of scope, the model and tool that will run it. Claude drafts, the user approves, an agent executes, verification runs, the commit references the spec. Specs are numbered and never deleted; status at the top (draft / approved / done / dropped).
+- b) GitHub Issues as the task unit.
+- c) Chat only, no task files.
+- Recommendation: **a**. Files carry state across sessions (G6) and are the "specs, progress files" the report template asks about. Issues can mirror specs later if useful.
+
+**B7-2. State files.**
+- a) `docs/planning/` (decisions, open questions, plan, research, AI log) stays as is. Add `docs/progress.md` (one entry per session: date, what was done, measurements, what is broken), `docs/specs/` (tasks), `docs/architecture.md` (the built architecture, kept current), `CLAUDE.md` at the repo root (standing instructions for every agent session).
+- b) One big `STATUS.md`.
+- Recommendation: **a**.
+
+**B7-3. Verification before each commit.**
+- a) Checklist in `CLAUDE.md`: (1) the spec's acceptance criteria are met and named in the commit; (2) tests pass locally (`cargo test`, app tests, `pytest`, as applicable); (3) the user reads the diff; (4) an agent review pass over the diff for correctness, separate from the writing pass; (5) CI green after push. For model weights: the golden forward-pass test. For rule changes: the scenario tests for that toggle.
+- b) Tests and CI only.
+- Recommendation: **a**. Step 3 is what makes it your process rather than the agent's.
+
+**B7-4. Acceptance criteria before tests.** a) The user approves the acceptance criteria in the spec before an agent writes the tests, so tests cannot be written to fit the code. b) Agents write tests freely. Recommendation: **a**.
+
+**B7-5. Commit convention.**
+- a) `type(scope): subject` (types: feat, fix, test, docs, plan, chore, train, model). Body says what and why. Trailers: `Spec: docs/specs/NNN-name.md` (when a spec applies), `Produced-by: Claude Code <version>, model <tag>` (or `Produced-by: user` for hand-written changes), `Session: <ai-log row>`, `Co-Authored-By` line. One commit per task or logical step. No end-of-day dumps.
+- b) Plain messages.
+- Recommendation: **a**. It makes the commit log the replication record the template asks for (R14) and gives G19 something to count.
+
+**B7-6. Session logging.**
+- a) One `ai-log.md` row per session: date, tool and version, model tag, what the agent did, what the user did, outputs. Prompts summarised in the row; standing instructions live in `CLAUDE.md`; a prompt is stored verbatim in `docs/prompts/` only when it is reused (e.g. the lesson-text prompt). Subagents get a sub-row with their model.
+- b) Full transcripts exported per session.
+- Recommendation: **a**. Transcripts are optional extras; the row plus commit trailers already give prompt, model and output traceability.
+
+**B7-7. Tools and roles (the agentic-stack table).**
+- a) Claude Code with Claude Fable 5.1 for planning, code, tests, research subagents and review passes. Figma connector for the wireframe. GitHub Actions for CI. A local Ollama model only later, with one declared role (e.g. a second-opinion review or Slovenian text checks), if time allows (F6). Every model gets its own row with a pinned tag and the date range of use.
+- b) Several models from the start.
+- Recommendation: **a**.
+
+**B7-8. Branching.**
+- a) Trunk-based: small commits on `main`; a branch only for a long or risky change (e.g. a training-pipeline rewrite), merged with a merge commit so the history stays visible.
+- b) A pull request per task.
+- Recommendation: **a**. Solo project; the course grades the commit history, not PRs.
+
+**B7-9. Session routine.**
+- a) Start: read `docs/planning/README.md`, `docs/progress.md`, the open specs. Work in spec order. End: update `docs/progress.md`, the spec status, `ai-log.md`; commit; push.
+- b) Free form.
+- Recommendation: **a**. Written into `CLAUDE.md` so every session does it.
+
+**B7-10. Training runs as commits.**
+- a) Each training run has a config file under `src/train/configs/`, a run log in `docs/progress.md` (steps, hours, metrics, checkpoint hash), and released weights in `models/` with a `MODEL.md` (config, data, date, metrics). A `model:` commit per released weight file.
+- b) Weights outside git.
+- Recommendation: **a**, with weights kept small (one f16 file per release). Large intermediate checkpoints stay out of git.
+
+## Batch 6 — measurement: the numbered goals (asked 2026-11-09, answered 2026-11-09; see D65–D69 and plan-draft section 4)
 
 Context: the course wants goals someone can check (R7, R12). They go into `README.md` and the report as G1, G2, …. Every goal below names a number, how it is measured, and where the measurement lives. Thresholds are Claude's proposals; the ones most worth adjusting are marked. Sources: research/05 (evaluation protocol), research/07 (faithfulness checks D1–D8, D10).
 
@@ -386,8 +439,6 @@ Sources: `research/05` (training method), `research/06` (network, browser), `res
 ## Backlog — later batches (not asked yet)
 
 **Batch 2: bots (next).** Training method. Network and input encoding. How the hidden partner and the phases are handled. Rule-set conditioning. Training budget and stages. Explanation methods (per D1). Benchmark bots (rule-based, search). Difficulty levels and styles from one trained model. Evaluation protocol.
-
-**Batch 7: agent workflow.** Task splitting. Spec and progress files. Verification before each commit. Commit message convention that records prompt and model. Session logging. Which tools and models do what.
 
 **Batch 8: tiers and demo.** Final tier of every feature. Order of work (no calendar, D26). What the 10-minute demo shows. What the checkpoint deliverable contains.
 

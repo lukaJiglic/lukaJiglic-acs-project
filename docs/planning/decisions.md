@@ -98,6 +98,11 @@ Status values: **given** (stated by the user in the brief), **decided** (user ch
 | D62 | 2026-11-09 | **Engine tests:** rule scenarios per toggle, property tests (card conservation, 70 points, legal-move sets), golden games from records, native↔WASM↔PyTorch parity, Python binding tests. | B5-12 a–b | User (a) | |
 | D63 | 2026-11-09 | **CI on GitHub Actions:** cargo test and clippy, WASM build, app lint and unit tests, Python tests, golden forward-pass test when weights change, Pages deploy. | B5-13 a–b | User (a) | |
 | D64 | 2026-11-09 | **Offline PWA:** service worker caches app and weights; weights refetched silently if evicted; UI never blocks on cache presence. | B5-14 a–b | User (a) | |
+| D65 | 2026-11-09 | **Goals G1–G19 accepted with lowered thresholds** (realistic targets; higher numbers are aspirations, not goals). Final values in `plan-draft.md` section 4. | B6-1 | User ("lower a bit") | Claude lowered each threshold; see section 4. |
+| D66 | 2026-11-09 | **Reference phone: Honor 200.** DevTools CPU throttling ×4 is the CI proxy. | B6-2 a–c | User (a) | |
+| D67 | 2026-11-09 | **G4 margin: CI excludes zero.** +5 points per deal is an aspiration. | B6-3 a–c | User (rec) | |
+| D68 | 2026-11-09 | **Human sessions (G18) are T1.** | B6-4 a–b | User (rec) | |
+| D69 | 2026-11-09 | **Goal numbers may change until the proposal is submitted; frozen after, append only.** | B6-5 a–b | User (rec) | |
 
 ## Provisional choices by Claude (need confirmation)
 

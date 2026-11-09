@@ -140,7 +140,38 @@ Hardware (confirmed as the training machine, F4): AMD Ryzen 5 5600 (6 cores / 12
 
 ## 4. Measurement
 
-Draft goals G1–G19 are in `open-questions.md`, Batch 6, pending the user's thresholds. Groups: rules and engine (G1–G2), pipeline (G3), agent strength (G4–G7), explanation faithfulness (G8–G13), phone and app (G14–G18), process (G19). Once accepted they move here and into `README.md` and the report.
+Decided in Batch 6 (D65–D69). Thresholds are realistic targets; aspirations in brackets are not goals. Numbers may change until the proposal is submitted (D69). These go into `README.md` and the report.
+
+**Rules and engine**
+- G1. Rule-scenario suite of at least 150 tests covering the baseline and every T0 toggle value, plus property tests (card conservation, 70 points per deal, legal-move sets) on 10,000 random deals. `cargo test` in CI. [aspiration 200 / 100,000]
+- G2. Native, WASM and PyTorch agree on legal-move sets and scores for 1,000 random games; forward-pass outputs within 1e-4 fp32 / 1e-2 fp16 on 1,000 random states. Parity tests in CI. [aspiration 10,000]
+
+**Pipeline**
+- G3. End-to-end self-play throughput of at least 10,000 steps/s on the training PC. Stage-0 benchmark, logged in `docs/progress.md`. [aspiration 20,000; D22's gate becomes 10,000]
+
+**Agent strength** (8-seating duplicate protocol, D25)
+- G4. Transformer agent beats the rule bot: positive mean score per deal, 95% CI excluding zero, at least 1,000 deals. [aspiration +5 points per deal over 2,000 deals]
+- G5. Zero illegal moves in 10,000 self-play deals; declare, pass and announcement rates per contract logged and within ranges set in stage 2.
+- G6. Agent vs the search benchmark at a fixed iteration budget: result with 95% CI over at least 1,000 deals, reported. No pass/fail.
+- G7. Transformer vs MLP control, same pipeline and step budget: difference with 95% CI over at least 1,000 deals, reported.
+
+**Explanations**
+- G8. Partner-prediction accuracy before the called king falls at least 50% on 5,000 held-out deals (chance about 33%). [aspiration 60%]
+- G9. Belief head Brier score at least 10% better than the uniform prior on held-out deals; calibration error reported. [aspiration 20%]
+- G10. Q-head calibration: mean absolute error between predicted and realised deal score reported on held-out deals.
+- G11. Attribution sanity: rank correlation between attributions from the trained and a weight-randomised model below 0.3; deletion-curve AUC better than random ordering on at least 500 decisions. [aspiration 0.2 / 1,000]
+- G12. Counterfactual consistency: the model plays the stated card in at least 95% of shown counterfactuals. [aspiration 99%]
+- G13. Template audit: 100% of rendered explanation clauses backed by their signal and threshold on a sample of 500 decisions.
+
+**Phone and app**
+- G14. Agent move latency at most 500 ms on a Honor 200; app shell plus weights at most 15 MB; first load at most 5 s on 4G. Measured on the Pages build; DevTools CPU throttling ×4 as the CI proxy. [aspiration 300 ms / 10 MB / 3 s]
+- G15. Coached play, review and adviser each complete a full deal end to end in the T0 app (manual test script in `docs/`).
+- G16. Adviser: a full deal entered by the user in at most 6 minutes, timed. [aspiration 4]
+- G17. At least 3 scripted lessons and at least 8 rule cards in Slovenian, each tied to a seeded deal or rule. [aspiration 5 / 10]
+- G18 (T1). At least 30 deals played against the agent by at least 2 people, results and feedback recorded, reported with standard error as anecdote. [aspiration 50 / 3]
+
+**Process**
+- G19. 100% of commits on `main` carry the tool and model trailer; `ai-log.md` has a row for every session; `README.md` lists every tool with a pinned model tag.
 
 ## 5. Working with agents day to day
 
