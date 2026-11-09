@@ -9,19 +9,74 @@
 - 2026-11-09, later: Batch 4 answered (D43–D49), C6 answered (D50: next session does the screen spec, the Figma wireframe, the pitch slide text).
 - 2026-11-09, later: Batch 5 answered (D51–D64), all recommendations accepted.
 - 2026-11-09, later: Batch 6 answered (D65–D69); goals G1–G19 with lowered thresholds are in `plan-draft.md` section 4.
-- **Batch 7 (agent workflow) is written and waiting for answers.**
-- Next session plan: (1) take Batch 7 answers; (2) screen spec; (3) Figma wireframe via the connector; (4) pitch slide text; then Batch 8.
+- 2026-11-10: Batch 7 answered (D70–D79), all recommendations accepted; plan-draft section 5 written. The commit convention (D74) applies from this point.
+- **Batch 8 (tiers and demo) is written and waiting for answers.** It is the last planned batch. After it: finalise the plan draft, write the compliance mapping (plan-draft section 6), then D50 (screen spec, Figma wireframe, pitch slide text).
+- Next session plan: (1) take Batch 8 answers; (2) compliance mapping; (3) screen spec; (4) Figma wireframe via the connector; (5) pitch slide text.
 - The proposal, Figma wireframe and pitch slide are due Wed 18 Nov. The product batch must follow soon after the bots batch.
 
 ## Clarifications
 
-Answered 2026-11-09: C1 (by D16), C2 (D27), C3 (D28), C4 (D29).
+Answered 2026-11-09: C1 (by D16), C2 (D27), C3 (D28), C4 (D29), C5 (D30: both certain facts and derived counts), C6 (D50).
 
 Open:
 
-- **C5. "Exact inference bits" (D18).** Claude reads this as the facts known for certain from play: which seats are void in which suit, the revealed partner seat, the cards already accounted for, the talon cards seen, whether the called king has fallen. Is that the meaning, or do you also mean derived counts (trumps still out per seat, points so far)?
+- **C7. "End session" action (D44).** Claude read "open-ended session + unused radelci cost −70" as: the app has an explicit "end session" action, and leftover radelci are settled at −70 each when the user ends the session. Is that right?
 
-## Batch 7 — working with agents day to day (asked 2026-11-09, unanswered)
+## Batch 8 — tiers and demo (asked 2026-11-10, unanswered)
+
+Context: this is the last planned batch. It fixes what the proposal promises (tiers), the order in which work happens (no calendar, D26), what the 10-minute demo shows (R3), and what the checkpoint deliverable contains (D2 in `course-requirements.md`). Sources: the course text for the deadlines and formats; everything else is Claude's proposal built on D1–D79.
+
+**B8-1. The T0 list (what the proposal promises as "must work for the demo").**
+Claude's reading of D31–D64 gives this T0 set:
+- Engine: 4-player rules on the Default preset, the 12 T0 toggles, scoring, seeded deals, game records, CLI. Tests G1–G2.
+- Bots: random, rule-based, trained transformer through at least stages 1–2 (card play, talon, bidding, announcements, kontra, klop, berač), levels from checkpoints. MLP control run (G7) and search benchmark (G6) are measured and reported, not shown in the demo.
+- App: Home, Learn hub, Table in Lesson / Play / Adviser modes, Review, Rules and presets, Levels, Settings. PWA on GitHub Pages, offline.
+- Learn: coached play, review, at least 3 lessons and 8 rule cards (G17).
+- Adviser: full entry of a real deal (G16).
+- Explanations: default layer and tap layer (D16), review contrast with one counterfactual, faithfulness goals G8–G13.
+- Process: CI, specs, progress file, AI log, trailers (G19).
+- a) Accept this T0 list as final for the proposal. T1–T3 as in plan-draft section 1.
+- b) Trim: name the items to move to T1.
+- c) Extend: name the items to pull into T0.
+- Recommendation: **a**. It matches the goals already fixed in Batch 6; moving items would reopen them.
+
+**B8-2. Fallback if the trained agent is weaker than hoped at demo time.**
+- a) The app always ships the best measured checkpoint, whatever its strength. The demo shows that model and its real numbers. The report states what was reached (R15 asks for failures too). Nothing is hidden behind the rule bot.
+- b) Demo against the rule bot only if the trained agent fails G4.
+- Recommendation: **a**. The levels system (D24) already exposes checkpoints; honesty is graded (R4, R15).
+
+**B8-3. Order of work (a sequence, not a calendar).**
+- a) (0) Repo skeleton: README with goals, `CLAUDE.md`, `docs/progress.md`, CI, licences. (1) Engine stage 0: rules, Default preset, T0 toggles, tests, CLI, records, random and rule bots, seeded deals, speed harness and gate. (2) Training pipeline: PyO3 actors, learner, stage-1 card-play run started. (3) App shell while training runs: Table component, Play vs rule bot, cards, PWA, Pages. (4) WASM export of engine and forward pass, first checkpoint in the browser, levels. (5) Stage-2 training (talon, bidding, announcements, klop/berač), monitors. (6) Explanations: signals, templates, aux-head readouts, attributions, counterfactuals. (7) Learn: coached play, review, lessons, rule cards. (8) Adviser entry. (9) Evaluation: benchmarks, MLP control, faithfulness checks, phone measurements. (10) Report and demo script. Training runs are long and unattended, so app work fills the GPU time.
+- b) Engine → full app → training last.
+- c) Engine → training to completion → app.
+- Recommendation: **a**. Bots come first (D7) but the GPU should not sit idle, and the course has a checkpoint where something must run.
+
+**B8-4. What the 10-minute demo shows.**
+- a) Scripted on a seeded deal, phone in hand, laptop as fallback. (1) 1 min: the problem, the agent, the three uses. (2) 3 min: play a deal against the agent in the app; open the explanation layers on one or two moves. (3) 2 min: coached play: the learner's card vs the agent's card, the contrast, one counterfactual. (4) 2 min: adviser on a real deal with physical cards, or a prepared deal if time is short. (5) 2 min: numbers: goals table with measured values, tests and CI, commit log with trailers, AI log. Script in `docs/demo.md`; the seeded deal is fixed so the demo repeats.
+- b) Free play and questions.
+- Recommendation: **a**. R3 asks for "demoable in 10 minutes"; a fixed script and seed make it repeatable.
+
+**B8-5. Checkpoint deliverable (sprint-1 milestone, self-submitted Sun 13 Dec; 5-min lightning talk Mon 14 Dec; 10%).**
+- a) A written sprint report `docs/sprint-1.md`: goals table G1–G19 with status and measured values so far; what was built; stage-0 measurements (test count, speed gate result, per-deal score spread); what broke and what was dropped; what the next sprint does; the AI-log excerpt for the sprint. The talk shows one live thing (engine CLI tournament, or the app shell playing vs the rule bot) and the goals table. The aim for the sprint-1 content is order-of-work steps 0–3 (engine, pipeline, stage-1 run started, app shell). The aim is a target, not a plan against dates (D26): the report shows whatever exists.
+- b) Slides only.
+- Recommendation: **a**. It reuses `docs/progress.md` and the goals table; nothing is written twice.
+
+**B8-6. Report writing cadence (ERK report, 11 Jan).**
+- a) Skeleton in `report/` from the start of building: section headings, stack table, goals table pulled from README. Method and stack table updated at the end of each session that changes them. Results filled as measurements land in `docs/progress.md`. Final pass at the end.
+- b) Written at the end from the files.
+- Recommendation: **a**. The AI-use declaration (R17) and stack table (R13) are hard to reconstruct late.
+
+**B8-7. "Not in scope" list.**
+- a) README and plan carry a short "Not in scope" section: 3-player tarok (after T0, if time), online multiplayer (T3), LLM narration (never), code from other tarok engines (never), the rule variants in the left-out list of `rule-switches.md`, styles as fine-tuned copies (T2).
+- b) No such list.
+- Recommendation: **a**. It tells the reader what the goals do not claim.
+
+**B8-8. Plan document for the proposal.**
+- a) After Batch 8, `plan-draft.md` is renamed `plan.md` and tidied: decisions referenced by number, open items marked, sections 6 (compliance mapping) and 7 (fixed points only) completed. The proposal text is derived from it.
+- b) Keep the draft as is and write the proposal separately.
+- Recommendation: **a**. One source for the proposal, README and report.
+
+## Batch 7 — working with agents day to day (asked 2026-11-09, answered 2026-11-10; see D70–D79 and plan-draft section 5)
 
 Context: the course grades the process (R4, R9, R14, R17): how work was split, which files carried state, how output was verified before each commit, and which prompt and model produced which part. Primary tool: Claude Code with Claude Fable 5.1 (F6). The user reviews TypeScript/Vue, Python, Rust, C++ (F5). Progress is recorded thoroughly instead of dates (D26). These are Claude's proposals; the course text is the only source.
 
@@ -438,9 +493,7 @@ Sources: `research/05` (training method), `research/06` (network, browser), `res
 
 ## Backlog — later batches (not asked yet)
 
-**Batch 2: bots (next).** Training method. Network and input encoding. How the hidden partner and the phases are handled. Rule-set conditioning. Training budget and stages. Explanation methods (per D1). Benchmark bots (rule-based, search). Difficulty levels and styles from one trained model. Evaluation protocol.
-
-**Batch 8: tiers and demo.** Final tier of every feature. Order of work (no calendar, D26). What the 10-minute demo shows. What the checkpoint deliverable contains.
+None. Batch 8 was the last planned batch. New questions go to "Loose questions" below or become a clarification (C-numbers).
 
 ## Loose questions noticed along the way
 

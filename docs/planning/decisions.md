@@ -103,6 +103,16 @@ Status values: **given** (stated by the user in the brief), **decided** (user ch
 | D67 | 2026-11-09 | **G4 margin: CI excludes zero.** +5 points per deal is an aspiration. | B6-3 a–c | User (rec) | |
 | D68 | 2026-11-09 | **Human sessions (G18) are T1.** | B6-4 a–b | User (rec) | |
 | D69 | 2026-11-09 | **Goal numbers may change until the proposal is submitted; frozen after, append only.** | B6-5 a–b | User (rec) | |
+| D70 | 2026-11-10 | **Unit of work: spec files** `docs/specs/NNN-short-name.md` with goal, acceptance criteria, files expected to change, out of scope, tool and model. Status line at the top (draft / approved / done / dropped). Numbered, never deleted. Claude drafts, the user approves, an agent executes, verification runs, the commit references the spec. | B7-1 a–c | User (a) | |
+| D71 | 2026-11-10 | **State files:** `docs/planning/` stays as is. Add `docs/progress.md` (one entry per session: date, what was done, measurements, what is broken), `docs/specs/`, `docs/architecture.md` (the built architecture, kept current), and `CLAUDE.md` at the repo root (standing instructions for every agent session). | B7-2 a–b | User (a) | |
+| D72 | 2026-11-10 | **Verification before each commit** (checklist in `CLAUDE.md`): (1) acceptance criteria met and named in the commit; (2) tests pass locally; (3) the user reads the diff; (4) a separate agent review pass over the diff; (5) CI green after push. Weights: golden forward-pass test. Rule changes: scenario tests for the toggle. | B7-3 a–b | User (a) | |
+| D73 | 2026-11-10 | **Acceptance criteria are approved by the user before an agent writes tests.** | B7-4 a–b | User (a) | |
+| D74 | 2026-11-10 | **Commit convention:** `type(scope): subject` (feat, fix, test, docs, plan, chore, train, model). Body: what and why. Trailers: `Spec:` (when a spec applies), `Produced-by: Claude Code <version>, model <tag>` or `Produced-by: user`, `Session: <ai-log row>`, `Co-Authored-By`. One commit per task or logical step. | B7-5 a–b | User (a) | Settles P3. Applies from the first commit after this decision. |
+| D75 | 2026-11-10 | **Session logging:** one `ai-log.md` row per session (date, tool and version, model tag, what the agent did, what the user did, outputs). Prompts summarised in the row. Standing instructions in `CLAUDE.md`. A prompt stored verbatim in `docs/prompts/` only when reused. Subagents get a sub-row. | B7-6 a–b | User (a) | |
+| D76 | 2026-11-10 | **Stack:** Claude Code with Claude Fable 5.1 for planning, code, tests, research subagents and review passes. Figma connector for the wireframe. GitHub Actions for CI. A local Ollama model only later, with one declared role, if time allows. Every model gets its own stack-table row with pinned tag and date range. | B7-7 a–b | User (a) | |
+| D77 | 2026-11-10 | **Branching: trunk-based on `main`.** A branch only for a long or risky change, merged with a merge commit. | B7-8 a–b | User (a) | |
+| D78 | 2026-11-10 | **Session routine.** Start: read `docs/planning/README.md`, `docs/progress.md`, open specs; work in spec order. End: update `docs/progress.md`, spec status, `ai-log.md`; commit; push. Written into `CLAUDE.md`. | B7-9 a–b | User (a) | |
+| D79 | 2026-11-10 | **Training runs as commits:** config per run in `src/train/configs/`, run log in `docs/progress.md` (steps, hours, metrics, checkpoint hash), released weights in `models/` with `MODEL.md`, one `model:` commit per released weight file. Intermediate checkpoints stay out of git. | B7-10 a–b | User (a) | |
 
 ## Provisional choices by Claude (need confirmation)
 
@@ -110,6 +120,6 @@ Status values: **given** (stated by the user in the brief), **decided** (user ch
 |----|--------|-----|--------|
 | P1 | Planning files in `planning/` at root. | — | superseded by D6 (`docs/planning/`) |
 | P2 | Research notes: one file per topic in `docs/planning/research/`, each ending with "Verified vs inferred". | Matches G4. | open |
-| P3 | Commit messages carry a trailer naming the tool and model that produced the change. | Course R14: commit log must show which prompt and model produced which part. | open, to be settled in the workflow batch |
+| P3 | Commit messages carry a trailer naming the tool and model that produced the change. | Course R14: commit log must show which prompt and model produced which part. | settled by D74 |
 | P4 | The `project/` folder (course PDF and template) is not committed until the user says so. | — | superseded by D28 |
 | P5 | Report source lives in `report/` (copied from `project/`, which stays untracked). | D28 says only the source is committed; `report/` keeps it apart from `src/` and `docs/`. | open |
