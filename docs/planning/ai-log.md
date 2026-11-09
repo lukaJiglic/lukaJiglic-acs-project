@@ -1,0 +1,16 @@
+# AI-use log
+
+One row per session or per distinct use. Feeds the "Agentic stack" table and the "AI-use declaration" in the report.
+Record: date, tool with version, exact model tag, what it did, what the user did.
+
+| # | Date | Tool (version) | Model (exact tag) | What the AI did | What the user did | Outputs |
+|---|------|----------------|-------------------|-----------------|-------------------|---------|
+| 1 | 2026-11-06 | Claude Code 2.1.306, Claude desktop app (Code tab), Windows 11 | Claude Fable 5.1 (`claude-fable-5-1`) | Planning session 1. Read the course instructions and report template. Read the PC's hardware and installed tool versions. Created the planning state files. Ran four web-research subagents (rules and variants; existing software and prior work; bot methods and training cost; card artwork licensing). Wrote the first batch of decisions for the user. No product code written. | Wrote the project brief and the planning rules. Decides every item. | `docs/planning/*.md`, `docs/planning/research/01–04` (created as `planning/`, moved on 2026-11-09) |
+| 1a | 2026-11-06 | Claude Code subagents (general-purpose), started by session 1 | Same model as the parent session by default (`claude-fable-5-1`). Not independently confirmed per subagent. | Web research. Each wrote one file in `planning/research/` with sources and a "Verified vs inferred" section. | — | `docs/planning/research/01`–`04` |
+| 2 | 2026-11-09 | Claude Code 2.1.306, Claude desktop app (Code tab) | Claude Fable 5.1 (`claude-fable-5-1`) | Planning session 2. Recorded the user's Batch 1 answers as decisions D1–D13 and facts F1–F7. Moved planning files to `docs/planning/`. Started git, made the first commits, created the private GitHub repo. Ran four subagents: deep research on training methods for 4-player hidden-partner games, on network architecture and browser inference, on explanation methods for trained agents; and a derivation of the rule-switch list from research/01. Drafted Batch 2 (bots). | Answered Batch 1. Corrected the framing: trained agent is the core, explanations via ML explanation methods. | `docs/planning/decisions.md`, `rule-switches.md`, `research/05–07`, git history |
+| 2a | 2026-11-09 | Claude Code subagents (general-purpose), started by session 2 | Same model as the parent by default (`claude-fable-5-1`). Not independently confirmed per subagent. | Research and derivation as listed in row 2. | — | `docs/planning/research/05`–`07`, `docs/planning/rule-switches.md` |
+
+## Notes
+
+- Model tags are written as the tool reports them. If a session switches model, add a new row.
+- Environment on 2026-11-06: git 2.52.0.windows.1, Node v24.14.0, Python 3.12.10, cargo 1.94.1, Ollama client 0.40.13 (not running), MiKTeX pdflatex present, GitHub CLI logged in as `lukaJiglic`.
