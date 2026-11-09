@@ -13,3 +13,6 @@ __pycache__/
 # Local secrets
 .env
 .env.*
+
+# Course material (PDFs, originals). Report source is copied to report/
+project/

@@ -1,0 +1,88 @@
+% project_report.tex — ERK-format report template for YOUR project (English).
+% Fill every [PLACEHOLDER]. Same two-column style as the real ERK proceedings.
+% Compile like any deck: pdflatex project_report.tex (erk.sty sits next to it).
+\documentclass[a4paper]{article}
+
+\usepackage[utf8]{inputenc}\usepackage[T1]{fontenc}
+\usepackage{erk}
+\usepackage{times}
+\usepackage{graphicx}
+\usepackage[english]{babel}
+\usepackage[top=22.5mm, bottom=22.5mm, left=22.5mm, right=22.5mm]{geometry}
+\usepackage{booktabs,hyperref}
+
+% keep the ERK look: no footnotes on the cover page
+\def\footnotemark{}
+
+\begin{document}
+
+\title{[Title of Your Project]}
+
+\author{[Your Name]$^{1}$}
+
+\affiliation{$^{1}$University of Ljubljana, Faculty of Computer and Information Science}
+
+\email{Email: [your@student.uni-lj.si]}
+
+\maketitle
+
+\begin{abstract}{[English title of your paper]}
+[English abstract, 200 words at most: what the software does, who it is for,
+what the agents did, and the one result you can show. Write it last, readers
+read it first.]
+\end{abstract}
+
+\section{Introduction}
+What problem does your project solve, and who is the user? Why is it worth
+building? Two short paragraphs maximum.
+
+\section{Goals and objectives}
+Numbered, checkable. For each goal someone can tell whether you met it.
+\begin{itemize}
+\item[G1.] [Goal one --- phrased so a reader can test it]
+\item[G2.] [Goal two]
+\end{itemize}
+
+\section{Agentic stack used}
+What you actually ran, pinned, with what each part did. Honest table, not
+marketing. Model tags are part of the method --- pin them.
+
+\begin{table}[h]
+\centering\small
+\begin{center}
+\begin{tabular}{ | l | l | l | }
+\hline 
+  	extbf{Tool} & 	extbf{Model (pinned tag)} & 	extbf{What it did}\\
+\hline
+  pi 1.4.0 & dingo/qwen3.6:35b-a3b-mtp-q4\_K\_M & wrote, ran, fixed: what, when \\
+  <tool 2> & <tag / version> & <its role> \\
+\hline
+\end{tabular}
+\end{center}
+\caption{The stack as used, not as advertised.}
+\end{table}
+
+\section{Method --- how you directed the agents}
+How work was split, what files carried state (specs, progress files), how you
+verified each agent output before committing. Your commit log is the
+replication record: which prompt and which model produced which part.
+
+\section{Results}
+What works today; how you know (tests you ran, the demo, the counts). What
+failed and stayed broken is a result too --- report it.
+
+\section{Limitations and next steps}
+What this version does not do; what you would do next; what you would change
+about the process, not just the product.
+
+\section{AI-use declaration}
+What the agents produced versus what you produced; every model with its exact
+pinned tag and date of use; what was auto-generated at release (model defaults).
+This section is graded as part of the report; write it like a method section.
+
+\small
+\begin{thebibliography}{1}
+\bibitem{repo} Repository: \url{[https://github.com/<username>-acs-project]} (public or instructor-accessible), branch/tag used for the demo.
+\end{thebibliography}
+
+\end{document}

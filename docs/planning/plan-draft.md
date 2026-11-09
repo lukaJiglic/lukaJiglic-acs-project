@@ -102,17 +102,21 @@ Not decided. Questions to settle: language of the rules engine; whether one engi
 
 Decided: the trained agent is the core (D1). A search bot is a benchmark only (D10). Explanations come from ML explanation methods on the trained agent (D1).
 
-Draft design, pending Batch 2 answers (sources: `research/05`, `06`, `07`; `rule-switches.md` for which toggles touch play):
+Design decided in Batch 2 (D14–D26; sources `research/05`, `06`, `07`; `rule-switches.md` for which toggles touch play):
 
-- **Method.** PPO with a full-information critic, self-play, 20% past checkpoints. Deep Monte Carlo run as control and fallback.
-- **Network.** Flat card-aligned encoding (~620 features), MLP 512-512-256, ~0.8 M parameters. One network for all phases, phase one-hot, ~140-way masked action vector. Heads: policy, observation-only Q per action, decomposed value, partner-seat and card-location auxiliaries. Full-information critic separate, training only.
-- **Curriculum.** Card play → talon → bidding → announcements and kontra → klop and berač. Rule vector and preset mixture in stage 3.
-- **Pipeline.** Rust engine and forward pass, self-play actors on CPU, PyO3 to a PyTorch learner on the GPU. Gate: ≥ 20,000 steps/s measured in week 1. Same Rust crate compiles to WASM for the browser; weights shipped as a ~1.5 MB f16 file; no ONNX runtime in the browser.
-- **Explanations.** Layered: default = chosen card, expected score, margin, belief strip; tap = Q bars, reward components, top-3 perturbation attributions; review = contrastive vs the learner's move, one counterfactual, concept readouts, replay. Faithfulness checks D1–D10 from research 07 become numbered goals. Adviser asks for the learner's move first.
-- **Other bots.** Random, rule-based, PIMC/ISMCTS benchmark (stage 3), cheating full-information agent as upper bound, checkpoints.
-- **Levels and styles.** Levels = random, rule bot, measured checkpoints. Styles = fine-tuned copies, later tier.
-- **Evaluation.** Seeded deal files, 8-seating duplicate scheme, 2,000 routine / 10,000 release deals, paired t-test, behaviour monitors, per-deal spread measured early.
-- **Training time (inferred, to be measured).** With the Rust pipeline: 10^8 steps in 17 min–0.9 h, 10^9 in 3–9 h. With a Python environment: 10^9 in 2–6 days. Budget: 5–10 runs of 10^8, 2–3 runs of 10^9.
+- **Method (D14).** PPO with a full-information critic, self-play, 20% past checkpoints. Deep Monte Carlo run on the same pipeline as control and fallback.
+- **Network (D18, D15, D19).** Transformer over the sequence of play and bid tokens, at least 4 layers, 256 wide. One state token carries the flat card-aligned state (~620 features from research/06) and the exact inference bits. One network for all phases, phase one-hot, ~140-way masked action vector. Heads: policy, observation-only Q per action, decomposed value, partner-seat and unseen-card-location auxiliaries. Full-information critic separate, training only. Control run: flat MLP (512-512-256) on the same pipeline. The transformer is the primary model and is not dropped at the first setback.
+- **Token sequence (D21).** Bid tokens appear from stage 1, produced by a rule-based bidder until bidding is learned. Then king call, talon, announcement and card-play tokens as the curriculum adds them.
+- **Curriculum (D21).** Card play → talon → bidding → announcements and kontra → klop and berač, each with monitors (declare rate, pass rate, announcement rate, partner-prediction accuracy, legal-move violations).
+- **Rule switches (D20).** First model on one default preset; play-changing toggles fixed. Rule vector and preset mixture later. Scoring-only toggles may be inputs from the start.
+- **Pipeline (D22).** Rust engine and forward pass, self-play actors on CPU threads, PyO3 to a PyTorch learner on the GPU. Gate: ≥ 20,000 steps/s end to end, measured in stage 0. The same Rust crate compiles to WASM for the browser. Weights shipped as a small f16 file (size to be measured for the transformer; the MLP estimate was 1.5 MB). No ONNX runtime in the browser; ONNX export kept only as a cross-check of the Rust forward pass.
+- **Explanations (D16, D17).** Layered: default = chosen card, expected score, margin, belief strip; tap = Q bars, reward components, top-3 perturbation attributions; review = contrast with the learner's move, one counterfactual, concept readouts, replay. No LLM narration. Faithfulness checks from research/07 (D1–D8, D10) become numbered goals. Adviser asks for the learner's card first.
+- **Other bots (D23).** Random, rule-based, PIMC/ISMCTS benchmark (stage 3), cheating full-information agent as upper bound, checkpoints.
+- **Levels and styles (D24).** Levels = random, rule bot, measured checkpoints. Styles = fine-tuned copies, later tier.
+- **Evaluation (D25).** Seeded deal files, 8-seating duplicate scheme, 2,000 routine / 10,000 release deals, paired t-test, behaviour monitors, per-deal spread measured early.
+- **Stages (D26).** 0 engine, tests, harness, speed gate → 1 card play (with rule-based bid tokens) → 2 talon, bidding, announcements, kontra, klop, berač → 3 benchmark, tournament, rule vector → 4 long runs, WASM export, phone test, human sessions → 5 evaluation tables, ablations. No calendar; progress recorded thoroughly.
+- **Training time (inferred, to be measured).** MLP figures: 10^8 steps in 17 min–0.9 h, 10^9 in 3–9 h with the Rust pipeline. The transformer costs more per step; expect several times the MLP figures. No published number for a 4-layer, 256-wide transformer on this GPU at this batch size; measure in stage 0.
+- **Open for the transformer (Claude's notes, not decided).** Token vocabulary (card × seat, bid × seat, king call, announcement, kontra, phase markers); maximum sequence length (~48 plays + ~15 bids/announcements + state token); whether a causal mask is needed (no, the sequence is fully observed up to now); positional encoding (learned, by index); whether past checkpoints' sequences stay compatible when the vocabulary grows across stages (keep the vocabulary fixed from stage 1).
 
 Hardware (confirmed as the training machine, F4): AMD Ryzen 5 5600 (6 cores / 12 threads), 32 GB RAM, NVIDIA GTX 1660 SUPER 6 GB (Turing, sm_75, supported by current PyTorch CUDA wheels), 1.2 TB free disk, Windows 11.
 

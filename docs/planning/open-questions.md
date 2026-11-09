@@ -4,17 +4,86 @@
 
 - 2026-11-06, session 1: course requirements extracted, first research pass done (4 files), state files created.
 - 2026-11-09, session 2: Batch 1 answered (see `decisions.md` D1–D13, F1–F7). Git started, private repo `lukaJiglic/lukaJiglic-acs-project` pushed. Deep research on training, network/browser inference and explanations started (`research/05–07`). Rule-switch list drafted (`rule-switches.md`).
-- **Batch 2 (bots) is written and waiting for answers.** Clarifications C1–C4 are also open (C1 is answered by B2-3).
+- 2026-11-09, later: Batch 2 answered (D14–D26), C1–C4 answered (D27–D29). Report source copied to `report/`.
+- **Batch 3 (product and screens) is written and waiting for answers.** Clarification C5 is open.
 - The proposal, Figma wireframe and pitch slide are due Wed 18 Nov. The product batch must follow soon after the bots batch.
 
-## Clarifications asked on 2026-11-09 (unanswered)
+## Clarifications
 
-- **C1. Explanation methods.** D1 says "ML explaining methods". Which kinds do you have in mind: per-move expected scores from the network's own outputs; attribution (which cards drove the choice); counterfactuals ("why not X"); concept probes (e.g. who the agent thinks the partner is); natural-language narration over those signals? Research 07 will give options; an early steer helps.
-- **C2. Library reuse.** D9 bans code from other tarok engines. General libraries (PyTorch, ONNX Runtime, a UI framework, RL helper code) are assumed allowed. Correct?
-- **C3. `project/` folder.** The course PDF and the report template are not committed yet. Commit them, or keep only the report source (`.tex`, `.sty`) in the repo?
-- **C4. Learn first.** D2 puts Learn before Play. Does that mean the first screens built are the tutorial and review screens, with free play behind them, or only that Learn gets priority when time is short?
+Answered 2026-11-09: C1 (by D16), C2 (D27), C3 (D28), C4 (D29).
 
-## Batch 2 — bots (asked 2026-11-09, unanswered)
+Open:
+
+- **C5. "Exact inference bits" (D18).** Claude reads this as the facts known for certain from play: which seats are void in which suit, the revealed partner seat, the cards already accounted for, the talon cards seen, whether the called king has fallen. Is that the meaning, or do you also mean derived counts (trumps still out per seat, points so far)?
+
+## Batch 3 — product and screens (asked 2026-11-09, unanswered)
+
+Context: Learn → Play → Table (D2), Learn screens built first (D29), live adviser in the core (D3), adviser asks for the learner's card first (D17), explanations layered (D16), own SVG cards (D11), 4-player (D4). Sources: `research/02` (existing apps, borrowable features), `research/07` (explanation display). No new research was run for this batch; the options are Claude's design proposals.
+
+**B3-1. Primary user.**
+- a) A player who knows the rules and wants to play better. Beginners get a rules layer on top.
+- b) A beginner who has never played tarok.
+- c) Both as equals.
+- Recommendation: **a**. The explanation signals (expected score, partner belief, attributions) are about strategy. A beginner needs rules first, which is cheap to add as rule cards. Designing for the beginner first would push the agent's output out of the main screens.
+
+**B3-2. Form factor.**
+- a) Phone-first web app (portrait), installable as a PWA, usable on desktop.
+- b) Desktop-first, phone later.
+- c) Both from the start, separate layouts.
+- Recommendation: **a**. The table adviser is used on a phone. One responsive layout keeps the Figma work small.
+
+**B3-3. Screen list for Tier 0** (the Figma wireframe).
+- a) Home · Learn hub (lessons, progress) · Lesson deal (table with teaching overlay) · Play table (game screen with explanation panel) · Post-game review (trick by trick, divergence, score loss) · Adviser (hand entry → trick-by-trick entry → learner's card → contrast) · Rules and presets (toggles, incompatibility warnings, share code) · Levels (bot ladder with measured strength) · Settings (language, card style).
+- b) Same, but Lesson deal, Play table and Adviser are one table component in three modes (one screen in Figma, three states).
+- c) A trimmed list: Home, Table (3 modes), Review, Rules. Levels and Settings folded into Home.
+- Recommendation: **b**. One table component with modes is less to build and keeps the explanation panel identical everywhere. Levels and Settings stay separate screens because they carry report results (strength ladder) and the rule toggles.
+
+**B3-4. What "teaching as you go" means.**
+- a) Scripted lessons: each lesson is a seeded deal chosen to trigger one concept (e.g. partner inference, pagat safety, when to kontra); the explanation layer narrates; the learner plays it.
+- b) Coached free play: the learner plays any deal; the app interrupts when the learner's intended card loses more than a threshold against the agent's choice, and shows the contrast.
+- c) Both: lessons first, then coached play with an adjustable interrupt threshold.
+- Recommendation: **c**. Lessons give structure for a beginner-to-intermediate path; coached play scales without writing content. Lesson deals can be mined from self-play by the key-moment method (research/07, method 13).
+
+**B3-5. Lesson content and who writes it.**
+- a) Claude drafts the lesson list and texts from the rules and the agent's signals; the user, who plays, corrects them.
+- b) The user writes them.
+- Recommendation: **a**. Template sentences are bound to signals (D16), so most "teaching" text is generated from numbers. Strategy framing needs a player's judgement, which is the user's review step.
+
+**B3-6. Learn features and tiers.** Proposed: post-game review (T0); coached play (T0); scripted lessons (T0, small set; grows in T1); bidding adviser from the Q over bids (T1); "what if" replays (T1); puzzles generated from key moments (T1); progress tracking (T1); card-counting trainer (T2); puzzles from own mistakes with spaced repetition (T2).
+- a) Accept. b) Move the bidding adviser to T0. c) Other changes.
+- Recommendation: **a**. The bidding adviser is cheap once bidding is learned, but bidding is learned in stage 2, after card play.
+
+**B3-7. Adviser input flow (T0).**
+- a) Hand entry on a 54-card grid (tap 12 cards). Then bidding entry (what each seat bid), king call, talon shown if the learner is declarer. Then trick by trick: tap the cards others played in order; the grid hides cards already seen. Before each of the learner's plays: tap the intended card → agent's card and contrast.
+- b) As a, but play phase only in T0 (bids and talon entered as a summary: contract, declarer, called king).
+- c) Voice or camera entry.
+- Recommendation: **b** for T0, **a** in T1. The agent needs the contract and the called king to reason; it does not need the full bid sequence to give card-play advice. Entering every bid is friction at a real table. Camera entry is out (high risk, no gain for the core).
+
+**B3-8. Play features and tiers.** Proposed: play vs bots (T0); levels (T0); daily deal with comparison to the bots (T1); share a deal by code (T1); beat-the-bot duplicate mode (T2); online play with friends (out of the course scope: needs a server and adds nothing to the agent core).
+- a) Accept. b) Keep online play as T3 (after the course). c) Other.
+- Recommendation: **b**. Listing it as T3 records the idea without planning for it.
+
+**B3-9. Table tools and tiers.** Proposed: scoring calculator (T1; the rules engine already computes it); house-rules share code (T1; the preset is a short string); score sheet for a session (T2); rules arbiter (T2).
+- a) Accept. b) Other.
+- Recommendation: **a**.
+
+**B3-10. Languages.**
+- a) i18n keys from the first screen, English text first, Slovenian added as a translation pass. Tarok terms stay Slovenian in both.
+- b) Slovenian first.
+- c) English only during the course.
+- Recommendation: **a**. The demo and report are in English; the users are Slovenian; keys from the start cost little, retrofitting costs a lot.
+
+**B3-11. Figma wireframe.**
+- a) Claude writes a screen-by-screen spec (layout, elements, states); the user draws it in Figma.
+- b) Claude also builds a clickable HTML wireframe from the spec; the user screenshots it into Figma or redraws it.
+- c) Use a Figma connector if one is available in the user's Claude setup.
+- Recommendation: **b**. The HTML wireframe becomes the first UI code later; the spec is needed either way.
+
+**B3-12. Tier scheme.** T0 = must work for the demo; T1 = planned; T2 = stretch; T3 = after the course.
+- a) Accept. b) Other.
+- Recommendation: **a**.
+
+## Batch 2 — bots (asked 2026-11-09, answered 2026-11-09; see D14–D26)
 
 Sources: `research/05` (training method), `research/06` (network, browser), `research/07` (explanations). Claude read the method, failure-mode, evaluation and recommendation sections of all three; the subagents read the papers. Key numbers that are inferred, not measured: pipeline step rates, training hours, tarok's per-deal score spread. Nothing in the literature trains a rule-conditioned card-game policy, and no user study of explanations exists for any card game.
 
@@ -153,8 +222,6 @@ Sources: `research/05` (training method), `research/06` (network, browser), `res
 ## Backlog — later batches (not asked yet)
 
 **Batch 2: bots (next).** Training method. Network and input encoding. How the hidden partner and the phases are handled. Rule-set conditioning. Training budget and stages. Explanation methods (per D1). Benchmark bots (rule-based, search). Difficulty levels and styles from one trained model. Evaluation protocol.
-
-**Batch 3: product core and screens.** Target user. Phone-first or desktop-first. Screen list for the Figma wireframe (due 18 Nov). What "teaching as you go" means in practice. The live adviser's input flow. Tier scheme and Tier 0 contents. Languages (SL/EN) and when.
 
 **Batch 4: rules.** Confirm the toggle list in `rule-switches.md`: defaults, tiers, presets, the left-out list.
 
