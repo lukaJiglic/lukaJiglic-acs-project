@@ -76,6 +76,14 @@ Status values: **given** (stated by the user in the brief), **decided** (user ch
 | D40 | 2026-11-09 | **Slovenian first.** i18n keys from the first screen; English as a translation pass. Tarok terms stay Slovenian in both. | B3-10 a–c | User (b) | Claude had recommended a (English first). The report and demo are in English; the UI is Slovenian first. |
 | D41 | 2026-11-09 | **Figma wireframe through the Figma connector** available in the user's Claude setup. Claude writes the screen spec, then builds the wireframe in Figma. | B3-11 a–c | User (c) | Figma MCP tools appeared in the session on 2026-11-09. Timing of the wireframe work is open. |
 | D42 | 2026-11-09 | **Tier scheme:** T0 = must work for the demo; T1 = planned; T2 = stretch; T3 = after the course. | B3-12 | User (a) | |
+| D43 | 2026-11-09 | **Default preset = the user's table's rules**, saved as preset "Default". The first model trains on it. pagat.com and Majority stay as named presets. | B4-1 a–c | User (a) | |
+| D44 | 2026-11-09 | **Default values:** S14 taroks may be discarded, shown (a). S25 rounding to nearest 5 (a). S29 mondfang −20 (a). S28 klop full at 35 or more (b). S26 partner writes the same (a). S33 radelc cancelled only on a win (a). S34 unused radelci **−70 each** (user's table; not in any source). S35 session **open-ended**; unused radelci settle when the session is closed in the app. S6 odprti berač **pinned off** until T1 (b). S7 barvni valat pinned off until T1 (a). S1 no compulsory klop at score 0 (b). S18 four kontra levels, ×16 (a). | B4-2 | User | Claude's interpretation of "open-ended + −70": the app has an explicit "end session" action that settles leftovers. To confirm if wrong. |
+| D45 | 2026-11-09 | **Toggle list and tiers accepted for now** (39 toggles; T0 12). May change later. | B4-3 | User (accept for now) | |
+| D46 | 2026-11-09 | **Left-out list accepted.** | B4-4 | User (a) | |
+| D47 | 2026-11-09 | **Scoring-only T0 toggles are network inputs**, randomised in self-play, so one model covers their values. | B4-5 a–b | User (a) | |
+| D48 | 2026-11-09 | **Incompatibilities enforced in the UI:** dependent toggles greyed out and forced; presets set every toggle; the share code encodes all toggle values; a warning lists what a preset leaves unspecified. | B4-6 a–b | User (a) | |
+| D49 | 2026-11-09 | **Klop always on in T0 and T1.** S4 (klop off) moves to T2. | B4-7 a–b | User (b) | |
+| D50 | 2026-11-09 | **Next session: screen spec, then the Figma wireframe through the connector, then the pitch slide text.** | C6 a–b | User (a) | |
 
 ## Provisional choices by Claude (need confirmation)
 

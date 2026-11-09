@@ -105,7 +105,16 @@ Not defined. Proposed scheme (to be confirmed): Tier 0 = core that must work for
 
 ## 2. Architecture and technology
 
-Not decided. Questions to settle: language of the rules engine; whether one engine serves both the app and training; where bots run (in the browser or on a server); UI framework; hosting; storage; how trained models ship to the browser.
+Partly decided (D22: Rust engine and forward pass, PyO3 to PyTorch). Batch 5 is open. Draft, pending answers:
+
+- One Rust crate `tarok-engine`: rules, toggles, scoring, seeding, game records, state encoding, transformer forward pass. Built as native (training actors via PyO3, CLI for tests and tournaments) and WASM (browser, SIMD).
+- App: Vue 3 + Pinia + Vite, TypeScript, custom CSS, PWA. Model runs in the browser inside the WASM module; weights as a versioned f16 file cached by the service worker. No server.
+- Training: Python package with the PyTorch learner, Rust actors through PyO3/maturin, native Windows, CUDA wheel with Turing support. Pinned versions.
+- Layout: `src/engine`, `src/app`, `src/train`, `src/assets/cards`, `docs`, `report`, `models`, `.github/workflows`.
+- Hosting: GitHub Pages by Actions. Storage: IndexedDB and localStorage, JSON export/import.
+- One JSON game-record schema for self-play logs, app games, adviser sessions and lessons, with per-decision observations.
+- Cards: script-generated index-only SVGs, CC BY 4.0; code MIT.
+- Tests: rule scenarios per toggle, property tests, golden games, native↔WASM↔PyTorch parity. CI on GitHub Actions.
 
 ## 3. Bots
 

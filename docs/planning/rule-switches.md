@@ -91,7 +91,7 @@ Columns: ID, name, options (default first), affects, agent, tier, sources, playe
 |---|---|---|---|---|---|---|---|
 | S32 | Radelc triggers (#47) | (a) klop and every contract from berač upward; (b) klop only (unverified); (c) off | scoring, session | scoring | T0 | a: PAG, TN; TZS18 for the contracts 3p has. b: ST (digest only). c: PAG money variation | When every player gets a radelc. |
 | S33 | Radelc cancellation (#48) | (a) only when the declarer wins; one per win; (b) after the player's next game as declarer, won or lost | scoring | scoring | T0 | a: PAG, TN, ST. b: TZS10, LUS | How a radelc is used up. |
-| S34 | Unused radelci at session end (#51) | (a) -100 each; (b) no penalty; (c) -40 each (unverified) | session, scoring | scoring | T1 | a: PAG. b: TZS10, TN (none stated). c: VAL (snippet only) | What a leftover radelc costs. |
+| S34 | Unused radelci at session end (#51) | (a) -100 each; (b) no penalty; (c) -40 each (unverified); (d) -70 each (user's table, no source; the decided default) | session, scoring | scoring | T1 | a: PAG. b: TZS10, TN (none stated). c: VAL (snippet only) | What a leftover radelc costs. |
 | S35 | Session end (#6) | (a) škis round: the holder of the škis in that deal deals the last hand; (b) fixed number of deals: 24 (TN), 18 or 21 (TZS); (c) open-ended (app convenience, no source) | session | no | T1 | a: PAG, TN. b: TN, TZS10, TZS-ORG | How a session is closed. |
 
 ### 3-player only (all deferred to the 3-player mode)
@@ -234,7 +234,29 @@ Fully dropped points: 15 (2, 3, 5, 7, 12, 26, 27, 31, 32, 33, 35, 49, 50, 54, 55
 
 ---
 
-## 6. Open questions for the user
+## 7. Decided (2026-11-09, user; see decisions D43–D49)
+
+Preset "Default" = the user's table. The first model trains on it. Changes to the tables above:
+
+| Toggle | Decided value | Note |
+|---|---|---|
+| S1 | b, none | |
+| S4 | a, on | Moved to **T2**. Klop is always on in T0 and T1 (D49). |
+| S6 | b, off in the first model | Engine implements it; pinned off until T1. |
+| S7 | c, off in the first model | Engine implements it; pinned off until T1. |
+| S14 | a, taroks may be discarded, shown | |
+| S18 | a, four levels | |
+| S25 | a, nearest 5 | |
+| S26 | a, same as declarer | |
+| S28 | b, 35 or more | |
+| S29 | a, −20 | |
+| S33 | a, only on a win | |
+| S34 | **new option (d): −70 each** | User's table. No source. Added to the option list. |
+| S35 | c, open-ended | Unused radelci settle when the session is closed in the app (Claude's reading; see D44). |
+
+All other toggles keep their default (first option). The T0 scoring-only toggles (S15, S22, S25, S26, S28, S29, S31, S32, S33) are network inputs randomised in self-play (D47). Tiers and the left-out list are accepted for now (D45, D46). Incompatibilities are enforced in the UI (D48).
+
+## 6. Open questions for the user (answered 2026-11-09; kept for the record)
 
 Defaults that are not settled by the sources. Each follows PAG for now.
 

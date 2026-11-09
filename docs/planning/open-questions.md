@@ -6,7 +6,9 @@
 - 2026-11-09, session 2: Batch 1 answered (see `decisions.md` D1–D13, F1–F7). Git started, private repo `lukaJiglic/lukaJiglic-acs-project` pushed. Deep research on training, network/browser inference and explanations started (`research/05–07`). Rule-switch list drafted (`rule-switches.md`).
 - 2026-11-09, later: Batch 2 answered (D14–D26), C1–C4 answered (D27–D29). Report source copied to `report/`.
 - 2026-11-09, later: Batch 3 answered (D31–D42), C5 answered (D30). A Figma connector is available in the user's setup.
-- **Batch 4 (rules) is written and waiting for answers**, plus C6 (Figma timing).
+- 2026-11-09, later: Batch 4 answered (D43–D49), C6 answered (D50: next session does the screen spec, the Figma wireframe, the pitch slide text).
+- **Batch 5 (architecture) is written and waiting for answers.**
+- Next session plan: (1) take Batch 5 answers; (2) screen spec; (3) Figma wireframe via the connector; (4) pitch slide text; then Batches 6–8.
 - The proposal, Figma wireframe and pitch slide are due Wed 18 Nov. The product batch must follow soon after the bots batch.
 
 ## Clarifications
@@ -17,7 +19,76 @@ Open:
 
 - **C5. "Exact inference bits" (D18).** Claude reads this as the facts known for certain from play: which seats are void in which suit, the revealed partner seat, the cards already accounted for, the talon cards seen, whether the called king has fallen. Is that the meaning, or do you also mean derived counts (trumps still out per seat, points so far)?
 
-## Batch 4 — rules (asked 2026-11-09, unanswered)
+## Batch 5 — architecture and technology (asked 2026-11-09, unanswered)
+
+Context: Rust engine with the forward pass in Rust, PyO3 to PyTorch (D22); transformer network (D18); model runs in the phone browser (research/06); Vue is the user's stated preference in their global notes and they review TypeScript/Vue, Python, Rust, C++ (F5); online play is T3 (D38). Sources: `research/06` for the browser and training stack. The rest are Claude's proposals.
+
+**B5-1. Engine.**
+- a) One Rust crate `tarok-engine`: rules, legal moves, scoring, rule toggles, deal seeding, game records, state encoding, and the network forward pass. Built three ways: native library for training actors (PyO3), WASM for the browser (wasm-bindgen, SIMD), native CLI for tests and tournaments.
+- b) Rust for training plus a separate TypeScript engine for the app, kept equal by cross-tests.
+- Recommendation: **a**. One rules implementation means one set of rule tests and no drift between what the agent learned and what the app enforces. b doubles the rule-switch work (D12).
+
+**B5-2. App framework.**
+- a) Vue 3 + Pinia + Vite, TypeScript, custom CSS variables (no Tailwind), VueUse for storage. PWA via vite-plugin-pwa.
+- b) React.
+- c) Svelte.
+- Recommendation: **a**. It is the stack you review best and your notes already set its conventions (Pinia store per concern, Teleport for drawers, v-reveal). Agents produce it reliably.
+
+**B5-3. Where the model runs.**
+- a) In the browser only, inside the engine's WASM module. Weights as a versioned f16 file fetched once and cached by the service worker. No server.
+- b) A small inference server.
+- c) Both, browser by default.
+- Recommendation: **a**. Nothing in T0–T2 needs a server; the table adviser must work offline at a real table.
+
+**B5-4. Forward pass for the transformer in the browser.**
+- a) Hand-written in Rust inside the engine crate (embedding, attention, LayerNorm, GELU, heads), with a golden test against PyTorch on 10,000 random states on every weight export. ONNX export kept in CI only as a second cross-check.
+- b) tract-onnx compiled into the WASM module.
+- c) ONNX Runtime Web (10–12 MB runtime).
+- Recommendation: **a**, with b as the fallback if the hand-written pass is too slow or too much work. A hand-written pass exposes the hidden state and attention weights directly, which the explanation layer needs (D16). The network is small (4+ layers, 256 wide), so the code is a few hundred lines.
+
+**B5-5. Training code.**
+- a) Python package `train/`: PyTorch learner, config files, checkpointing, evaluation runner, export script. Rust actors called through PyO3/maturin return batches as NumPy arrays. Native Windows, PyTorch cu130 wheel (Turing supported). No WSL2.
+- b) All in Rust (burn/candle).
+- Recommendation: **a** (research/06). PyTorch tooling and debugging outweigh the FFI cost. Pin versions in `requirements.txt` and `Cargo.lock`.
+
+**B5-6. Repository layout.**
+- a) `src/engine/` (Rust crate), `src/app/` (Vue), `src/train/` (Python), `src/assets/cards/` (SVG generator and output), `docs/` (planning, architecture notes, screenshots), `report/` (ERK source), `models/` (released weights, small), `.github/workflows/`.
+- b) Separate repositories per part.
+- Recommendation: **a**. The course names `src/` and `docs/`; one repo keeps one commit history, which is graded.
+
+**B5-7. Hosting and demo.**
+- a) GitHub Pages from the same repo, deployed by GitHub Actions on push to `main`. Phone demo = open the URL. `README` gives install, run and demo steps.
+- b) Cloudflare Pages or Netlify.
+- c) Local only.
+- Recommendation: **a**. No extra account; the repo goes public on 23 Nov anyway.
+
+**B5-8. Storage.**
+- a) Browser storage (IndexedDB for games and sessions, localStorage for settings via VueUse `useStorage`), plus JSON export/import of games, sessions and presets. No backend.
+- b) Backend database.
+- Recommendation: **a**.
+
+**B5-9. Game record format.**
+- a) One JSON schema for every deal, used by self-play logs, app games, adviser sessions and lessons: seed, preset and toggle values, model version, seat names, full deal, and for every decision the acting seat, the observation as that seat saw it (information-set discipline, research/07), the legal actions, the chosen action, and the agent's outputs if an agent acted. Defined in the engine crate; validated in tests.
+- b) Separate formats per use.
+- Recommendation: **a**. Review, replays, puzzles and the faithfulness checks all read the same records.
+
+**B5-10. Card assets.**
+- a) Index-only SVG cards generated by a script from one template (54 files): large Roman numeral for taroks, suit symbol and rank for suit cards, colour-blind-safe suits. Your own work by authorship of the template; licensed CC BY 4.0 in the repo, separate from the code licence. Style per your craft aesthetic (warm palette, serif numerals).
+- b) Hand-drawn cards.
+- Recommendation: **a**. Consistent, cheap, readable on a phone. A hand-drawn "classic" skin can come later (T2).
+
+**B5-11. Code licence.** a) MIT for code, CC BY 4.0 for cards and texts. b) Apache-2.0. c) GPL. Recommendation: **a**; no copyleft dependency is planned (D9 bans the copyleft tarok engines anyway).
+
+**B5-12. Engine tests.**
+- a) Rule scenario tests per toggle (from `rule-switches.md`), property tests (card conservation, 70 points per deal, legal-move sets), golden games replayed from records, parity tests native ↔ WASM ↔ PyTorch forward pass, Python binding tests.
+- b) Fewer: scenarios and parity only.
+- Recommendation: **a**. The counts feed the measurement batch.
+
+**B5-13. CI.** a) GitHub Actions: `cargo test`, `cargo clippy`, WASM build, app lint/unit tests, Python tests, golden forward-pass test when weights change, Pages deploy. b) No CI. Recommendation: **a**.
+
+**B5-14. Offline.** a) PWA: service worker caches the app and the weights; weights refetched silently if evicted (iOS 7-day cap); never block the UI on cache presence. b) No offline support. Recommendation: **a**.
+
+## Batch 4 — rules (asked 2026-11-09, answered 2026-11-09; see D43–D49)
 
 Source: `rule-switches.md` (39 toggles, presets, incompatibilities, left-out list), derived from `research/01`. Claude read the whole file. Facts in it come from the research subagent's reading of pagat.com, the Tarok.net rulebook, the TARZS rules and others; a few cells are marked unverified. Context: 4-player (D4), first model on one default preset with play-changing toggles fixed (D20).
 
@@ -270,13 +341,11 @@ Sources: `research/05` (training method), `research/06` (network, browser), `res
 
 **Batch 2: bots (next).** Training method. Network and input encoding. How the hidden partner and the phases are handled. Rule-set conditioning. Training budget and stages. Explanation methods (per D1). Benchmark bots (rule-based, search). Difficulty levels and styles from one trained model. Evaluation protocol.
 
-**Batch 5: architecture.** Engine language (one Rust engine compiled to WASM and used natively for training, vs TypeScript engine plus a separate training engine). UI framework. Where the model runs. Hosting. Storage. Model export path.
-
 **Batch 6: measurement.** The numbered goals. Deals per comparison. Rules test counts. Phone speed targets. How explanations are checked. Whether to test with real learners.
 
 **Batch 7: agent workflow.** Task splitting. Spec and progress files. Verification before each commit. Commit message convention that records prompt and model. Session logging. Which tools and models do what.
 
-**Batch 8: tiers and timeline.** Final tier of every feature. Sprint contents for 23 Nov – 13 Dec and 14 Dec – 11 Jan. What the 10-minute demo shows.
+**Batch 8: tiers and demo.** Final tier of every feature. Order of work (no calendar, D26). What the 10-minute demo shows. What the checkpoint deliverable contains.
 
 ## Loose questions noticed along the way
 
