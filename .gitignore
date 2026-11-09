@@ -1,0 +1,15 @@
+# OS / editor
+Thumbs.db
+.DS_Store
+
+# Dependencies and build output (to be refined when building starts)
+node_modules/
+target/
+dist/
+__pycache__/
+*.pyc
+.venv/
+
+# Local secrets
+.env
+.env.*
