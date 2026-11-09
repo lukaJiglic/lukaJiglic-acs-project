@@ -105,7 +105,7 @@ Not defined. Proposed scheme (to be confirmed): Tier 0 = core that must work for
 
 ## 2. Architecture and technology
 
-Partly decided (D22: Rust engine and forward pass, PyO3 to PyTorch). Batch 5 is open. Draft, pending answers:
+Decided in Batch 5 (D51–D64), building on D22:
 
 - One Rust crate `tarok-engine`: rules, toggles, scoring, seeding, game records, state encoding, transformer forward pass. Built as native (training actors via PyO3, CLI for tests and tournaments) and WASM (browser, SIMD).
 - App: Vue 3 + Pinia + Vite, TypeScript, custom CSS, PWA. Model runs in the browser inside the WASM module; weights as a versioned f16 file cached by the service worker. No server.
@@ -140,14 +140,7 @@ Hardware (confirmed as the training machine, F4): AMD Ryzen 5 5600 (6 cores / 12
 
 ## 4. Measurement
 
-Not decided. The course wants numbered, checkable goals (README and report). Candidate kinds of measures:
-
-- Rules correctness: number of rule scenarios passing, per rule switch.
-- Bot strength: score difference over N mirrored deals with a confidence interval; ladder between bots.
-- Speed: time per bot move on a named phone; app load size.
-- Explanations: share of moves for which the app gives a reason; a check that the reason matches the bot's numbers.
-- Teaching: completion of a tutorial by a test user; before/after puzzle score.
-- Process: share of commits traceable to a logged prompt and model.
+Draft goals G1–G19 are in `open-questions.md`, Batch 6, pending the user's thresholds. Groups: rules and engine (G1–G2), pipeline (G3), agent strength (G4–G7), explanation faithfulness (G8–G13), phone and app (G14–G18), process (G19). Once accepted they move here and into `README.md` and the report.
 
 ## 5. Working with agents day to day
 

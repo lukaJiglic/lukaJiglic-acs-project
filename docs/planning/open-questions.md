@@ -7,8 +7,9 @@
 - 2026-11-09, later: Batch 2 answered (D14–D26), C1–C4 answered (D27–D29). Report source copied to `report/`.
 - 2026-11-09, later: Batch 3 answered (D31–D42), C5 answered (D30). A Figma connector is available in the user's setup.
 - 2026-11-09, later: Batch 4 answered (D43–D49), C6 answered (D50: next session does the screen spec, the Figma wireframe, the pitch slide text).
-- **Batch 5 (architecture) is written and waiting for answers.**
-- Next session plan: (1) take Batch 5 answers; (2) screen spec; (3) Figma wireframe via the connector; (4) pitch slide text; then Batches 6–8.
+- 2026-11-09, later: Batch 5 answered (D51–D64), all recommendations accepted.
+- **Batch 6 (measurement goals) is written and waiting for answers.**
+- Next session plan: (1) take Batch 6 answers; (2) screen spec; (3) Figma wireframe via the connector; (4) pitch slide text; then Batches 7–8.
 - The proposal, Figma wireframe and pitch slide are due Wed 18 Nov. The product batch must follow soon after the bots batch.
 
 ## Clarifications
@@ -19,7 +20,52 @@ Open:
 
 - **C5. "Exact inference bits" (D18).** Claude reads this as the facts known for certain from play: which seats are void in which suit, the revealed partner seat, the cards already accounted for, the talon cards seen, whether the called king has fallen. Is that the meaning, or do you also mean derived counts (trumps still out per seat, points so far)?
 
-## Batch 5 — architecture and technology (asked 2026-11-09, unanswered)
+## Batch 6 — measurement: the numbered goals (asked 2026-11-09, unanswered)
+
+Context: the course wants goals someone can check (R7, R12). They go into `README.md` and the report as G1, G2, …. Every goal below names a number, how it is measured, and where the measurement lives. Thresholds are Claude's proposals; the ones most worth adjusting are marked. Sources: research/05 (evaluation protocol), research/07 (faithfulness checks D1–D8, D10).
+
+**B6-1. Goal list.** Accept, or change thresholds (give the goal and the new number).
+
+Rules and engine
+- G1. The engine passes a rule-scenario suite of at least **200** tests covering the baseline and every T0 toggle value, plus property tests (card conservation, 70 points per deal, legal-move sets) on 100,000 random deals. Measured by `cargo test` in CI.
+- G2. Native, WASM and PyTorch agree: identical legal-move sets and scores on 10,000 random games; forward-pass outputs within 1e-4 (fp32) / 1e-2 (fp16) on 10,000 random states. Measured by the parity tests in CI.
+
+Training pipeline
+- G3. End-to-end self-play throughput of at least **20,000** steps/s on the training PC (D22). Measured by the stage-0 benchmark script; the number is logged in `docs/progress`.
+
+Agent strength (8-seating duplicate protocol, D25)
+- G4. The trained agent (transformer) beats the rule bot by a positive mean score per deal with a 95% confidence interval that excludes zero, over at least **2,000** deals. [threshold worth adjusting: a minimum margin, e.g. +5 points per deal]
+- G5. Zero illegal moves in 100,000 self-play deals; declare rate, pass rate and announcement rate per contract logged and within ranges set in stage 2 (no all-pass collapse).
+- G6. Agent vs the PIMC/ISMCTS benchmark at a fixed iteration budget: result reported with a 95% CI over at least 2,000 deals. No pass/fail threshold; the honest number is the result. [option: add "not worse than the benchmark" as an aspirational target, marked as such]
+- G7. Transformer vs MLP control, same pipeline, same step budget: score difference with a 95% CI over at least 2,000 deals, reported.
+
+Explanations (faithfulness)
+- G8. Partner-prediction accuracy before the called king falls: at least **60%** on held-out deals (chance is about 33%). Measured on 10,000 held-out self-play deals.
+- G9. Belief head: Brier score better than the uniform prior by at least **20%** on held-out deals; expected calibration error reported.
+- G10. Q-head calibration: mean absolute error between predicted and realised deal score reported on held-out deals. [threshold optional, e.g. ≤ 15 points]
+- G11. Attribution sanity: rank correlation between attributions from trained and weight-randomised models below **0.2**; deletion-curve AUC better than random ordering on at least 1,000 decisions.
+- G12. Counterfactual consistency: the model plays the stated card in at least **99%** of shown counterfactuals.
+- G13. Template audit: **100%** of rendered explanation clauses are backed by their signal and threshold, checked by a test over sampled decisions.
+
+Phone and app
+- G14. Agent move latency at most **300 ms** on the reference phone (to be named; see B6-2); app shell plus weights at most **10 MB**; first load at most 3 s on a 4G connection (Lighthouse or manual timing). Measured on the Pages build.
+- G15. Coached play, review and adviser each complete a full deal end to end in the T0 app (manual test script, recorded in `docs/`).
+- G16. Adviser: a full deal (hand, bids, king, talon if declarer, 12 tricks) can be entered in at most **4 minutes** by the user. Timed.
+- G17. At least **5** scripted lessons and at least **10** rule cards in Slovenian, each tied to a seeded deal or rule.
+- G18. Human sessions: at least **50** deals played against the agent by at least **3** people, results and feedback recorded, reported with standard error as anecdote. [option: drop if time runs short; keep as T1]
+
+Process
+- G19. **100%** of commits on `main` carry the tool and model trailer (P3); `ai-log.md` has a row for every session; `README.md` lists every tool with a pinned model tag.
+
+**B6-2. Reference phone for G14.** a) Your own phone (name the model). b) A mid-range Android of a friend. c) Browser DevTools CPU throttling ×4 on desktop as a proxy. Recommendation: **a**, with c as the CI-able proxy.
+
+**B6-3. Strength margin in G4.** a) CI excludes zero (any positive margin). b) At least +5 points per deal. c) At least +10. Recommendation: **a** for the goal, b as the aspiration; tarok's per-deal spread is unknown, so a fixed margin is a guess until stage 1 measures it.
+
+**B6-4. Human sessions (G18).** a) Keep in T0 goals. b) Move to T1 (nice to have). Recommendation: **b**; it depends on other people's time.
+
+**B6-5. Goal numbering.** a) Freeze G1–G19 now and renumber only by appending. b) Renumber freely until the proposal. Recommendation: **a** after the proposal is submitted; b until then.
+
+## Batch 5 — architecture and technology (asked 2026-11-09, answered 2026-11-09; see D51–D64)
 
 Context: Rust engine with the forward pass in Rust, PyO3 to PyTorch (D22); transformer network (D18); model runs in the phone browser (research/06); Vue is the user's stated preference in their global notes and they review TypeScript/Vue, Python, Rust, C++ (F5); online play is T3 (D38). Sources: `research/06` for the browser and training stack. The rest are Claude's proposals.
 
@@ -340,8 +386,6 @@ Sources: `research/05` (training method), `research/06` (network, browser), `res
 ## Backlog — later batches (not asked yet)
 
 **Batch 2: bots (next).** Training method. Network and input encoding. How the hidden partner and the phases are handled. Rule-set conditioning. Training budget and stages. Explanation methods (per D1). Benchmark bots (rule-based, search). Difficulty levels and styles from one trained model. Evaluation protocol.
-
-**Batch 6: measurement.** The numbered goals. Deals per comparison. Rules test counts. Phone speed targets. How explanations are checked. Whether to test with real learners.
 
 **Batch 7: agent workflow.** Task splitting. Spec and progress files. Verification before each commit. Commit message convention that records prompt and model. Session logging. Which tools and models do what.
 
