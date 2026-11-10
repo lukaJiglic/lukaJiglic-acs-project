@@ -1,0 +1,13 @@
+"""Shared pytest setup: skip GPU tests where CUDA is absent."""
+
+import pytest
+import torch
+
+
+def pytest_collection_modifyitems(config, items):
+    if torch.cuda.is_available():
+        return
+    skip_gpu = pytest.mark.skip(reason="CUDA is not available on this machine")
+    for item in items:
+        if "gpu" in item.keywords:
+            item.add_marker(skip_gpu)

@@ -1,0 +1,4 @@
+# Local build and test output of the training code
+*.egg-info/
+.pytest_cache/
+build/

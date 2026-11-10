@@ -1,0 +1,28 @@
+name: train
+
+# CPU-only tests of src/train (spec 003, criterion 9).
+# The runner has no GPU: tests marked "gpu" are skipped by tests/conftest.py.
+# The PyO3 probe is not built here: its tests skip themselves.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pytest-cpu:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/train
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: src/train/requirements-ci.txt
+      - name: Install CPU-only torch and the test dependencies
+        run: python -m pip install -r requirements-ci.txt
+      - name: pytest (GPU and PyO3 tests skipped)
+        run: python -m pytest

@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tarok-train"
+version = "0.0.0"
+description = "Training code for Tarok trener: environment check, benchmark, model, learner"
+requires-python = ">=3.12,<3.13"
+# Versions are pinned in requirements.txt (spec 003), not here.
+
+[tool.setuptools]
+packages = ["tarok_train"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra"
+markers = [
+    "gpu: needs a usable CUDA device; skipped where CUDA is absent (CI runner)",
+    "pyo3: needs the PyO3 probe built with maturin; skipped when it is not built",
+]

@@ -1,0 +1,45 @@
+# Training environment for this PC (spec 003). Windows, Python 3.12, CUDA 13.0.
+#
+# PyTorch comes from the PyTorch wheel index, not from PyPI:
+#   index URL: https://download.pytorch.org/whl/cu130
+#   wheel:     torch-2.14.1+cu130-cp312-cp312-win_amd64.whl
+# 2.14.1 was the newest stable release with a Windows cu130 wheel for CPython 3.12
+# when the index was read on 2026-11-10. The Windows wheel bundles the CUDA libraries.
+#
+# Install (cmd):
+#   py -3.12 -m venv .venv
+#   .venv\Scripts\python -m pip install -r src\train\requirements.txt
+#
+# Every package is pinned with ==. Direct dependencies first, then what they pull in.
+
+--extra-index-url https://download.pytorch.org/whl/cu130
+
+# direct
+torch==2.14.1+cu130
+numpy==2.5.4
+pytest==9.2.0
+maturin==1.16.0
+tensorboard==2.21.0
+
+# pulled in by the packages above
+absl-py==2.5.1
+colorama==0.4.6
+filelock==4.2.10
+fsspec==2026.9.0
+grpcio==1.85.1
+iniconfig==2.3.1
+Jinja2==3.1.6
+Markdown==3.11.3
+MarkupSafe==3.0.4
+mpmath==1.3.0
+networkx==3.7
+packaging==26.3
+pillow==13.0.0
+pluggy==1.7.0
+protobuf==7.36.2
+Pygments==2.21.0
+setuptools==84.2.1
+sympy==1.14.0
+tensorboard-data-server==0.7.2
+typing_extensions==4.16.0
+Werkzeug==3.1.9

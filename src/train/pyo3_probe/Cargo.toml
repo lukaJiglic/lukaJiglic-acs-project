@@ -1,0 +1,20 @@
+# Throwaway probe for spec 003, criterion 4: does a PyO3 extension build with
+# maturin on the Rust toolchain installed here and load into the venv?
+# Not part of the engine. Spec 006 builds the real bindings.
+
+[package]
+name = "tarok-pyo3-probe"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[lib]
+name = "tarok_pyo3_probe"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = "=0.30.1"
+numpy = "=0.30.0"
+
+# Stands alone: never a member of a workspace that may appear at the repo root.
+[workspace]

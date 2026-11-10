@@ -1,0 +1,12 @@
+[build-system]
+requires = ["maturin>=1.16,<2"]
+build-backend = "maturin"
+
+[project]
+name = "tarok-pyo3-probe"
+version = "0.0.0"
+description = "Spec 003 probe: PyO3 + maturin on this PC's Rust toolchain"
+requires-python = ">=3.12"
+
+[tool.maturin]
+module-name = "tarok_pyo3_probe"

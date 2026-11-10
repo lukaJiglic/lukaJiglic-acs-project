@@ -1,0 +1,799 @@
+{
+  "meta": {
+    "label": "as used daily, a game running",
+    "date": "2026-11-10T19:10:01",
+    "torch": "2.14.1+cu130",
+    "device": "NVIDIA GeForce GTX 1660 SUPER",
+    "seconds_per_measurement": 1.0,
+    "quick": false,
+    "parameters": {
+      "transformer": 3494937,
+      "MLP 512-512-256": 825113
+    },
+    "gpu_before": {
+      "utilization_percent": 97,
+      "memory_used_mib": 5179,
+      "memory_total_mib": 6144,
+      "temperature_c": 75
+    },
+    "vram_free_mib": 4149,
+    "vram_total_mib": 6143,
+    "vram_budget_mib": 3949,
+    "gpu_after": {
+      "utilization_percent": 77,
+      "memory_used_mib": 1712,
+      "memory_total_mib": 6144,
+      "temperature_c": 74
+    },
+    "wall_seconds": 332.9,
+    "method": "v1: one 1-second sample per row (superseded by the runs with repeats)"
+  },
+  "rows": [
+    {
+      "network": "MLP 512-512-256",
+      "layout": "mlp",
+      "precision": "fp32",
+      "mode": "act",
+      "batch": 4096,
+      "decisions_per_call": 4096,
+      "per_s": 160365.6618982521,
+      "peak_mib": 38.83642578125
+    },
+    {
+      "network": "MLP 512-512-256",
+      "layout": "mlp",
+      "precision": "fp32",
+      "mode": "act",
+      "batch": 16384,
+      "decisions_per_call": 16384,
+      "per_s": 168043.68927061168,
+      "peak_mib": 121.77392578125
+    },
+    {
+      "network": "MLP 512-512-256",
+      "layout": "mlp",
+      "precision": "fp32",
+      "mode": "act",
+      "batch": 65536,
+      "decisions_per_call": 65536,
+      "per_s": 156874.4477001311,
+      "peak_mib": 453.27392578125
+    },
+    {
+      "network": "MLP 512-512-256",
+      "layout": "mlp",
+      "precision": "fp16 autocast",
+      "mode": "act",
+      "batch": 4096,
+      "decisions_per_call": 4096,
+      "per_s": 62835.08417495816,
+      "peak_mib": 32.98974609375
+    },
+    {
+      "network": "MLP 512-512-256",
+      "layout": "mlp",
+      "precision": "fp16 autocast",
+      "mode": "act",
+      "batch": 16384,
+      "decisions_per_call": 16384,
+      "per_s": 61888.659905977685,
+      "peak_mib": 96.45849609375
+    },
+    {
+      "network": "MLP 512-512-256",
+      "layout": "mlp",
+      "precision": "fp16 autocast",
+      "mode": "act",
+      "batch": 65536,
+      "decisions_per_call": 65536,
+      "per_s": 63164.02860488923,
+      "peak_mib": 349.95849609375
+    },
+    {
+      "network": "MLP 512-512-256",
+      "layout": "mlp",
+      "precision": "fp32",
+      "mode": "update",
+      "batch": 1024,
+      "decisions_per_call": 1024,
+      "per_s": 34659.46399679503,
+      "peak_mib": 41.466796875,
+      "loss_finite": true
+    },
+    {
+      "network": "MLP 512-512-256",
+      "layout": "mlp",
+      "precision": "fp32",
+      "mode": "update",
+      "batch": 4096,
+      "decisions_per_call": 4096,
+      "per_s": 53043.974309377045,
+      "peak_mib": 80.025390625,
+      "loss_finite": true
+    },
+    {
+      "network": "MLP 512-512-256",
+      "layout": "mlp",
+      "precision": "fp32",
+      "mode": "update",
+      "batch": 16384,
+      "decisions_per_call": 16384,
+      "per_s": 63812.73703633894,
+      "peak_mib": 228.931640625,
+      "loss_finite": true
+    },
+    {
+      "network": "MLP 512-512-256",
+      "layout": "mlp",
+      "precision": "fp16 autocast",
+      "mode": "update",
+      "batch": 1024,
+      "decisions_per_call": 1024,
+      "per_s": 15514.365512779399,
+      "peak_mib": 39.28564453125,
+      "loss_finite": true
+    },
+    {
+      "network": "MLP 512-512-256",
+      "layout": "mlp",
+      "precision": "fp16 autocast",
+      "mode": "update",
+      "batch": 4096,
+      "decisions_per_call": 4096,
+      "per_s": 22051.935466490297,
+      "peak_mib": 72.76025390625,
+      "loss_finite": true
+    },
+    {
+      "network": "MLP 512-512-256",
+      "layout": "mlp",
+      "precision": "fp16 autocast",
+      "mode": "update",
+      "batch": 16384,
+      "decisions_per_call": 16384,
+      "per_s": 23755.517677178846,
+      "peak_mib": 197.9619140625,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 padded",
+      "precision": "fp32",
+      "mode": "act",
+      "batch": 128,
+      "decisions_per_call": 128,
+      "per_s": 482.3886226381604,
+      "peak_mib": 155.88916015625
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 padded",
+      "precision": "fp32",
+      "mode": "act",
+      "batch": 512,
+      "decisions_per_call": 512,
+      "per_s": 771.774517633415,
+      "peak_mib": 530.30615234375
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 padded",
+      "precision": "fp32",
+      "mode": "act",
+      "batch": 2048,
+      "decisions_per_call": 2048,
+      "per_s": 1035.8093487017654,
+      "peak_mib": 2026.47412109375
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 padded",
+      "precision": "fp16 autocast",
+      "mode": "act",
+      "batch": 128,
+      "decisions_per_call": 128,
+      "per_s": 519.7313151521765,
+      "peak_mib": 101.63916015625
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 padded",
+      "precision": "fp16 autocast",
+      "mode": "act",
+      "batch": 512,
+      "decisions_per_call": 512,
+      "per_s": 151.19316358851796,
+      "peak_mib": 319.80615234375
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 padded",
+      "precision": "fp16 autocast",
+      "mode": "act",
+      "batch": 2048,
+      "decisions_per_call": 2048,
+      "per_s": 485.5588368886527,
+      "peak_mib": 1175.47412109375
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 padded",
+      "precision": "fp32",
+      "mode": "update",
+      "batch": 32,
+      "decisions_per_call": 32,
+      "per_s": 585.2203561585727,
+      "peak_mib": 217.35205078125,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 padded",
+      "precision": "fp32",
+      "mode": "update",
+      "batch": 64,
+      "decisions_per_call": 64,
+      "per_s": 670.8670823622232,
+      "peak_mib": 377.6025390625,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 padded",
+      "precision": "fp32",
+      "mode": "update",
+      "batch": 128,
+      "decisions_per_call": 128,
+      "per_s": 632.6608181775889,
+      "peak_mib": 687.40869140625,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 padded",
+      "precision": "fp32",
+      "mode": "update",
+      "batch": 256,
+      "decisions_per_call": 256,
+      "per_s": 644.7575585650065,
+      "peak_mib": 1315.15625,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 padded",
+      "precision": "fp16 autocast",
+      "mode": "update",
+      "batch": 32,
+      "decisions_per_call": 32,
+      "per_s": 133.28854838102873,
+      "peak_mib": 157.33251953125,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 padded",
+      "precision": "fp16 autocast",
+      "mode": "update",
+      "batch": 64,
+      "decisions_per_call": 64,
+      "per_s": 141.48987065171443,
+      "peak_mib": 249.93603515625,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 padded",
+      "precision": "fp16 autocast",
+      "mode": "update",
+      "batch": 128,
+      "decisions_per_call": 128,
+      "per_s": 95.21382893580656,
+      "peak_mib": 430.51220703125,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 padded",
+      "precision": "fp16 autocast",
+      "mode": "update",
+      "batch": 256,
+      "decisions_per_call": 256,
+      "per_s": 77.98314388252722,
+      "peak_mib": 786.36181640625,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 bucketed",
+      "precision": "fp32",
+      "mode": "act",
+      "batch": 128,
+      "decisions_per_call": 128,
+      "per_s": 1271.5035589175886,
+      "peak_mib": 61.9931640625
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 bucketed",
+      "precision": "fp32",
+      "mode": "act",
+      "batch": 512,
+      "decisions_per_call": 512,
+      "per_s": 1405.7813490181716,
+      "peak_mib": 157.0927734375
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 bucketed",
+      "precision": "fp32",
+      "mode": "act",
+      "batch": 2048,
+      "decisions_per_call": 2048,
+      "per_s": 1473.8420031294704,
+      "peak_mib": 535.62060546875
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 bucketed",
+      "precision": "fp16 autocast",
+      "mode": "act",
+      "batch": 128,
+      "decisions_per_call": 128,
+      "per_s": 304.7466674281616,
+      "peak_mib": 48.630859375
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 bucketed",
+      "precision": "fp16 autocast",
+      "mode": "act",
+      "batch": 512,
+      "decisions_per_call": 512,
+      "per_s": 364.0831757497713,
+      "peak_mib": 103.5751953125
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 bucketed",
+      "precision": "fp16 autocast",
+      "mode": "act",
+      "batch": 2048,
+      "decisions_per_call": 2048,
+      "per_s": 377.68765662332254,
+      "peak_mib": 324.04736328125
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 bucketed",
+      "precision": "fp32",
+      "mode": "update",
+      "batch": 32,
+      "decisions_per_call": 32,
+      "per_s": 285.68696406392564,
+      "peak_mib": 155.5068359375,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 bucketed",
+      "precision": "fp32",
+      "mode": "update",
+      "batch": 64,
+      "decisions_per_call": 64,
+      "per_s": 379.40191437855634,
+      "peak_mib": 259.818359375,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 bucketed",
+      "precision": "fp32",
+      "mode": "update",
+      "batch": 128,
+      "decisions_per_call": 128,
+      "per_s": 501.602109300086,
+      "peak_mib": 460.71435546875,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 bucketed",
+      "precision": "fp32",
+      "mode": "update",
+      "batch": 256,
+      "decisions_per_call": 256,
+      "per_s": 556.8020365031049,
+      "peak_mib": 852.6669921875,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 bucketed",
+      "precision": "fp16 autocast",
+      "mode": "update",
+      "batch": 32,
+      "decisions_per_call": 32,
+      "per_s": 98.29610611489285,
+      "peak_mib": 118.9775390625,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 bucketed",
+      "precision": "fp16 autocast",
+      "mode": "update",
+      "batch": 64,
+      "decisions_per_call": 64,
+      "per_s": 97.18457796159981,
+      "peak_mib": 181.869140625,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 bucketed",
+      "precision": "fp16 autocast",
+      "mode": "update",
+      "batch": 128,
+      "decisions_per_call": 128,
+      "per_s": 123.80553052845052,
+      "peak_mib": 296.53076171875,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 bucketed",
+      "precision": "fp16 autocast",
+      "mode": "update",
+      "batch": 256,
+      "decisions_per_call": 256,
+      "per_s": 107.35404417429234,
+      "peak_mib": 523.421875,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L2",
+      "precision": "fp32",
+      "mode": "act",
+      "batch": 64,
+      "decisions_per_call": 960,
+      "per_s": 6582.992779393959,
+      "peak_mib": 73.99609375
+    },
+    {
+      "network": "transformer",
+      "layout": "L2",
+      "precision": "fp32",
+      "mode": "act",
+      "batch": 256,
+      "decisions_per_call": 3840,
+      "per_s": 8716.340982957221,
+      "peak_mib": 207.474609375
+    },
+    {
+      "network": "transformer",
+      "layout": "L2",
+      "precision": "fp32",
+      "mode": "act",
+      "batch": 1024,
+      "decisions_per_call": 15360,
+      "per_s": 8971.108824373781,
+      "peak_mib": 742.0185546875
+    },
+    {
+      "network": "transformer",
+      "layout": "L2",
+      "precision": "fp16 autocast",
+      "mode": "act",
+      "batch": 64,
+      "decisions_per_call": 960,
+      "per_s": 2139.054750221671,
+      "peak_mib": 54.23095703125
+    },
+    {
+      "network": "transformer",
+      "layout": "L2",
+      "precision": "fp16 autocast",
+      "mode": "act",
+      "batch": 256,
+      "decisions_per_call": 3840,
+      "per_s": 2389.1738568639785,
+      "peak_mib": 128.28271484375
+    },
+    {
+      "network": "transformer",
+      "layout": "L2",
+      "precision": "fp16 autocast",
+      "mode": "act",
+      "batch": 1024,
+      "decisions_per_call": 15360,
+      "per_s": 2567.312204357475,
+      "peak_mib": 417.7431640625
+    },
+    {
+      "network": "transformer",
+      "layout": "L2",
+      "precision": "fp32",
+      "mode": "update",
+      "batch": 8,
+      "decisions_per_call": 120,
+      "per_s": 2978.252798073937,
+      "peak_mib": 105.423828125,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L2",
+      "precision": "fp32",
+      "mode": "update",
+      "batch": 16,
+      "decisions_per_call": 240,
+      "per_s": 3494.5729282425896,
+      "peak_mib": 156.36376953125,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L2",
+      "precision": "fp32",
+      "mode": "update",
+      "batch": 32,
+      "decisions_per_call": 480,
+      "per_s": 3526.121258351375,
+      "peak_mib": 253.00146484375,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L2",
+      "precision": "fp32",
+      "mode": "update",
+      "batch": 64,
+      "decisions_per_call": 960,
+      "per_s": 3851.266649505866,
+      "peak_mib": 453.8671875,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L2",
+      "precision": "fp16 autocast",
+      "mode": "update",
+      "batch": 8,
+      "decisions_per_call": 120,
+      "per_s": 764.5572380782659,
+      "peak_mib": 90.38818359375,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L2",
+      "precision": "fp16 autocast",
+      "mode": "update",
+      "batch": 16,
+      "decisions_per_call": 240,
+      "per_s": 879.0639653666918,
+      "peak_mib": 125.4443359375,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L2",
+      "precision": "fp16 autocast",
+      "mode": "update",
+      "batch": 32,
+      "decisions_per_call": 480,
+      "per_s": 1019.7154908803348,
+      "peak_mib": 179.404296875,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L2",
+      "precision": "fp16 autocast",
+      "mode": "update",
+      "batch": 64,
+      "decisions_per_call": 960,
+      "per_s": 1051.1075114739924,
+      "peak_mib": 292.47900390625,
+      "loss_finite": true
+    },
+    {
+      "network": "MLP 512-512-256",
+      "layout": "mlp",
+      "precision": "fp32",
+      "mode": "cpu",
+      "batch": 1,
+      "ms_per_decision": 0.16616094035543078,
+      "note": "one decision"
+    },
+    {
+      "network": "transformer",
+      "layout": "L1",
+      "precision": "fp32",
+      "mode": "cpu",
+      "batch": 1,
+      "ms_per_decision": 5.093008571427726,
+      "note": "mean over the 15 decisions of a deal, no padding"
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 longest",
+      "precision": "fp32",
+      "mode": "cpu",
+      "batch": 1,
+      "ms_per_decision": 7.6032765151522295,
+      "note": "prefix of 70 tokens"
+    },
+    {
+      "network": "transformer",
+      "layout": "L2",
+      "precision": "fp32",
+      "mode": "cpu",
+      "batch": 1,
+      "ms_per_decision": 2.80047666666279,
+      "note": "mean over the 15 decisions of a deal, cached keys and values"
+    }
+  ],
+  "summary": [
+    {
+      "network": "MLP 512-512-256",
+      "layout": "mlp",
+      "precision": "fp32",
+      "act_per_s": 168043.68927061168,
+      "act_batch": 16384,
+      "act_peak_mib": 121.77392578125,
+      "update_per_s": 63812.73703633894,
+      "update_batch": 16384,
+      "update_peak_mib": 228.931640625,
+      "loss_finite": true,
+      "cpu_ms_per_decision": 0.16616094035543078
+    },
+    {
+      "network": "MLP 512-512-256",
+      "layout": "mlp",
+      "precision": "fp16 autocast",
+      "act_per_s": 63164.02860488923,
+      "act_batch": 65536,
+      "act_peak_mib": 349.95849609375,
+      "update_per_s": 23755.517677178846,
+      "update_batch": 16384,
+      "update_peak_mib": 197.9619140625,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 padded",
+      "precision": "fp32",
+      "act_per_s": 1035.8093487017654,
+      "act_batch": 2048,
+      "act_peak_mib": 2026.47412109375,
+      "update_per_s": 670.8670823622232,
+      "update_batch": 64,
+      "update_peak_mib": 377.6025390625,
+      "loss_finite": true,
+      "cpu_ms_per_decision": 5.093008571427726
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 padded",
+      "precision": "fp16 autocast",
+      "act_per_s": 519.7313151521765,
+      "act_batch": 128,
+      "act_peak_mib": 101.63916015625,
+      "update_per_s": 141.48987065171443,
+      "update_batch": 64,
+      "update_peak_mib": 249.93603515625,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 bucketed",
+      "precision": "fp32",
+      "act_per_s": 1473.8420031294704,
+      "act_batch": 2048,
+      "act_peak_mib": 535.62060546875,
+      "update_per_s": 556.8020365031049,
+      "update_batch": 256,
+      "update_peak_mib": 852.6669921875,
+      "loss_finite": true,
+      "cpu_ms_per_decision": 5.093008571427726
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 bucketed",
+      "precision": "fp16 autocast",
+      "act_per_s": 377.68765662332254,
+      "act_batch": 2048,
+      "act_peak_mib": 324.04736328125,
+      "update_per_s": 123.80553052845052,
+      "update_batch": 128,
+      "update_peak_mib": 296.53076171875,
+      "loss_finite": true
+    },
+    {
+      "network": "transformer",
+      "layout": "L2",
+      "precision": "fp32",
+      "act_per_s": 8971.108824373781,
+      "act_batch": 1024,
+      "act_peak_mib": 742.0185546875,
+      "update_per_s": 3851.266649505866,
+      "update_batch": 64,
+      "update_peak_mib": 453.8671875,
+      "loss_finite": true,
+      "cpu_ms_per_decision": 2.80047666666279
+    },
+    {
+      "network": "transformer",
+      "layout": "L2",
+      "precision": "fp16 autocast",
+      "act_per_s": 2567.312204357475,
+      "act_batch": 1024,
+      "act_peak_mib": 417.7431640625,
+      "update_per_s": 1051.1075114739924,
+      "update_batch": 64,
+      "update_peak_mib": 292.47900390625,
+      "loss_finite": true
+    }
+  ],
+  "estimates": [
+    {
+      "network": "MLP 512-512-256",
+      "layout": "mlp",
+      "precision": "fp32",
+      "steps_per_s_4_epochs": 14569.986364892076,
+      "steps_per_s_2_epochs": 26815.01539091694
+    },
+    {
+      "network": "MLP 512-512-256",
+      "layout": "mlp",
+      "precision": "fp16 autocast",
+      "steps_per_s_4_epochs": 5428.477038767126,
+      "steps_per_s_2_epochs": 9997.724262734586
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 padded",
+      "precision": "fp32",
+      "steps_per_s_4_epochs": 144.34468527689012,
+      "steps_per_s_2_epochs": 253.37976254025324
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 padded",
+      "precision": "fp16 autocast",
+      "steps_per_s_4_epochs": 33.11845407610049,
+      "steps_per_s_2_epochs": 62.268987529128836
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 bucketed",
+      "precision": "fp32",
+      "steps_per_s_4_epochs": 127.18794182289466,
+      "steps_per_s_2_epochs": 234.16792614175236
+    },
+    {
+      "network": "transformer",
+      "layout": "L1 bucketed",
+      "precision": "fp16 autocast",
+      "steps_per_s_4_epochs": 28.60704448814833,
+      "steps_per_s_2_epochs": 53.18566826537838
+    },
+    {
+      "network": "transformer",
+      "layout": "L2",
+      "precision": "fp32",
+      "steps_per_s_4_epochs": 869.4984744570784,
+      "steps_per_s_2_epochs": 1585.3422863258004
+    },
+    {
+      "network": "transformer",
+      "layout": "L2",
+      "precision": "fp16 autocast",
+      "steps_per_s_4_epochs": 238.37775630869058,
+      "steps_per_s_2_epochs": 436.2492874111767
+    }
+  ]
+}
