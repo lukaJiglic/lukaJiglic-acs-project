@@ -38,7 +38,7 @@ First pass 2026-11-06 by four research subagents (`research/01–04`), summarise
 
 ## 1. Product
 
-Decided in Batch 3 (D31–D42). Screen specs and the Figma wireframe are the next product step.
+Decided in Batch 3 (D31–D42). The screen spec is drafted in `screen-spec.md` (draft 1, 2026-11-10, waiting for Batch 9). The Figma wireframe follows its approval.
 
 - **User (D31).** A player who knows the rules and wants to play better. Beginners get a rules layer on top (rule cards when a rule triggers).
 - **Form (D32).** Phone-first web app, portrait, installable PWA, usable on desktop. Slovenian first, English as a translation pass, i18n keys from the first screen (D40). Own simple SVG cards (D11).
@@ -192,7 +192,7 @@ Decided in Batch 7 (D70–D79). This section is the answer to course requirement
 - **Verification before each commit (D72).** (1) Acceptance criteria met and named in the commit. (2) Tests pass locally (`cargo test`, app tests, `pytest`, as applicable). (3) The user reads the diff. (4) A separate agent review pass over the diff. (5) CI green after push. Weights also pass the golden forward-pass test. Rule changes also pass the scenario tests for that toggle.
 - **Commits (D74).** `type(scope): subject`; types feat, fix, test, docs, plan, chore, train, model. Body says what and why. Trailers: `Spec: docs/specs/NNN-name.md`, `Produced-by: Claude Code <version>, model <tag>` or `Produced-by: user`, `Session: <ai-log row>`, `Co-Authored-By`. One commit per task or logical step. The commit log is the replication record.
 - **Session logging (D75).** One `ai-log.md` row per session: date, tool and version, model tag, what the agent did, what the user did, outputs. Prompts summarised; a prompt is stored verbatim in `docs/prompts/` only when reused. Subagents get a sub-row with their model.
-- **Stack (D76).** Claude Code with Claude Fable 5.1 for planning, code, tests, research subagents and review passes. Figma connector for the wireframe. GitHub Actions for CI. A local Ollama model only later, with one declared role, if time allows. Each model has its own stack-table row with pinned tag and date range of use.
+- **Stack (D76, D89).** Claude Code for planning, code, tests, research subagents and review passes. Model: Claude Fable 5.1 (`claude-fable-5-1`) from 2026-11-06 to 2026-11-10; Claude Fable 5.2 (`claude-fable-5-2`) from 2026-11-10 on. Figma connector for the wireframe. GitHub Actions for CI. A local Ollama model only later, with one declared role, if time allows. Each model has its own stack-table row with pinned tag and date range of use.
 - **Branching (D77).** Trunk-based on `main`. A branch only for a long or risky change, merged with a merge commit.
 - **Session routine (D78).** Start: read `docs/planning/README.md`, `docs/progress.md`, the open specs; work in spec order. End: update `docs/progress.md`, spec status, `ai-log.md`; commit; push.
 - **Training runs (D79).** Config per run in `src/train/configs/`. Run log in `docs/progress.md` (steps, hours, metrics, checkpoint hash). Released weights in `models/` with a `MODEL.md` (config, data, date, metrics), one `model:` commit each. Intermediate checkpoints stay out of git.

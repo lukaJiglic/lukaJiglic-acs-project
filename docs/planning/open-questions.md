@@ -11,8 +11,10 @@
 - 2026-11-09, later: Batch 6 answered (D65–D69); goals G1–G19 with lowered thresholds are in `plan.md` section 4.
 - 2026-11-10: Batch 7 answered (D70–D79), all recommendations accepted; plan.md section 5 written. The commit convention (D74) applies from this point.
 - 2026-11-10: Batch 8 answered (D80–D87), C7 confirmed (D88). **All eight batches are answered.** `plan-draft.md` renamed `plan.md`; tiers, compliance mapping (section 6), fixed points and demo (section 7), not-in-scope (section 8) written.
-- **No batch is open.** Two actions sit with the user: confirm the topic with the lecturer on 16 Nov (R2); make the repo public or add the instructor by 23 Nov (R5).
-- Next: D50 — screen spec, then the Figma wireframe through the connector, then the pitch slide text. Due Wed 18 Nov with the proposal.
+- Two actions sit with the user: confirm the topic with the lecturer on 16 Nov (R2); make the repo public or add the instructor by 23 Nov (R5).
+- 2026-11-10, session 3: model switched to Claude Fable 5.2 (D89). `screen-spec.md` draft 1 written (D50, first step).
+- **Batch 9 (screen spec) is written and waiting for answers.**
+- Next: take Batch 9 answers → screen spec draft 2 → user approves → Figma wireframe through the connector → pitch slide text. Due Wed 18 Nov with the proposal.
 - The proposal, Figma wireframe and pitch slide are due Wed 18 Nov. The product batch must follow soon after the bots batch.
 
 ## Clarifications
@@ -20,6 +22,88 @@
 Answered 2026-11-09: C1 (by D16), C2 (D27), C3 (D28), C4 (D29), C5 (D30: both certain facts and derived counts), C6 (D50). Answered 2026-11-10: C7 (D88: explicit end-session action settles leftover radelci at −70 each).
 
 Open: none.
+
+## Batch 9 — screen spec (asked 2026-11-10, unanswered)
+
+Context: `screen-spec.md` draft 1 describes the T0 screens. These are the points where Claude had to choose and should not. Sources: decisions D2–D88; `research/07` (f) and (c) for the explanation layers and the over-reliance risk; `research/02` (e) for ideas from other apps; `research/01` for the direction of play. Layout sizes and tap counts are Claude's estimates, not measurements.
+
+**B9-1. Navigation.**
+- a) Home is a hub with three large tiles (Learn, Play, Table) and small links (Rules, Levels, Settings). No tab bar. The table is full screen with a back button and a small menu.
+- b) Bottom tab bar on every screen.
+- c) Side menu.
+- Recommendation: **a**. The table needs every pixel of a 360 px screen; a tab bar costs about 56 px of it.
+
+**B9-2. Direction of play on screen.** The sources disagree (`research/01` point 2): anticlockwise in pagat.com and the 4-player texts, clockwise in the TARZS and Tarok.net competition rules. The engine does not care; it is a display choice.
+- a) Anticlockwise.
+- b) Clockwise.
+- c) A setting, default as at your table.
+- Recommendation: **the direction your table uses**, as a fixed choice in T0; a setting can come in T1. Which is it?
+
+**B9-3. Hand layout (12 to 15 cards on a 360 px wide screen).**
+- a) Two rows: taroks above, suits below, sorted, slight overlap.
+- b) One overlapping fan, sorted.
+- c) One row with sideways scroll.
+- Recommendation: **a**. Every card stays tappable without scrolling; the split matches how players sort a hand.
+
+**B9-4. Coach interrupt in coached play (D34).**
+- a) A banner over the explanation strip. The card is held. Buttons: "Vzemi nazaj", "Vseeno igraj", "Zakaj?". Three strictness levels (blago / srednje / strogo); the point values are set after the Q head is calibrated (G10). Card play only in T0; bidding, call, talon and announcements are graded in review, not interrupted.
+- b) A full-screen stop.
+- c) As a, but also interrupt in bidding, talon and announcements in T0.
+- Recommendation: **a**. A banner keeps the table visible. Bidding advice is already T1 (D36). The idea of an adjustable stop comes from GNU Backgammon's tutor mode (`research/02` e7).
+
+**B9-5. Information rule and hints.** Explaining why a bot played a card uses that bot's hidden hand. Shown during the deal, it would leak cards.
+- a) During a deal the app explains only the user's own seat ("what would the agent play with my cards"). Other seats' moves are explained only after the deal, in review. In Play mode hints are off by default; a "Namig" button gives one and marks the deal "s pomočjo".
+- b) As a, but no hints at all in Play mode; hints exist only in Learn.
+- c) Explain every seat live (leaks hidden cards).
+- Recommendation: **a**.
+
+**B9-6. Move grades in review.**
+- a) Three classes by points lost against the agent's choice: v redu / netočno / napaka.
+- b) Five classes as on Chess.com (best, good, inaccuracy, mistake, blunder).
+- c) Numbers only, no classes.
+- Recommendation: **a**. Two thresholds to calibrate instead of four; the number is still shown.
+
+**B9-7. Adviser: corrections and contradictions.**
+- a) "Razveljavi" steps back one entry at a time, any number of steps. An entry that contradicts earlier play (a seat that showed void now follows suit) gives a warning and can be kept, since real tables make mistakes.
+- b) Any earlier trick can be edited directly.
+- c) Contradicting entries are blocked.
+- Recommendation: **a** for T0.
+
+**B9-8. Adviser extras in T0.**
+- a) Show the deal score at the end of an entered deal. The engine has every card by then, so it costs nothing. Talon and bidding contrast wait for the T1 bidding adviser.
+- b) No score in the adviser until the T1 scoring calculator.
+- Recommendation: **a**.
+
+**B9-9. Toggle values the first model is not trained on.** `rule-switches.md` defines T0 as "every option is in the first trained model". D20 fixes the play-changing toggles for the first model. S14 (discarding taroks) and S18 (kontra levels) are T0 and change legal moves, so the two statements disagree for their non-default values. (S6 is pinned off, D44.)
+- a) The app lets the user pick them. The bots still play legally through the move mask. A visible note says "agent ni učen s tem pravilom" and the strength figures in Levels apply to the Default preset only.
+- b) Lock S14 and S18 to their defaults until the rule-vector model; retier their other values to T1.
+- c) Add S14 and S18 as inputs to the first model and randomise them in self-play, like the scoring toggles (changes D20).
+- Recommendation: **a**. The engine supports and tests them anyway (G1); the note keeps the claim honest. c is the cleaner end state but changes the training design; it can be revisited at stage 3.
+
+**B9-10. Wireframe fidelity, frame and labels.**
+- a) Low-fidelity greyscale frames (boxes and labels), about 26 of them, plus one styled sample frame of the table in your craft palette. Frame 360 × 800. Slovenian UI labels, English frame titles and notes for the lecturer.
+- b) Every frame styled.
+- c) Greyscale only, no styled sample.
+- Recommendation: **a**. The course asks for a wireframe; the styled sample shows the direction without spending the week on it.
+
+**B9-11. Lesson topics for T0 (at least three, G17).** Claude's proposals from general tarok knowledge, not from a source:
+1. Štetje tarokov: how many taroks are still out, and who has them.
+2. Kje je kralj?: reading who holds the called king before it falls.
+3. Varovanje monda: keeping the mond away from the škis.
+4. Pagat ultimo: when to try it and how to stop it.
+5. Klicana barva: why the opponents lead the called suit.
+6. Klop: how to take few points.
+- Recommendation: **1, 2, 3** for T0, the rest T1. You know the game better; replace any of them.
+
+**B9-12. Rule cards (at least eight, G17).** Proposed list: klop; mondfang; trula in one trick (the pagat wins); kralj ultimo; pagat ultimo; valat; radelc; kontra and its levels; berač (must overtake, pagat last); called king in the talon; talon cards left to the opponents.
+- a) Accept the eleven.
+- b) Change the list.
+- Recommendation: **a**.
+
+**B9-13. Names.** The pitch slide and the Home screen need them.
+- App name: a) "Škis"; b) "Tarok trener"; c) your own.
+- Mode names: a) Učenje · Igra · Svetovalec; b) Uči se · Igraj · Za mizo; c) your own.
+- Recommendation: yours to choose. Claude's suggestions: "Škis" (short, the highest card) and option a for the modes.
 
 ## Batch 8 — tiers and demo (asked 2026-11-10, answered 2026-11-10; see D80–D87 and plan.md sections 1, 5–8)
 

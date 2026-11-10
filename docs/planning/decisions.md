@@ -122,6 +122,7 @@ Status values: **given** (stated by the user in the brief), **decided** (user ch
 | D86 | 2026-11-10 | **"Not in scope" section in README and plan:** 3-player tarok (after T0 if time), online multiplayer (T3), LLM narration (never), code from other tarok engines (never), rule variants in the left-out list, styles as fine-tuned copies (T2). | B8-7 a–b | User (a) | |
 | D87 | 2026-11-10 | **`plan-draft.md` becomes `plan.md`**, tidied, sections 6–7 completed. The proposal, README and report derive from it. | B8-8 a–b | User (a) | Done 2026-11-10. |
 | D88 | 2026-11-10 | **"End session" confirmed (C7):** the app has an explicit end-session action; leftover radelci settle at −70 each when the user ends the session. | C7 | User (confirmed) | Completes D44. |
+| D89 | 2026-11-10 | **Primary model switches to Claude Fable 5.2 (`claude-fable-5-2`)** from this point, still in Claude Code. Claude Fable 5.1 (`claude-fable-5-1`) did all work from 2026-11-06 to 2026-11-10 (AI-log rows 1–4). The stack table gets one row per model with its date range. Commit trailers name the model that produced the commit. | — | User (switched with `/model`) | Amends D76. |
 
 ## Provisional choices by Claude (need confirmation)
 
