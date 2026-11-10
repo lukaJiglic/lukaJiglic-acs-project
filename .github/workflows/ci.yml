@@ -1,0 +1,18 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  repo-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Commit trailers (G19, D74)
+        run: python3 tools/check_trailers.py
+      - name: Repository skeleton (spec 001)
+        run: python3 tools/check_skeleton.py

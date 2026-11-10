@@ -13,6 +13,8 @@ This folder holds the full state of planning. A fresh session should read it and
 7. `research/` — research notes. Each file ends with a "Verified vs inferred" section.
 8. `ai-log.md` — log of AI use. Needed for the graded AI-use declaration.
 
+Outside this folder: `CLAUDE.md` at the repo root (standing instructions), `docs/build-plan.md` (order of the specs), `docs/specs/` (tasks), `docs/progress.md` (one entry per session), `docs/architecture.md`.
+
 ## Rules for any session working on the plan
 
 - Planning only until the user says building starts.

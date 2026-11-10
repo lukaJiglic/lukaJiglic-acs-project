@@ -1,0 +1,40 @@
+# Task specs
+
+Every task is one file here (D70). Claude drafts it, the user approves the acceptance criteria, an agent executes it, verification runs, the commit references it.
+
+## Rules
+
+- File name `NNN-short-name.md`. NNN is the next free number, three digits. Numbers are never reused and specs are never deleted.
+- The status line at the top is one of: draft, approved, done, dropped. It carries the date of the last change. A spec is "done" only after its changes are committed, which needs the user's read of the diff (D72).
+- "Checks" says how each criterion is verified.
+- Tests are written from the acceptance criteria before the code (D73).
+- An executed spec gets a "Results" section: what was built, the output of the checks, measured numbers, what failed.
+
+## Template
+
+```
+# NNN — Title
+
+Status: **draft** (YYYY-MM-DD).
+
+Tool and model: ...
+
+## Goal
+## In scope
+## Out of scope
+## Acceptance criteria
+## Checks
+## Files expected to change
+## Commits
+## Open points for the user
+## Results
+```
+
+## List
+
+| # | Spec | Status |
+|---|------|--------|
+| 001 | [Repo skeleton](001-repo-skeleton.md) | approved; executed and committed 2026-11-10; done once CI is green |
+| 002 | [Engine core](002-engine-core.md) | approved; executed and committed 2026-11-10; done once CI is green |
+| 003 | [Training environment and benchmark](003-training-environment.md) | approved; executed and committed 2026-11-10; GPU-free run pending |
+| 004 | [Encoding contract](004-encoding-contract.md) | draft |
