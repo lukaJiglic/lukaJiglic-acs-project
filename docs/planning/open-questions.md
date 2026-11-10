@@ -17,9 +17,9 @@
 - 2026-11-10: Figma wireframe built: 28 greyscale frames and one styled sample, file "Tarok trener — wireframe" in the user's Figma drafts (https://www.figma.com/design/XVrAGNVsQuisOd79HYbRBg). Overview image in `docs/wireframe/wireframe-overview.png`. Pitch slide text drafted in `pitch.md`. Spec `docs/specs/001-repo-skeleton.md` drafted, not approved.
 - 2026-11-10, later: C8 answered (D104), mode names deferred (D105), building confirmed with training first (D106). `docs/build-plan.md` written: specs 001–009 to the first training run. Specs 002 (engine core) and 003 (training environment and benchmark) drafted. Read-only check of the PC: CUDA-capable driver present, PyTorch installed is CPU-only, Rust toolchain is windows-gnu, maturin missing.
 - 2026-11-10, later: Batch 10 answered (D107–D113). The first run trains every phase from the start (D107). Specs 001–003 approved (D112). The trula rule was checked and kept (D113). `docs/build-plan.md` is at draft 2 with twelve specs.
-- **No batch is open.** Open clarification: C11.
-- Still waiting on the user: corrections to the wireframe and `pitch.md`; the proposal format; "fant" or "pob".
-- Next: execute 001; run 002 and 003 in parallel sessions; draft 004 (encoding contract) for approval.
+- 2026-11-10, later: spec 001 executed; its files are in the working tree, **not committed, waiting for the user's read of the diff** (D72). A review subagent found 13 defects; 12 fixed, one deviation left for the user (an extra file, `tools/check_trailers.py`). Specs 002 and 003 are running in two parallel sessions (`engine-core`, `train-env`) on the shared checkout. `docs/encoding.md` draft 1 and spec 004 written.
+- **Waiting on the user:** (1) read the spec 001 diff and say commit; (2) the five open points A–E at the end of `docs/encoding.md` (reward form, radelc value, radelci in self-play, state features, scale and sequence limit); (3) C11; (4) corrections to the wireframe and `pitch.md`; the proposal format; "fant" or "pob".
+- Next: collect the results of 002 and 003 into `docs/progress.md`; review passes; the user's diff read; commit. Then specs 005 (deal flow A) and 007 (model and learner) for approval, the latter after the layout choice (D110).
 - The proposal, Figma wireframe and pitch slide are due Wed 18 Nov. The product batch must follow soon after the bots batch.
 
 ## Clarifications
