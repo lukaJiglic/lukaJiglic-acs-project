@@ -1,0 +1,19 @@
+[package]
+name = "tarok-engine"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94"
+description = "Rules engine for four-player Slovenian tarok (Tarok trener)."
+license = "MIT"
+publish = false
+
+[dependencies]
+# Pinned exactly: the deal for a seed must never change (spec 002).
+# No default features: the crate needs only the ChaCha8 block function.
+rand_chacha = { version = "=0.10.0", default-features = false }
+
+[dev-dependencies]
+# Without the "std" feature proptest does not pull in `getrandom`, which
+# needs `dlltool` and an assembler on the windows-gnu toolchain. The tests
+# seed the runner themselves (tests/common/mod.rs).
+proptest = { version = "1.12", default-features = false, features = ["alloc", "no_std"] }

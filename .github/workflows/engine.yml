@@ -1,0 +1,41 @@
+name: engine
+
+# Spec 002, criterion 32: fmt, clippy and tests for the Rust crate in
+# src/engine, on every push and on pull requests.
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  engine:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/engine
+    steps:
+      - uses: actions/checkout@v4
+      # The runner has rustup. The version and the components (rustfmt,
+      # clippy) come from rust-toolchain.toml at the repository root.
+      - name: Install the pinned toolchain
+        run: |
+          rustup show active-toolchain || rustup toolchain install
+          cargo --version
+      - name: Format
+        run: cargo fmt --check
+      - name: Clippy
+        run: cargo clippy --locked --all-targets -- -D warnings
+      - name: Tests
+        run: cargo test --locked
+      # The deal of the Rust code against a separate pure-Python derivation
+      # (standard library only). Seeds 0 and 81985529216486895 are the two
+      # golden deals of tests/deal.rs, so the reference is tied to them too.
+      - name: Deal against the Python reference
+        run: |
+          for seed in 0 81985529216486895 1 42 18446744073709551615; do
+            cargo run --locked --quiet --example print_deal -- "$seed" > "$RUNNER_TEMP/rust.txt"
+            python3 tests/golden_deal_reference.py "$seed" > "$RUNNER_TEMP/python.txt"
+            test -s "$RUNNER_TEMP/rust.txt"
+            diff "$RUNNER_TEMP/rust.txt" "$RUNNER_TEMP/python.txt"
+            echo "seed $seed: same deal"
+          done
