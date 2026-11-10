@@ -31,12 +31,12 @@ This folder holds the full state of planning. A fresh session should read it and
 
 ## Status
 
-See the top of `open-questions.md` for where planning stands. As of 2026-11-10: the eight plan batches are answered (D1–D88). The model changed to Claude Fable 5.2 (D89). Batch 9 is answered (D90–D102) and the user said work can begin (D103). Open clarifications: C8, C9, C10. `plan.md` is the plan. Two provisional choices (P2, P5 in `decisions.md`) are in use but never explicitly confirmed by the user.
+See the top of `open-questions.md` for where planning stands. As of 2026-11-10: the eight plan batches are answered (D1–D88). The model changed to Claude Fable 5.2 (D89). Batch 9 is answered (D90–D102) and the user said work can begin (D103). C8–C10 are answered (D104–D106). Building has started in the sense of D106: specs first, training as early as possible. **Batch 10 (build decisions) is open.** `plan.md` is the plan. Two provisional choices (P2, P5 in `decisions.md`) are in use but never explicitly confirmed by the user.
 
 ## What a fresh session does next
 
-1. Take the user's answers to C8, C9, C10 and their corrections to the wireframe and `pitch.md`. Record them.
-2. Ask for the proposal format, then derive the proposal text from `plan.md` (D87). Due Wed 18 Nov.
-3. `docs/specs/001-repo-skeleton.md` is a draft. Execute it only after the user approves it and answers its points A–C (D70, D73).
-4. Remind the user of the actions only they can take: confirm the topic with the lecturer on Mon 16 Nov (R2); make the repo public or add the instructor by Mon 23 Nov (R5); share the Figma file with the lecturer.
-5. Then the order of work D82, one approved spec at a time. No product code without an approved spec.
+1. Read `docs/build-plan.md` (outside this folder). It orders specs 001–009 up to the first training run.
+2. Take the Batch 10 answers and record them. Specs 001–003 in `docs/specs/` are drafts; execute a spec only after the user approves it (D70, D73).
+3. Then draft spec 004 (encoding contract, `docs/encoding.md`) for approval; it unblocks 007 and 008.
+4. Still owed for Wed 18 Nov: the proposal text (format unknown; ask), corrections to the wireframe (frames A-3 and A-5 need the D104 step) and to `pitch.md`.
+5. User-only actions: confirm the topic with the lecturer on Mon 16 Nov (R2); make the repo public or add the instructor by Mon 23 Nov (R5); share the Figma file with the lecturer.

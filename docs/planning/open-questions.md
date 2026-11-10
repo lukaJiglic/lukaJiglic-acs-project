@@ -15,19 +15,56 @@
 - 2026-11-10, session 3: model switched to Claude Fable 5.2 (D89). `screen-spec.md` draft 1 written (D50, first step).
 - 2026-11-10: Batch 9 answered (D90–D102). `screen-spec.md` is at draft 2. The user said work can begin (D103).
 - 2026-11-10: Figma wireframe built: 28 greyscale frames and one styled sample, file "Tarok trener — wireframe" in the user's Figma drafts (https://www.figma.com/design/XVrAGNVsQuisOd79HYbRBg). Overview image in `docs/wireframe/wireframe-overview.png`. Pitch slide text drafted in `pitch.md`. Spec `docs/specs/001-repo-skeleton.md` drafted, not approved.
-- **No batch is open.** Waiting on the user: C8, C9, C10; corrections to the wireframe and to `pitch.md`; approval of spec 001 with its points A–C; the proposal format.
-- Next: apply the user's corrections → proposal text (due Wed 18 Nov) → execute spec 001 once approved → order of work D82.
+- 2026-11-10, later: C8 answered (D104), mode names deferred (D105), building confirmed with training first (D106). `docs/build-plan.md` written: specs 001–009 to the first training run. Specs 002 (engine core) and 003 (training environment and benchmark) drafted. Read-only check of the PC: CUDA-capable driver present, PyTorch installed is CPU-only, Rust toolchain is windows-gnu, maturin missing.
+- **Batch 10 (build decisions) is written and waiting for answers.** It also asks for approval of specs 001–003.
+- Still waiting on the user: corrections to the wireframe and `pitch.md`; the proposal format.
+- Next: Batch 10 answers → execute 001, then 002 and 003 → draft 004 (encoding contract) → 005–009 → first training run.
 - The proposal, Figma wireframe and pitch slide are due Wed 18 Nov. The product batch must follow soon after the bots batch.
 
 ## Clarifications
 
 Answered 2026-11-09: C1 (by D16), C2 (D27), C3 (D28), C4 (D29), C5 (D30: both certain facts and derived counts), C6 (D50). Answered 2026-11-10: C7 (D88: explicit end-session action settles leftover radelci at −70 each).
 
-Open:
+Answered 2026-11-10: C8 (D104: yes, the adviser contrasts every phase in T0), C9 (D105: names later), C10 (D106: building confirmed, training first).
 
-- **C8. Adviser and D93.** D93 makes the coach interrupt in bidding, king call, talon and announcements in T0 (coached play against bots). At a real table (Adviser mode), should the app also show the agent's bid, call, packet and discards in T0? D36 put the "bidding adviser" in T1 and D97 left talon and bidding contrast for T1. Options: a) yes, same contrast in the adviser in T0; b) no, adviser contrast stays card play only until T1. Claude's recommendation: **a**, since the model call is the same and only the entry screens need the extra step.
-- **C9. Mode names.** Not answered in B9-13. Draft labels in use: Učenje · Igra · Svetovalec. Alternative: Uči se · Igraj · Za mizo. Or your own.
-- **C10. "We can begin working now" (D103).** Claude read it as: the planning-only rule is lifted, and building starts in the D82 order, each task through a spec you approve first. If you meant only "start the wireframe", say so and D103 is corrected.
+Open: none.
+
+## Batch 10 — build decisions (asked 2026-11-10, unanswered)
+
+Context: the user wants training running as soon as possible (D106). `docs/build-plan.md` gives the path. These are the choices in it that are the user's. Sources: research/05 (stages, failure modes, throughput arithmetic), research/06 (training stack), and read-only checks of the PC on 2026-11-10. The throughput numbers are inferred by arithmetic; spec 003 measures them.
+
+**B10-1. What the first training run covers (stage 1).**
+- a) The network learns card play. Rule-based code bids, calls the king, picks the talon packet and discards; their tokens are in the sequence (D21). Contracts: tri, dve, ena, solo tri, solo dve, solo ena. If the other three pass, forehand plays tri (legal in the baseline), so no klop yet. No announcements, no kontra. Silent bonuses and mondfang scored. Radelci off.
+- b) One fixed contract only (tri with a called king), as research/05 first sketched.
+- c) Everything from the start, including klop, berač and announcements.
+- Recommendation: **a**. It gives the agent the real mix of partner and solo games. b is quicker by a day at most and teaches less. c puts the passive-bidding failure (research/05 e1) in front of the first result.
+
+**B10-2. Engine order.**
+- a) A vertical slice first: the rules stage 1 needs (specs 002 and 005). Klop, berač, solo brez, valat, announcements, kontra, radelci and the other toggles follow while the first runs train. The encoding reserves their slots from the start, so old checkpoints stay loadable.
+- b) The whole T0 rule set with all tests before any training.
+- Recommendation: **a**. It is what "as soon as possible" needs. G1 (150 tests, every T0 toggle) is still met, later.
+
+**B10-3. Two tracks at once.**
+- a) After spec 001, the Rust track (002, 005, 006, 007) and the Python track (003, 008) run in separate sessions at the same time. They touch different folders. Spec 004 (the encoding document) is the contract between them.
+- b) One spec at a time.
+- Recommendation: **a**. It can halve the waiting time. The cost is yours: you read two streams of diffs (D72 step 3).
+
+**B10-4. How the state token sits in the sequence (D18, D30).** By arithmetic, recomputing the whole sequence for every decision gives about 600 steps/s on this GPU; G3 asks for 10,000. See `docs/build-plan.md` section 5.
+- a) Play and bid tokens are computed once per seat and deal. Each decision has its own state token that looks at the tokens before it, through an attention mask. Play tokens never look at state tokens. Training is one pass per seat and deal; acting reuses cached tokens. Estimated about 5,000 steps/s or more.
+- b) The state token is appended last and everything is recomputed per decision. Simplest. Estimated about 600 steps/s.
+- c) Measure both in spec 003, then decide.
+- Recommendation: **a as the working design, with spec 003 measuring both**. It keeps your design (a state token inside the transformer) and changes only how attention is masked.
+
+**B10-5. Where the network runs during the first self-play runs (D22, D54).**
+- a) In Python on the GPU, in batches, with the Rust engine stepping many games at once. The hand-written Rust forward pass (D54) is built after training has started, and is then measured as the alternative for actors (D22) and used for the browser.
+- b) The Rust forward pass first, actors on CPU threads.
+- Recommendation: **a**. It needs no second implementation of the network before the first run. By arithmetic a 3 M-parameter transformer on CPU threads would be far slower than the GPU.
+
+**B10-6. Approve specs 001–003 and their open points.**
+- 001 repo skeleton: A force LF line endings (recommended yes); B licence holder "Luka Jelenko Iglic"; C a `tools/` folder for check scripts (recommended yes).
+- 002 engine core: A Slovenian card names in code (recommended yes); B "fant" or "pob"; C check the trick and legal-card rules (criteria 11–25) against how you play.
+- 003 training environment: A TensorBoard (recommended yes); B benchmark with the GPU free and as used daily (recommended both). It downloads about 3 GB into `.venv`.
+- Recommendation: approve all three. 001 runs first; 002 and 003 right after (in parallel under B10-3 a).
 
 ## Batch 9 — screen spec (asked 2026-11-10, answered 2026-11-10; see D90–D102 and `screen-spec.md` draft 2)
 

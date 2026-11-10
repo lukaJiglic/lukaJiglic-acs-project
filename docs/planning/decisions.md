@@ -137,6 +137,9 @@ Status values: **given** (stated by the user in the brief), **decided** (user ch
 | D101 | 2026-11-10 | **Rule cards: the eleven proposed** (klop, mondfang, trula in one trick, kralj ultimo, pagat ultimo, valat, radelc, kontra and levels, berač, called king in the talon, talon cards left to the opponents). | B9-12 a–b | User (a) | |
 | D102 | 2026-11-10 | **App name: "Tarok trener".** | B9-13 | User | Mode names were not answered; Učenje · Igra · Svetovalec stay as draft labels (C9). |
 | D103 | 2026-11-10 | **"We can begin working now."** The planning-only rule is lifted. Work proceeds in the D82 order through spec files the user approves (D70, D73). The D50 chain (wireframe, pitch text) comes first because it is due 18 Nov. | — | User | Claude's reading of the sentence; see C10. No product code is written before a spec is approved. |
+| D104 | 2026-11-10 | **The adviser shows the agent's choice in every phase in T0:** bid, king call, talon packet, discards, announcements and kontra, as well as card play. The user's own choice comes first each time (D17). | C8 a–b | User (yes) | Extends D93 to the Adviser mode. Supersedes the T1 placement of the bidding adviser in D36 and the "wait for T1" part of D97. |
+| D105 | 2026-11-10 | **Mode names are decided later.** Učenje · Igra · Svetovalec stay as working labels. | C9 | User | |
+| D106 | 2026-11-10 | **Building starts. Priority: get model training running as soon as possible.** The order of work is `docs/build-plan.md`: specs 001–009 lead to the first stage-1 training run; everything not needed for it is deferred until the GPU is busy. | — | User | Confirms D103 (C10 closed). Refines the order in D82: engine and learner come before the rest of step 1; the full rule set, the Rust forward pass and the app follow once training runs. |
 
 ## Provisional choices by Claude (need confirmation)
 

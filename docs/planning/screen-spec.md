@@ -1,6 +1,6 @@
 # Screen spec — T0 screens
 
-Status: **draft 2, 2026-11-10. Batch 9 answered (D90–D102); this draft carries the answers.** The Figma wireframe is built from it. Open: C8, C9 in `open-questions.md`.
+Status: **draft 2, 2026-11-10. Batch 9 answered (D90–D102); this draft carries the answers, plus D104 (added the same day).** The Figma wireframe was built from it before D104; frame A-3 does not yet show the agent's bid. Mode names are working labels (D105).
 
 Purpose: the input for the Figma wireframe (D41, D50) and, later, for the app specs. It covers the T0 screens of D33 and D80.
 
@@ -130,9 +130,9 @@ For a real table with real cards (D3, D37). The user enters everything that happ
 
 - **A-1 Setup.** Who dealt (tap a seat). Rules in force (link to SC-07). Optional names for the seats.
 - **A-2 My hand.** The 54-card grid: taroks in three rows (8, 8, 6), then one row of 8 per suit. Seven rows fit in about 310 px. Tap 12 cards. Counter "7 / 12". "Potrdi".
-- **A-3 Bidding.** The app walks the seats in order. For each seat it shows the legal bids; the user taps what was said. On the user's own turn the user taps their own bid. Bidding advice in the adviser is T1 (D36) unless C8 changes it.
-- **A-4 King call.** Tap the called suit. Skipped when not needed.
-- **A-5 Talon.** The talon is face up at the real table, so the user enters all six cards on the grid, then taps the packet taken. If the user is the declarer, they also enter their discards. Discarded taroks of another declarer are entered when shown (S14).
+- **A-3 Bidding.** The app walks the seats in order. For each seat it shows the legal bids; the user taps what was said. On the user's own turn the user taps their intended bid first, then sees the agent's bid and the contrast, then confirms the bid really made (D104).
+- **A-4 King call.** Tap the called suit. Skipped when not needed. If the user is the declarer: intended king first, then the agent's (D104).
+- **A-5 Talon.** The talon is face up at the real table, so the user enters all six cards on the grid, then taps the packet taken. If the user is the declarer, they pick their intended packet and discards first, see the agent's, then enter what they really did (D104). Discarded taroks of another declarer are entered when shown (S14).
 - **A-6 Announcements and kontra.** Per seat, as in A-3.
 - **A-7 Tricks.** For each play in turn order:
   - Another seat: the grid shows only unseen cards. The user taps the card that seat played.
@@ -231,8 +231,8 @@ About 26 greyscale frames and one styled sample of the table (D99). Slovenian la
 
 Batch 9 is answered (D90–D102). Still open, in `open-questions.md`:
 
-- **C8.** D93 makes the coach interrupt in bidding, talon and announcements in T0. Does the Adviser mode (real table) also show the agent's bid and talon choice in T0, or does that stay T1 (D36, D97)?
-- **C9.** Mode names. Draft labels in use: Učenje · Igra · Svetovalec.
+- C8 is answered: the adviser contrasts every phase in T0 (D104). C9 is deferred (D105).
+- Wireframe follow-up: frames A-3 and A-5 need the "intended first, then the agent's" step added.
 - All Slovenian labels are drafts for the user to correct, including the five grade names.
 
 Resolved while writing: `rule-switches.md` defined T0 as "every option is in the first trained model", against D20. D98 settles it: T0 means in the engine and the first release; the first model covers the Default preset plus the scoring toggles.
