@@ -1,6 +1,6 @@
 # 001 — Repo skeleton
 
-Status: **approved** 2026-11-10 (D112); executed 2026-11-10; the user read the diff and approved the commit on 2026-11-10 (D114). Done once CI is green (criterion 8). Answers to the open points: A force LF; B holder as written; C `tools/` accepted.
+Status: **done** 2026-11-10. Approved (D112), executed, diff read by the user (D114), committed in `011e288` and `2ed0374`, CI green on `56f4caf` (criterion 8). Answers to the open points: A force LF; B holder as written; C `tools/` accepted.
 
 Order-of-work step 0 (D82). Tool and model: Claude Code 2.1.306, `claude-fable-5-2`.
 

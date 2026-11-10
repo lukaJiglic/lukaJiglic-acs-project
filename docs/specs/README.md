@@ -34,7 +34,7 @@ Tool and model: ...
 
 | # | Spec | Status |
 |---|------|--------|
-| 001 | [Repo skeleton](001-repo-skeleton.md) | approved; executed and committed 2026-11-10; done once CI is green |
-| 002 | [Engine core](002-engine-core.md) | approved; executed and committed 2026-11-10; done once CI is green |
-| 003 | [Training environment and benchmark](003-training-environment.md) | approved; executed and committed 2026-11-10; GPU-free run pending |
+| 001 | [Repo skeleton](001-repo-skeleton.md) | done 2026-11-10 |
+| 002 | [Engine core](002-engine-core.md) | done 2026-11-10 |
+| 003 | [Training environment and benchmark](003-training-environment.md) | committed 2026-11-10, CI green; GPU-free run pending |
 | 004 | [Encoding contract](004-encoding-contract.md) | draft |

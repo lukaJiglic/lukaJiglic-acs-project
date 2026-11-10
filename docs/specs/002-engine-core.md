@@ -1,6 +1,6 @@
 # 002 — Engine core
 
-Status: **approved** 2026-11-10 (D112, criterion 17 checked, D113); executed 2026-11-10; the user read the diff and approved the commit on 2026-11-10 (D114). Done once CI is green (criterion 32). See "Results" at the end.
+Status: **done** 2026-11-10. Approved (D112, D113), executed, diff read by the user (D114), committed in `0d8ab9a`, CI green on `56f4caf` after the compiler was pinned in the workflow (D115, criterion 32). Open for the user: how the compiler is pinned locally; "fant" or "pob". See "Results" at the end.
 
 Build-plan row 002. Tool and model: Claude Code 2.1.306, `claude-fable-5-2`.
 

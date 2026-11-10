@@ -1,6 +1,6 @@
 # 003 — Training environment and throughput benchmark
 
-Status: **approved** 2026-11-10 (D112); executed 2026-11-10; the user read the diff and approved the commit on 2026-11-10 (D114). Done once CI is green and the GPU-free benchmark run is in (open point B). See "Results" at the end.
+Status: **approved** 2026-11-10 (D112); executed; diff read by the user (D114); committed in `e6af3d0`; CI green on `56f4caf`. **Not done yet: the GPU-free benchmark run is missing** (open point B). See "Results" at the end.
 
 Build-plan row 003. Tool and model: Claude Code 2.1.306, `claude-fable-5-2`.
 

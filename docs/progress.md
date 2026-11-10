@@ -26,6 +26,8 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 **Broken:** the `engine` run used the runner's newest stable compiler (clippy 1.99), because the toolchain file is switched off. That clippy has a lint the pinned 1.94.1 does not (`chunks_exact_to_as_chunks`, `src/engine/src/deal.rs:81`) and `-D warnings` turns it into an error. Tests did not run. The fix pins 1.94.1 inside `engine.yml`; it waits for the user's read of the diff.
 **Next:** commit the workflow fix, re-run, then mark specs 001 and 002 done.
 
+Update, same day: the fix is commit `56f4caf` (D115). All three workflows are green on it. In `engine`: format, clippy, 47 tests, and the deal compared with the Python reference on five seeds all passed on Rust 1.94.1. Specs 001 and 002 are done. Spec 003 waits only for the GPU-free benchmark run.
+
 ## 2026-11-10 — spec 003, training environment and benchmark (parallel session `train-env`, claude-fable-5-2)
 
 **Done:** `.venv` with pinned packages (`src/train/requirements.txt`), `envcheck`, a PyO3 probe built with maturin on the GNU toolchain, a throughput benchmark of the stand-in transformer (3.49 M parameters) and the MLP control (0.83 M) in both sequence layouts. A review subagent found no functional bug, four method gaps, five overclaims and two test gaps; all were fixed and the benchmark was re-run with the better method. Not committed: waiting for the user's read of the diff.
