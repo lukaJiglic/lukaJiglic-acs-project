@@ -19,6 +19,13 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 **Broken:** nothing built yet. The proposal format is unknown. Wireframe frames A-3 and A-5 do not show the D104 step.
 **Next:** specs 002 (engine core) and 003 (training environment and benchmark) in parallel; spec 004 (encoding contract) for approval.
 
+## 2026-11-10 — first CI runs after the commit of specs 001–003
+
+**Done:** five commits pushed (`011e288` to `3dbe257`).
+**Measurements:** workflow `ci` (trailers, skeleton): success. Workflow `train` (CPU tests of `src/train`): success. Workflow `engine`: **failure**.
+**Broken:** the `engine` run used the runner's newest stable compiler (clippy 1.99), because the toolchain file is switched off. That clippy has a lint the pinned 1.94.1 does not (`chunks_exact_to_as_chunks`, `src/engine/src/deal.rs:81`) and `-D warnings` turns it into an error. Tests did not run. The fix pins 1.94.1 inside `engine.yml`; it waits for the user's read of the diff.
+**Next:** commit the workflow fix, re-run, then mark specs 001 and 002 done.
+
 ## 2026-11-10 — spec 003, training environment and benchmark (parallel session `train-env`, claude-fable-5-2)
 
 **Done:** `.venv` with pinned packages (`src/train/requirements.txt`), `envcheck`, a PyO3 probe built with maturin on the GNU toolchain, a throughput benchmark of the stand-in transformer (3.49 M parameters) and the MLP control (0.83 M) in both sequence layouts. A review subagent found no functional bug, four method gaps, five overclaims and two test gaps; all were fixed and the benchmark was re-run with the better method. Not committed: waiting for the user's read of the diff.

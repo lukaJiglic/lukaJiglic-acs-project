@@ -15,11 +15,13 @@ jobs:
         working-directory: src/engine
     steps:
       - uses: actions/checkout@v4
-      # The runner has rustup. The version and the components (rustfmt,
-      # clippy) come from rust-toolchain.toml at the repository root.
+      # The runner has rustup. The compiler version is pinned here, because
+      # the root rust-toolchain.toml is switched off (see spec 002, Results).
+      # An unpinned runner brings newer clippy lints that fail the build.
       - name: Install the pinned toolchain
         run: |
-          rustup show active-toolchain || rustup toolchain install
+          rustup toolchain install 1.94.1 --profile minimal --component rustfmt --component clippy
+          rustup default 1.94.1
           cargo --version
       - name: Format
         run: cargo fmt --check
