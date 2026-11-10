@@ -6,7 +6,7 @@ This document fixes what the network sees and what it can do. The Rust engine pr
 
 Decisions behind it: D15, D18, D19, D21, D30, D47, D107, D110. Sources for the starting point: `docs/planning/research/06` section (g) and `research/05` sections C2–C4. Everything beyond those is Claude's proposal for the user to correct. Items marked * are pinned off in the first release (D44).
 
-The sequence layout (how the state token attends to the other tokens) is chosen after spec 003 measures both options (D110). This contract is the same for both.
+The sequence layout is L2 (D116): play and bid tokens attend causally to each other; each decision's state token attends to the tokens before it and to itself. The arrays below do not depend on the layout.
 
 ## 1. Cards and seats
 
