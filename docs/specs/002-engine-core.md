@@ -1,6 +1,6 @@
 # 002 — Engine core
 
-Status: **draft** (2026-11-10). Not approved. Needs spec 001 done.
+Status: **approved** by the user on 2026-11-10 (D112), with criterion 17 checked against the sources (D113). Needs spec 001 done.
 
 Build-plan row 002. Tool and model: Claude Code 2.1.306, `claude-fable-5-2`.
 
@@ -52,7 +52,7 @@ The user approves these before tests are written (D73). Each scenario below beco
 14. A card of another suit never wins, whatever its rank.
 15. Any tarok beats any suit card.
 16. A higher tarok beats a lower one; škis beats mond.
-17. Škis, mond and pagat in one trick: the pagat wins.
+17. Škis, mond and pagat in one trick: the pagat wins, **in any order of play**. Tested with the pagat played first, second, third and fourth, and with a fourth card that is a suit card or another tarok. (Checked on 2026-11-10: TARZS 2010 says "v poljubnem vrstnem redu"; D113.)
 18. Pagat with only one of škis and mond in the trick: the pagat does not win.
 19. The winner of a trick leads the next one.
 
@@ -73,13 +73,13 @@ The user approves these before tests are written (D73). Each scenario below beco
 
 **Quality gates**
 31. `cargo fmt --check` and `cargo clippy -- -D warnings` pass. No `unsafe`.
-32. The CI workflow runs `cargo test`, fmt and clippy for `src/engine` on every push; it is green.
+32. A workflow file `.github/workflows/engine.yml` runs `cargo test`, fmt and clippy for `src/engine` on every push; it is green.
 33. The benchmark runs in release mode and prints card plays per second on one thread. The number goes into `docs/progress.md`. Expected range from research/05 D4 (inferred, not measured): 10^5 to 10^6. Below 10^5 is reported as a finding, not hidden.
 
 ## Files expected to change
 
 New: `src/engine/Cargo.toml`, `src/engine/src/lib.rs`, `src/engine/src/card.rs`, `cardset.rs`, `points.rs`, `deal.rs`, `trick.rs`, `play.rs`, `src/engine/tests/*.rs`, `src/engine/benches` or `src/bin/bench_play.rs`, `rust-toolchain.toml`, `Cargo.lock`.
-Changed: `.github/workflows/ci.yml`, `docs/progress.md`, `docs/architecture.md`, this spec's status.
+New: `.github/workflows/engine.yml`. Changed: this spec (status and a "Results" section). `docs/progress.md` and `docs/architecture.md` are updated by the main session from the Results section (D109).
 
 Dependencies: `rand_chacha` (pinned). Dev: `proptest`. General libraries are allowed (D27).
 
@@ -87,8 +87,8 @@ Dependencies: `rand_chacha` (pinned). Dev: `proptest`. General libraries are all
 
 Small steps, each with `Spec: docs/specs/002-engine-core.md`: (a) crate, cards, card sets, values, counting, with tests 1–6; (b) deal, tests 7–10; (c) trick winner and legal cards, tests 11–26; (d) `PlayState`, property tests 27–30, benchmark; (e) CI job.
 
-## Open points for the user
+## Answers to the open points (D112, D113)
 
-- **A. Card names in code.** Slovenian terms in identifiers (`Kralj`, `Dama`, `Kaval`, `Fant`, `Skis`, `Mond`, `Pagat`, `Srce`, `Karo`, `Pik`, `Kriz`) or English? Proposal: Slovenian, as D40 keeps tarok terms Slovenian.
-- **B. "Fant" or "pob"** for the lowest court card? research/01 says fant; the wireframe draft used P.
-- **C.** Check criteria 11–25 against how you play. They are the rules the agent will learn from.
+- A. Slovenian card names in code: yes.
+- B. `Fant` is the working name; the user has not chosen between "fant" and "pob".
+- C. Criterion 17 was checked and kept. If the user's table lets the pagat win only when it falls last, that becomes a toggle (C11 in `docs/planning/open-questions.md`).

@@ -1,6 +1,6 @@
 # 001 — Repo skeleton
 
-Status: **draft** (2026-11-10). Not approved. Nothing in this spec is executed until the user approves it (D70, D73).
+Status: **approved** by the user on 2026-11-10 (D112). Answers to the open points: A force LF; B holder as written; C `tools/` accepted.
 
 Order-of-work step 0 (D82). Tool and model: Claude Code 2.1.306, `claude-fable-5-2`.
 
@@ -19,7 +19,7 @@ The user approves these before anything is written (D73).
 5. **`docs/specs/README.md`** exists with the spec template (status line, goal, acceptance criteria, files, out of scope, tool and model, verification) and the numbering rule.
 6. **Licences:** `LICENSE` (MIT, code) and `LICENSE-assets` (CC BY 4.0, cards and texts), holder "Luka Jelenko Iglic", year 2026 (D61).
 7. **Directory layout (D56):** `src/engine`, `src/app`, `src/train`, `src/assets/cards`, `models`, each with a one-paragraph `README.md` saying what will live there. `.github/workflows` exists.
-8. **CI (D63, first slice):** `.github/workflows/ci.yml` runs on every push to `main`. One job checks that every commit since `0d5045d` has a `Produced-by:` trailer (the measurable half of G19). The job passes on the current history. Other jobs are added by the specs that create their code.
+8. **CI (D63, first slice):** `.github/workflows/ci.yml` runs on every push to `main`. One job checks that every commit since `0d5045d` has a `Produced-by:` trailer (the measurable half of G19). The job passes on the current history. Each later track adds its own workflow file (`engine.yml`, `train.yml`), so parallel sessions never edit the same file (D109).
 9. **Line endings:** `.gitattributes` forces LF for text files (`* text=auto eol=lf`), so the CRLF warnings stop. See open point A.
 10. **Nothing else changes.** `docs/planning/` content is untouched except `README.md` (pointer to the new files) and `ai-log.md` (row for the session).
 

@@ -1,6 +1,6 @@
 # 003 — Training environment and throughput benchmark
 
-Status: **draft** (2026-11-10). Not approved. Needs spec 001 done. Independent of spec 002.
+Status: **approved** by the user on 2026-11-10 (D112). Answers: A TensorBoard yes; B benchmark both with the GPU free and as used daily. Needs spec 001 done. Independent of spec 002.
 
 Build-plan row 003. Tool and model: Claude Code 2.1.306, `claude-fable-5-2`.
 
@@ -43,12 +43,12 @@ The user approves these before anything is installed or written (D73).
 6. For the transformer it measures both layouts: **(L1)** the state token appended last and the whole sequence recomputed for every decision; **(L2)** play and bid tokens computed once per seat and deal, state tokens attending to their prefix through a mask (training in one pass; acting with cached tokens).
 7. For each network and layout it reports: acting decisions per second on the GPU; update samples per second (forward and backward); peak VRAM; and single-thread CPU forward time per decision (an early hint for the Rust forward pass and the phone goal G14).
 8. From those numbers it derives an estimate of end-to-end steps per second with 4 PPO epochs and with 2, and states whether G3's 10,000 looks reachable for each layout. The estimate and its formula are in `docs/progress.md`. No pass or fail threshold: the numbers feed B10-4 and D22.
-9. pytest passes locally. CI gains a job that runs the CPU-only tests of `src/train` (the GitHub runner has no GPU; GPU tests are marked and skipped there).
+9. pytest passes locally. A workflow file `.github/workflows/train.yml` runs the CPU-only tests of `src/train` (the GitHub runner has no GPU; GPU tests are marked and skipped there).
 
 ## Files expected to change
 
 New: `src/train/requirements.txt`, `src/train/pyproject.toml`, `src/train/tarok_train/__init__.py`, `envcheck.py`, `bench_model.py`, `src/train/tests/test_env.py`, `src/train/pyo3_probe/` (Cargo.toml, src/lib.rs, pyproject.toml).
-Changed: `.github/workflows/ci.yml`, `docs/progress.md`, this spec's status.
+New: `.github/workflows/train.yml`. Changed: this spec (status and a "Results" section). `docs/progress.md` is updated by the main session from the Results section (D109).
 
 ## Commits
 

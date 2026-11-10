@@ -16,9 +16,10 @@
 - 2026-11-10: Batch 9 answered (D90–D102). `screen-spec.md` is at draft 2. The user said work can begin (D103).
 - 2026-11-10: Figma wireframe built: 28 greyscale frames and one styled sample, file "Tarok trener — wireframe" in the user's Figma drafts (https://www.figma.com/design/XVrAGNVsQuisOd79HYbRBg). Overview image in `docs/wireframe/wireframe-overview.png`. Pitch slide text drafted in `pitch.md`. Spec `docs/specs/001-repo-skeleton.md` drafted, not approved.
 - 2026-11-10, later: C8 answered (D104), mode names deferred (D105), building confirmed with training first (D106). `docs/build-plan.md` written: specs 001–009 to the first training run. Specs 002 (engine core) and 003 (training environment and benchmark) drafted. Read-only check of the PC: CUDA-capable driver present, PyTorch installed is CPU-only, Rust toolchain is windows-gnu, maturin missing.
-- **Batch 10 (build decisions) is written and waiting for answers.** It also asks for approval of specs 001–003.
-- Still waiting on the user: corrections to the wireframe and `pitch.md`; the proposal format.
-- Next: Batch 10 answers → execute 001, then 002 and 003 → draft 004 (encoding contract) → 005–009 → first training run.
+- 2026-11-10, later: Batch 10 answered (D107–D113). The first run trains every phase from the start (D107). Specs 001–003 approved (D112). The trula rule was checked and kept (D113). `docs/build-plan.md` is at draft 2 with twelve specs.
+- **No batch is open.** Open clarification: C11.
+- Still waiting on the user: corrections to the wireframe and `pitch.md`; the proposal format; "fant" or "pob".
+- Next: execute 001; run 002 and 003 in parallel sessions; draft 004 (encoding contract) for approval.
 - The proposal, Figma wireframe and pitch slide are due Wed 18 Nov. The product batch must follow soon after the bots batch.
 
 ## Clarifications
@@ -27,9 +28,11 @@ Answered 2026-11-09: C1 (by D16), C2 (D27), C3 (D28), C4 (D29), C5 (D30: both ce
 
 Answered 2026-11-10: C8 (D104: yes, the adviser contrasts every phase in T0), C9 (D105: names later), C10 (D106: building confirmed, training first).
 
-Open: none.
+Open:
 
-## Batch 10 — build decisions (asked 2026-11-10, unanswered)
+- **C11. Trula in one trick at your table.** The sources say the pagat wins in any order (D113). Does your table play "only if the pagat falls last"? If yes, it becomes a toggle with your table's value as the Default, like the −70 radelci. If you are not sure, the sourced rule stays.
+
+## Batch 10 — build decisions (asked 2026-11-10, answered 2026-11-10; see D107–D113 and `docs/build-plan.md` draft 2)
 
 Context: the user wants training running as soon as possible (D106). `docs/build-plan.md` gives the path. These are the choices in it that are the user's. Sources: research/05 (stages, failure modes, throughput arithmetic), research/06 (training stack), and read-only checks of the PC on 2026-11-10. The throughput numbers are inferred by arithmetic; spec 003 measures them.
 
