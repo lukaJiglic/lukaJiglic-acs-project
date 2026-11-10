@@ -1,6 +1,6 @@
 # Encoding contract
 
-Status: **draft 1, 2026-11-10. Waiting for the user's approval** (spec `docs/specs/004-encoding-contract.md`). Encoding version: **1**.
+Status: **approved by the user on 2026-11-10 (D117).** Encoding version: **1**. Changes follow section 9.
 
 This document fixes what the network sees and what it can do. The Rust engine produces these arrays; the Python learner consumes them. Both tracks build against this file (D109). It covers **every phase and every Default-preset contract from the start** (D107). Slots for things not built yet are reserved and masked, so a checkpoint stays loadable when they arrive.
 
@@ -169,9 +169,9 @@ The critic never runs in the browser. The explanation panel uses the observation
 
 ## 8. Reward
 
-Proposal (open point A): a zero-sum form of the paper score.
+Decided (D117): a zero-sum form of the paper score.
 
-- Let `e` be the four entries the deal would write on paper under the rules in force: declarer and partner the same score, opponents 0, individual entries for klop and mondfang, radelc doubling applied.
+- Let `e` be the four entries the deal would write on paper under the rules in force: declarer and partner the same score, opponents 0, individual entries for klop and mondfang, radelc doubling applied. In training, a win that cancels a radelc adds 70 to the declarer's entry, because a leftover radelc costs 70 at the end of a session (D44, D88).
 - Reward of seat i = ( e_i − mean of the other three e ) / 50.
 - It is given once, at the end of the deal. No per-trick shaping (research/05 C4).
 
@@ -185,10 +185,10 @@ The decomposed value head (D15) predicts the parts of `e` separately: game and d
 - Adding a meaning to a reserved slot keeps the version. Moving or resizing anything raises it.
 - The Rust engine exports the sizes (288, 1382, 160, 128) as constants; a test on each side checks them against this file.
 
-## 10. Open points for the user
+## 10. Answers to the open points (D117)
 
-- **A. Reward form.** (a) the zero-sum relative score above, recommended; (b) "pay" model: each opponent gets minus the declarer's score; (c) raw paper entries.
-- **B. Value of cancelling a radelc.** Under your table's rule a leftover radelc costs 70 at the end (D44, D88), so winning as declarer with a radelc is worth 70 more than the paper shows. (a) add +70 to the declarer's entry when a win cancels a radelc, recommended, since it changes how boldly one should bid; (b) ignore it in training.
-- **C. Radelci during self-play.** (a) tables play runs of deals and radelci carry over as in a real session; a table is reset after 24 deals (Claude's number), recommended; (b) radelci drawn at random per deal; (c) radelci off in training.
-- **D. State features.** The list in section 4 is your design (D18, D30) written out. Add or remove anything?
-- **E. Reward scale 50 and sequence limit 128** are Claude's numbers. Both are easy to change before the first run and expensive after.
+- A. Reward: the zero-sum relative score of section 8.
+- B. A win that cancels a radelc adds 70 to the declarer's entry in training.
+- C. Self-play tables play runs of 24 deals; radelci carry over within a run and reset with it. The radelci inputs (G3) and the doubling arrive with flow C of the engine; until then they are zero.
+- D. The state features are as listed in section 4.
+- E. Reward scale 50 and sequence limit 128.

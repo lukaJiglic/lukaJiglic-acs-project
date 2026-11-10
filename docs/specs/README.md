@@ -37,6 +37,6 @@ Tool and model: ...
 | 001 | [Repo skeleton](001-repo-skeleton.md) | done 2026-11-10 |
 | 002 | [Engine core](002-engine-core.md) | done 2026-11-10 |
 | 003 | [Training environment and benchmark](003-training-environment.md) | committed 2026-11-10, CI green; GPU-free run pending |
-| 004 | [Encoding contract](004-encoding-contract.md) | draft |
-| 005 | [Deal flow A](005-deal-flow-a.md) | draft |
-| 007 | [Model and PPO learner](007-model-and-learner.md) | draft; needs 004 approved |
+| 004 | [Encoding contract](004-encoding-contract.md) | approved 2026-11-10; check script waits for the diff read |
+| 005 | [Deal flow A](005-deal-flow-a.md) | approved 2026-11-10; in execution |
+| 007 | [Model and PPO learner](007-model-and-learner.md) | approved 2026-11-10; in execution |

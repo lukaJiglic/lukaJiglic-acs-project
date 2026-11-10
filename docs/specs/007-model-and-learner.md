@@ -1,6 +1,6 @@
 # 007 — Model and PPO learner
 
-Status: **draft** (2026-11-10). Not approved. Needs spec 003 (committed) and an approved encoding contract (spec 004). It is written against draft 1 of `docs/encoding.md`; sizes follow that file.
+Status: **approved** by the user on 2026-11-10 (D119). Built on `docs/encoding.md` version 1 (approved, D117) and spec 003.
 
 Build-plan row 007. Tool and model: Claude Code 2.1.306, `claude-fable-5-2`.
 
@@ -105,3 +105,11 @@ Changed: `src/train/requirements.txt` only if a package is added (then pinned), 
 - **C. The Q head's target.** (a) the realised return of the action taken, as in Deep Monte Carlo (D14's control method), recommended; (b) the critic's value of the next state.
 - **D. Score parts for the decomposed value:** game, difference, trula, kralji, kralj ultimo, pagat ultimo, valat, mondfang. Kontra and radelc multipliers apply to the parts later. Add or remove any?
 - **E. Dropout:** none proposed. Self-play data is unlimited, so there is little to regularise against.
+
+## Answers to the open points (D119)
+
+- A. The starting hyperparameters are accepted as the starting point, with 2 PPO epochs.
+- B. The critic is an MLP over the critic features.
+- C. The Q head is trained toward the realised return of the action taken.
+- D. Score parts as listed.
+- E. No dropout.

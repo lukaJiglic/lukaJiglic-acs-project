@@ -1,6 +1,6 @@
 # 005 — Deal flow A: bidding, king call, talon, scoring of the normal contracts
 
-Status: **draft** (2026-11-10). Not approved. Needs spec 002 (done).
+Status: **approved** by the user on 2026-11-10 (D118). Needs spec 002 (done).
 
 Build-plan row 005. Tool and model: Claude Code 2.1.306, `claude-fable-5-2`.
 
@@ -118,3 +118,12 @@ These are places where the source is silent or where your table decides (the Def
 - **D. Criterion 39,** the four cases of the silent pagat ultimo. The source says the bonus is lost when the pagat is played to the last trick and fails. Check against your table.
 - **E. Criterion 42:** the mond's player pays 20 also in a trick that the pagat wins. This is the pagat.com rule and the current default (S22 a). The TARZS rules say no penalty there. Which does your table play?
 - **F. Check criteria 1–11** against how your table bids, above all who speaks first and that only forehand may play tri.
+
+## Answers to the open points (D118)
+
+- A. The opponents take all twelve tricks: the declarer scores −250 and nothing else is scored, the mirror of criterion 41. Add a test for it next to criterion 41.
+- B. Yes: trula and kings in the untaken talon count toward the opponents' silent bonus.
+- C. Yes: kralj ultimo scores whenever a king was called and that king is played to the last trick, also when the declarer holds it or took it from the talon.
+- D. Criterion 39 stands as written.
+- E. Criterion 42 stands: the mond's player pays 20 also in a trick the pagat wins (S22 a).
+- F. Criteria 1–11 stand as written.

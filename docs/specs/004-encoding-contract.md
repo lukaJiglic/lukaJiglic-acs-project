@@ -1,6 +1,6 @@
 # 004 — Encoding contract
 
-Status: **draft** (2026-11-10). Not approved.
+Status: **approved** by the user on 2026-11-10 (D117). The check script of criterion 2 is written and waits for the user's read of the diff.
 
 Build-plan row 004. Tool and model: Claude Code 2.1.306, `claude-fable-5-2`.
 
