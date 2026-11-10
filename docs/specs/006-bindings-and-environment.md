@@ -1,6 +1,6 @@
 # 006 — Observation encoding, vectorised environment, Python bindings, game record
 
-Status: **draft** (2026-11-10). Not approved. Needs spec 004 (approved) and spec 005 (in execution). Its details may shift once spec 005's API exists; any shift is reported before execution.
+Status: **approved** by the user on 2026-11-10 (D120). Starts once spec 005 is committed. Its details may shift with spec 005's API; any shift is reported before execution.
 
 Build-plan row 006. Tool and model: Claude Code 2.1.306, `claude-fable-5-2`.
 
@@ -86,3 +86,10 @@ Because it touches both folders, this spec runs in one session after spec 005 is
 - **B. Where the binding crate lives.** (a) `src/train/tarok_env`, recommended: the engine stays free of Python and compiles to WASM unchanged. (b) inside `src/engine` behind a feature flag.
 - **C. Array types.** (a) plain 32-bit floats for `state` and `critic`, recommended to start: simple, and measured in criterion 23. (b) packed bits, unpacked on the GPU: less data to copy, more code. Revisit only if the copy shows up in the smoke run.
 - **D. Seeds of the tables.** Proposal: deal seed = a hash of (base seed, table index, run number, deal number), so any deal of any run can be dealt again from four numbers.
+
+## Answers to the open points (D120)
+
+- A. The record stores the acting seat, the legal slots and the chosen slot per decision. Observations are rebuilt by replay. Agent outputs are an optional field.
+- B. The binding crate is `src/train/tarok_env`.
+- C. `state` and `critic` are 32-bit floats. Packing is revisited only if the copy shows up in the smoke run.
+- D. Deal seed = a hash of (base seed, table index, run number, deal number).
