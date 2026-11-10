@@ -21,9 +21,10 @@
 - 2026-11-10, evening: specs 002 and 003 executed by the parallel sessions, each reviewed by a separate subagent and fixed. Verified by the main session: 47 engine tests, 23 training tests, `envcheck` exit 0. Results are in each spec and in `docs/progress.md`. **Nothing from specs 001–003 is committed** (D72: the user reads the diff first). Incident: the root `rust-toolchain.toml` made rustup auto-install an MSVC toolchain; it was removed and the file is disabled as `rust-toolchain.toml.disabled`.
 - 2026-11-10, night: the user read the diffs and approved the commit (D114). Specs 001–003 are committed and pushed. The first `engine` CI run failed on an unpinned compiler; fixed in `56f4caf` (D115). All three workflows are green. Specs 001 and 002 are done; 003 waits for the GPU-free run.
 - 2026-11-10, night: the layout is L2 (D116). Specs 005 (deal flow A, 53 criteria) and 007 (model and PPO learner, 24 criteria) are drafted.
-- **Waiting on the user, to approve:** spec 004 with the points A–E in `docs/encoding.md`; spec 005 with its points A–F (rules where the source is silent or your table decides); spec 007 with its points A–E (hyperparameters, critic, Q target).
+- 2026-11-10, late: specs 004, 005 and 007 approved (D117–D119). Specs 005 and 007 are in execution in the two track sessions (`engine-core`, `train-env`). `tools/check_encoding.py` (spec 004, criterion 2) is written and passes; it is uncommitted until the user has read it. Spec 006 (encoding in Rust, vectorised environment, bindings, game record; 28 criteria) is drafted.
+- **Waiting on the user, to approve:** spec 006 with its points A–D; the small diff of `tools/check_encoding.py`.
 - **Waiting on the user, other:** one GPU-free benchmark run (`python -m tarok_train.bench_model --label "gpu free"` in the activated `.venv`, game closed); the local compiler pin (`rust-toolchain.toml.disabled`: delete or restore); C11; "fant" or "pob"; corrections to the wireframe and `pitch.md`; the proposal format.
-- Next: execute 005 and 007 in two parallel sessions once approved; draft 006 (bindings) when 004 is approved.
+- Next: verify and review the output of 005 and 007; the user's diff read; commit. Then 006 in one session, then the smoke run (008).
 - The proposal, Figma wireframe and pitch slide are due Wed 18 Nov. The product batch must follow soon after the bots batch.
 
 ## Clarifications

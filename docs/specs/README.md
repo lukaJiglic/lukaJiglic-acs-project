@@ -39,4 +39,5 @@ Tool and model: ...
 | 003 | [Training environment and benchmark](003-training-environment.md) | committed 2026-11-10, CI green; GPU-free run pending |
 | 004 | [Encoding contract](004-encoding-contract.md) | approved 2026-11-10; check script waits for the diff read |
 | 005 | [Deal flow A](005-deal-flow-a.md) | approved 2026-11-10; in execution |
+| 006 | [Encoding, environment, bindings, record](006-bindings-and-environment.md) | draft |
 | 007 | [Model and PPO learner](007-model-and-learner.md) | approved 2026-11-10; in execution |
