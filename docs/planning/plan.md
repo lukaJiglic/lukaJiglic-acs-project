@@ -38,7 +38,7 @@ First pass 2026-11-06 by four research subagents (`research/01–04`), summarise
 
 ## 1. Product
 
-Decided in Batch 3 (D31–D42). The screen spec is drafted in `screen-spec.md` (draft 1, 2026-11-10, waiting for Batch 9). The Figma wireframe follows its approval.
+Decided in Batch 3 (D31–D42). The screen spec is `screen-spec.md` (draft 2, 2026-11-10, Batch 9 answers D90–D102 included). App name: "Tarok trener" (D102). Play runs clockwise on screen (D91). The coach interrupts in every phase (D93). Review uses five grade classes (D95). Six lessons and eleven rule cards are T0 (D100, D101). The Figma wireframe (28 greyscale frames, one styled sample, D99) is at https://www.figma.com/design/XVrAGNVsQuisOd79HYbRBg; overview image in `docs/wireframe/wireframe-overview.png`. Pitch text draft: `pitch.md`.
 
 - **User (D31).** A player who knows the rules and wants to play better. Beginners get a rules layer on top (rule cards when a rule triggers).
 - **Form (D32).** Phone-first web app, portrait, installable PWA, usable on desktop. Slovenian first, English as a translation pass, i18n keys from the first screen (D40). Own simple SVG cards (D11).
@@ -177,7 +177,7 @@ Decided in Batch 6 (D65–D69). Thresholds are realistic targets; aspirations in
 - G14. Agent move latency at most 500 ms on a Honor 200; app shell plus weights at most 15 MB; first load at most 5 s on 4G. Measured on the Pages build; DevTools CPU throttling ×4 as the CI proxy. [aspiration 300 ms / 10 MB / 3 s]
 - G15. Coached play, review and adviser each complete a full deal end to end in the T0 app (manual test script in `docs/`).
 - G16. Adviser: a full deal entered by the user in at most 6 minutes, timed. [aspiration 4]
-- G17. At least 3 scripted lessons and at least 8 rule cards in Slovenian, each tied to a seeded deal or rule. [aspiration 5 / 10]
+- G17. At least 3 scripted lessons and at least 8 rule cards in Slovenian, each tied to a seeded deal or rule. [aspiration 6 / 11, the planned set of D100 and D101]
 - G18 (T1). At least 30 deals played against the agent by at least 2 people, results and feedback recorded, reported with standard error as anecdote. [aspiration 50 / 3]
 
 **Process**

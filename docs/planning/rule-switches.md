@@ -8,7 +8,7 @@ Conventions used below:
 
 - Default = the first option in each row. Where PAG has a 4-player rule, the default follows PAG. Where it does not, the default is the option most sources support.
 - "Agent" column: **yes** = changes legal actions, contract set or information the agent sees. **scoring** = changes the payoff only; legal play is unchanged. **no** = no effect on play.
-- Tier: **T0** = every option is in the first trained model and the first release. **T1** = planned. **T2** = stretch. Until a toggle ships, the game uses its default. One exception: S7 (barvni valat) is pinned off in the first release. See open question 9.
+- Tier: **T0** = every option is in the engine and the first release. The first trained model covers the Default preset plus the scoring-only T0 toggles (D20, D47); other non-default T0 values carry an "agent not trained" note in the app (D98). (Original wording: "every option is in the first trained model and the first release".) **T1** = planned. **T2** = stretch. Until a toggle ships, the game uses its default. One exception: S7 (barvni valat) is pinned off in the first release. See open question 9.
 - Options with a weak source are marked "(unverified)". Nothing below is added from memory unless marked "(from memory, unverified)".
 - A toggle's value is set per table and fixed for the whole session.
 

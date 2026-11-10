@@ -8,7 +8,7 @@ This folder holds the full state of planning. A fresh session should read it and
 2. `decisions.md` — what is decided, by whom, and when. Also the givens from the user's brief.
 3. `open-questions.md` — the current batch waiting for the user, then the backlog of later batches.
 4. `plan.md` — the plan. Every item points at a decision number; the idea pool is kept for the record.
-5. `screen-spec.md` — the T0 screens, input for the Figma wireframe. Draft until the user approves it.
+5. `screen-spec.md` — the T0 screens (draft 2). The Figma wireframe built from it: https://www.figma.com/design/XVrAGNVsQuisOd79HYbRBg (overview image in `docs/wireframe/`). `pitch.md` — the one-slide pitch text, draft.
 6. `rule-switches.md` — the rule toggles, presets, left-out list and decided defaults.
 7. `research/` — research notes. Each file ends with a "Verified vs inferred" section.
 8. `ai-log.md` — log of AI use. Needed for the graded AI-use declaration.
@@ -31,11 +31,12 @@ This folder holds the full state of planning. A fresh session should read it and
 
 ## Status
 
-See the top of `open-questions.md` for where planning stands. As of 2026-11-10: the eight plan batches are answered (D1–D88). The model changed to Claude Fable 5.2 (D89). **Batch 9 (screen spec) is open.** `plan.md` is the plan. Two provisional choices (P2, P5 in `decisions.md`) are in use but never explicitly confirmed by the user.
+See the top of `open-questions.md` for where planning stands. As of 2026-11-10: the eight plan batches are answered (D1–D88). The model changed to Claude Fable 5.2 (D89). Batch 9 is answered (D90–D102) and the user said work can begin (D103). Open clarifications: C8, C9, C10. `plan.md` is the plan. Two provisional choices (P2, P5 in `decisions.md`) are in use but never explicitly confirmed by the user.
 
 ## What a fresh session does next
 
-1. D50: take the Batch 9 answers, record them, revise `screen-spec.md` to draft 2 and get it approved. Then the Figma wireframe through the Figma connector (frame list in `screen-spec.md` section 5), then the pitch slide text. Due Wed 18 Nov with the proposal.
-2. Derive the proposal text from `plan.md` (D87). Format of the proposal is not stated in the course text; ask the user.
-3. Remind the user of the two actions only they can take: confirm the topic with the lecturer on Mon 16 Nov (R2); make the repo public or add the instructor by Mon 23 Nov (R5).
-4. Building starts only when the user says so. The first building step is order-of-work step 0 (D82): README with goals, root `CLAUDE.md`, `docs/progress.md`, CI, licences.
+1. Take the user's answers to C8, C9, C10 and their corrections to the wireframe and `pitch.md`. Record them.
+2. Ask for the proposal format, then derive the proposal text from `plan.md` (D87). Due Wed 18 Nov.
+3. `docs/specs/001-repo-skeleton.md` is a draft. Execute it only after the user approves it and answers its points A–C (D70, D73).
+4. Remind the user of the actions only they can take: confirm the topic with the lecturer on Mon 16 Nov (R2); make the repo public or add the instructor by Mon 23 Nov (R5); share the Figma file with the lecturer.
+5. Then the order of work D82, one approved spec at a time. No product code without an approved spec.

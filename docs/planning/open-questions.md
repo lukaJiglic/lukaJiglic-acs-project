@@ -13,17 +13,23 @@
 - 2026-11-10: Batch 8 answered (D80–D87), C7 confirmed (D88). **All eight batches are answered.** `plan-draft.md` renamed `plan.md`; tiers, compliance mapping (section 6), fixed points and demo (section 7), not-in-scope (section 8) written.
 - Two actions sit with the user: confirm the topic with the lecturer on 16 Nov (R2); make the repo public or add the instructor by 23 Nov (R5).
 - 2026-11-10, session 3: model switched to Claude Fable 5.2 (D89). `screen-spec.md` draft 1 written (D50, first step).
-- **Batch 9 (screen spec) is written and waiting for answers.**
-- Next: take Batch 9 answers → screen spec draft 2 → user approves → Figma wireframe through the connector → pitch slide text. Due Wed 18 Nov with the proposal.
+- 2026-11-10: Batch 9 answered (D90–D102). `screen-spec.md` is at draft 2. The user said work can begin (D103).
+- 2026-11-10: Figma wireframe built: 28 greyscale frames and one styled sample, file "Tarok trener — wireframe" in the user's Figma drafts (https://www.figma.com/design/XVrAGNVsQuisOd79HYbRBg). Overview image in `docs/wireframe/wireframe-overview.png`. Pitch slide text drafted in `pitch.md`. Spec `docs/specs/001-repo-skeleton.md` drafted, not approved.
+- **No batch is open.** Waiting on the user: C8, C9, C10; corrections to the wireframe and to `pitch.md`; approval of spec 001 with its points A–C; the proposal format.
+- Next: apply the user's corrections → proposal text (due Wed 18 Nov) → execute spec 001 once approved → order of work D82.
 - The proposal, Figma wireframe and pitch slide are due Wed 18 Nov. The product batch must follow soon after the bots batch.
 
 ## Clarifications
 
 Answered 2026-11-09: C1 (by D16), C2 (D27), C3 (D28), C4 (D29), C5 (D30: both certain facts and derived counts), C6 (D50). Answered 2026-11-10: C7 (D88: explicit end-session action settles leftover radelci at −70 each).
 
-Open: none.
+Open:
 
-## Batch 9 — screen spec (asked 2026-11-10, unanswered)
+- **C8. Adviser and D93.** D93 makes the coach interrupt in bidding, king call, talon and announcements in T0 (coached play against bots). At a real table (Adviser mode), should the app also show the agent's bid, call, packet and discards in T0? D36 put the "bidding adviser" in T1 and D97 left talon and bidding contrast for T1. Options: a) yes, same contrast in the adviser in T0; b) no, adviser contrast stays card play only until T1. Claude's recommendation: **a**, since the model call is the same and only the entry screens need the extra step.
+- **C9. Mode names.** Not answered in B9-13. Draft labels in use: Učenje · Igra · Svetovalec. Alternative: Uči se · Igraj · Za mizo. Or your own.
+- **C10. "We can begin working now" (D103).** Claude read it as: the planning-only rule is lifted, and building starts in the D82 order, each task through a spec you approve first. If you meant only "start the wireframe", say so and D103 is corrected.
+
+## Batch 9 — screen spec (asked 2026-11-10, answered 2026-11-10; see D90–D102 and `screen-spec.md` draft 2)
 
 Context: `screen-spec.md` draft 1 describes the T0 screens. These are the points where Claude had to choose and should not. Sources: decisions D2–D88; `research/07` (f) and (c) for the explanation layers and the over-reliance risk; `research/02` (e) for ideas from other apps; `research/01` for the direction of play. Layout sizes and tap counts are Claude's estimates, not measurements.
 
@@ -584,6 +590,9 @@ None. Batch 8 was the last planned batch. New questions go to "Loose questions" 
 - ~~Who draws the Figma wireframe?~~ Answered: Claude through the Figma connector, from an approved screen spec (D50).
 - ~~OpenSpiel's tarok engine worth a closer look before Batch 4.~~ Closed: no code from other engines (D9); rules were derived from research/01 instead.
 - Tarok's per-deal score variance is unknown. It sets how many deals a strength comparison needs. Measured early in stage 0 (D25). Still open; needs an engine.
-- Proposal format for 18 Nov: the course text gives no length or template for the proposal itself. Ask the user, or check Moodle.
+- Proposal format for 18 Nov: the course text gives no length or template for the proposal itself. Ask the user, or check Moodle. **Still open; blocks the proposal text.**
+- The Figma file sits in the user's drafts (starter plan, three pages per file at most, so the wireframe is on one page in rows A–E). The lecturer needs a share link; sharing is the user's action.
+- In the wireframe the suit glyphs come from a fallback font and ♦ shows in red. Cosmetic. The real cards are the script-generated SVGs (D60).
+- Card index letters in the wireframe (K, D, C, P for kralj, dama, kaval, pob) are drafts. Decide with the card SVG spec.
 - Weight file size for the 4-layer, 256-wide transformer is not estimated; G14's 15 MB budget assumes it fits. Measure at the first export.
 - Git warns LF→CRLF on every commit (`.gitattributes` has `* text=auto`). Harmless; decide at step 0 whether to force LF.
