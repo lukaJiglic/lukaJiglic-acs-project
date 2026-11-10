@@ -1,1 +1,15 @@
-* text=auto
+# Text files are stored and checked out with LF (spec 001, D112).
+* text=auto eol=lf
+# Windows batch files need CRLF to run in cmd.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+# Binary files.
+*.png binary
+*.jpg binary
+*.pdf binary
+*.bin binary
+*.pt binary
+*.onnx binary
+*.wasm binary
+*.safetensors binary
+*.npy binary

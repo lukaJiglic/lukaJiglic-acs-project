@@ -1,0 +1,17 @@
+Cards, lesson texts and rule-card texts in this repository
+Copyright (c) 2026 Luka Jelenko Iglic
+
+Licensed under the Creative Commons Attribution 4.0 International licence
+(CC BY 4.0). SPDX identifier: CC-BY-4.0
+
+You may share and adapt this material for any purpose, including commercially,
+as long as you give appropriate credit, link to the licence, and say if you
+made changes.
+
+Full legal text: https://creativecommons.org/licenses/by/4.0/legalcode
+Summary:         https://creativecommons.org/licenses/by/4.0/
+
+Applies to: src/assets/cards/ and the lesson and rule-card texts of the app.
+It does not apply to docs/ or report/ (the report uses the course's template,
+and the research notes quote third parties). Source code is under the MIT
+licence in the file LICENSE.
