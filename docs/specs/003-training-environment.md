@@ -1,6 +1,6 @@
 # 003 — Training environment and throughput benchmark
 
-Status: **approved** 2026-11-10 (D112); executed; diff read by the user (D114); committed in `e6af3d0`; CI green on `56f4caf`. **Not done yet: the GPU-free benchmark run is missing** (open point B). See "Results" at the end.
+Status: **approved** 2026-11-10 (D112); executed; diff read by the user (D114); committed in `e6af3d0`; CI green on `56f4caf`. **GPU-free benchmark run done on 2026-11-11 (open point B) and committed the same day (D122).** See "Results" at the end.
 
 Build-plan row 003. Tool and model: Claude Code 2.1.306, `claude-fable-5-2`.
 
@@ -277,6 +277,98 @@ Is G3's 10,000 steps/s reachable?
 
 Against build-plan section 6 (arithmetic for a free GPU: L1 about 600, L2 about 5,000, a ratio of about 8): the measured ratio is 6 to 8. The absolute numbers are not comparable while the GPU is loaded.
 
+### GPU-free run (open point B, 2026-11-11)
+
+Added on 2026-11-11 by the parallel session; committed the same day (D122). Command: `python -m tarok_train.bench_model --label "gpu free"`. Raw rows: `src/train/bench_results/20261111-020503-gpu-free.json`.
+
+**Label: GPU free.** nvidia-smi before the run: 0% busy, 234 of 6,144 MiB used. After the run: 0% busy, 234 MiB used. No game and no other GPU job. Nothing else of this session ran during the 197 seconds. Same code and method as run 3 (3 repeats per row, median with minimum and maximum). The repeats agree within 1%; under load they spread by up to 15%.
+
+All numbers in the next three tables are **measured**.
+
+Acting, decisions per second:
+
+| Network | Row | Precision | Batch | Median (min to max) | Peak VRAM (MiB) |
+|---|---|---|---|---|---|
+| MLP 512-512-256 | | fp32 | 65,536 | 1,546,968 (1,546,827 to 1,548,754) | 453 |
+| MLP 512-512-256 | | fp16 autocast | 65,536 | 588,503 (588,268 to 588,556) | 350 |
+| transformer | L1 padded, uncached | fp32 | 2,048 | 4,985 (4,981 to 4,986) | 2,026 |
+| transformer | L1 padded, uncached | fp16 autocast | 512 | 1,215 (1,215 to 1,215) | 320 |
+| transformer | L1 bucketed, uncached | fp32 | 2,048 | 7,673 (7,671 to 7,674) | 536 |
+| transformer | L1 bucketed, uncached | fp16 autocast | 512 | 1,638 (1,637 to 1,639) | 104 |
+| transformer | cached, idealised | fp32 | 1,024 deals | 44,138 (44,098 to 44,172) | 742 |
+| transformer | cached, idealised | fp16 autocast | 1,024 deals | 12,050 (12,047 to 12,051) | 418 |
+| transformer | cached, ragged, host copy | fp32 | 4,096 deals | 34,911 (34,899 to 34,947) | 2,885 |
+| transformer | cached, ragged, host copy | fp16 autocast | 4,096 deals | 10,325 (10,319 to 10,326) | 1,589 |
+
+Update, samples per second:
+
+| Network | Layout | Precision | Batch | Median (min to max) | Peak VRAM (MiB) |
+|---|---|---|---|---|---|
+| MLP 512-512-256 | | fp32 | 65,536 | 640,075 (639,466 to 640,397) | 837 |
+| MLP 512-512-256 | | fp16 autocast | 16,384 | 200,627 (199,606 to 202,096) | 198 |
+| transformer | L1 padded | fp32 | 64 | 1,691 (1,690 to 1,694) | 378 |
+| transformer | L1 padded | fp16 autocast | 128 | 359 (359 to 359) | 431 |
+| transformer | L1 bucketed | fp32 | 256 | 2,532 (2,530 to 2,533) | 853 |
+| transformer | L1 bucketed | fp16 autocast | 128 | 516 (516 to 516) | 297 |
+| transformer | L2 | fp32 | 512 deals | 19,864 (19,806 to 19,868) | 3,098 |
+| transformer | L2 | fp16 autocast | 64 deals | 4,732 (4,730 to 4,732) | 292 |
+
+The fp32 update sweep, median samples per second:
+
+| Layout | Batch 1 | Batch 2 | Batch 3 | Batch 4 |
+|---|---|---|---|---|
+| L1 padded (decisions) | 64: 1,691 | 128: 1,625 | 256: 1,657 | 512: 1,667 |
+| L1 bucketed (decisions) | 64: 1,843 | 128: 2,288 | 256: 2,532 | 512: 2,497 |
+| L2 (deals of 15 decisions) | 16: 15,897 | 64: 18,729 | 256: 19,788 | 512: 19,864 |
+
+Single-thread CPU forward time, batch 1, fp32, milliseconds per decision, median (min to max):
+
+| Network | Row | ms per decision |
+|---|---|---|
+| MLP 512-512-256 | one decision | 0.125 (0.125 to 0.126) |
+| transformer | L1, mean over the 15 decisions of a deal | 3.651 (3.643 to 3.666) |
+| transformer | L1, longest prefix (70 tokens) | 5.731 (5.655 to 5.747) |
+| transformer | cached, mean over the 15 decisions of a deal | 1.868 (1.868 to 1.868) |
+
+The CPU times are a fifth to a third lower than in run 3. During run 3 the game also used the CPU.
+
+End-to-end estimate, **derived** from the medians above with `steps/s = 1 / (1/A + E/U)`, fp32. The engine, the copy of observations to the GPU, GAE and the full-information critic are not counted.
+
+| Case | Steps/s, 4 epochs | Steps/s, 2 epochs |
+|---|---|---|
+| MLP 512-512-256 | 145,018 (144,892 to 145,100) | 265,177 (264,964 to 265,340) |
+| L1 padded, acting uncached | 390 (389 to 390) | 723 (722 to 724) |
+| L1 bucketed, acting uncached | 585 (584 to 585) | 1,087 (1,086 to 1,087) |
+| L1 bucketed update, acting cached (ragged) | 622 (621 to 622) | 1,222 (1,221 to 1,222) |
+| L2, acting cached (idealised) | 4,464 (4,452 to 4,465) | 8,108 (8,087 to 8,110) |
+| L2, acting cached (ragged) | 4,348 (4,336 to 4,349) | 7,732 (7,714 to 7,735) |
+
+Example, L2 with ragged cached acting, 2 epochs: 1 / (1/34,911 + 2/19,864) = 7,732.
+
+Comparison with the loaded runs (run 3, a game on the GPU):
+
+| Row, fp32 | GPU free | Run 3, loaded | Free / loaded |
+|---|---|---|---|
+| MLP acting | 1,546,968 | 358,828 | 4.3 |
+| MLP update | 640,075 | 142,829 | 4.5 |
+| L1 bucketed acting | 7,673 | 1,593 | 4.8 |
+| L1 bucketed update | 2,532 | 592 | 4.3 |
+| Cached acting, idealised | 44,138 | 10,281 | 4.3 |
+| Cached acting, ragged, host copy | 34,911 | 7,935 | 4.4 |
+| L2 update | 19,864 | 4,909 | 4.0 |
+| L2 steps/s, ragged acting, 2 epochs (derived) | 7,732 | 1,875 | 4.1 |
+
+Read of the numbers:
+
+- **The free GPU is 4.0 to 4.8 times faster than under the game**, in every row. The loaded runs were a lower bound, as labelled.
+- **The layout ratio holds.** L2 against L1 bucketed in the update: 7.8 on the free GPU (19,864 / 2,532); the loaded runs gave 6.8 to 8.3. Like for like, both with cached acting, L2 gives 7.0 times the steps of L1 with 4 epochs and 6.3 times with 2. The choice of L2 (D116) stands on measured numbers of a free GPU now.
+- **Half precision is still slower:** 2.6 to 4.5 times, row by row at the same batch size. fp32 stays.
+- **G3's 10,000 steps/s, for the learner alone on this synthetic shape:** L2 gives 7,732 with 2 epochs and 4,348 with 4 (derived). That is under 10,000 before the engine is counted. With 1 epoch the same formula gives 12,660. The MLP is far above (265,177). This is the benchmark's shape (85 tokens for 15 decisions, state width 700); the real shape follows from `docs/encoding.md`.
+- **Build-plan section 6** estimated, by arithmetic for a free GPU and 4 epochs, about 600 steps/s for L1 and about 5,000 for L2. Measured and derived here: 585 and 4,348.
+- VRAM is not the limit: the fastest rows peak at 3.1 GB of 6 GB.
+
+Not done in this run: the state width of the contract (1,382; run 4 was under load). It changed little under load.
+
 ### pytest output
 
 `python -m pytest -v` in `src\train`, GPU present, probe built:
@@ -320,7 +412,7 @@ The tests in `tests/test_env.py` for criteria 2 to 4 were written before `envche
 
 ### Open issues
 
-1. **GPU-free run is pending (open point B).** It needs the user to close the game and other GPU apps. Then, in cmd from the repo root:
+1. **GPU-free run: done on 2026-11-11**, see the part with that name above. What follows is the earlier text. ~~GPU-free run is pending (open point B).~~ It needs the user to close the game and other GPU apps. Then, in cmd from the repo root:
 
    ```bat
    .venv\Scripts\activate
