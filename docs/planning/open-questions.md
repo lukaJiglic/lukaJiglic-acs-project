@@ -25,7 +25,7 @@
 - Spec 006 approved (D120).
 - 2026-11-11: specs 005 and 007 executed, reviewed, fixed and verified. The score has ten parts (D121). The user gave the go-ahead to commit (D122); five commits pushed, all three workflows green on `819220d`. Specs 003, 004, 005 and 007 are done. Spec 006 is in execution in the `engine-core` session.
 - **Waiting on the user, to approve:** spec 008 (pipeline smoke run; 19 criteria, open points A–E in the spec).
-- **Waiting on the user:** Batch 11 below (rule readings, learner settings, G3, the compiler pin, "fant" or "pob"); C11; corrections to the wireframe and `pitch.md`; the proposal format.
+- **Waiting on the user:** Batch 12 below (eight readings of the encoding contract raised by spec 006; the session builds the recommended ones meanwhile); Batch 11 below (rule readings, learner settings, G3, the compiler pin, "fant" or "pob"); C11; corrections to the wireframe and `pitch.md`; the proposal format.
 - Next: verify and review the output of 006; the user's diff read; commit. Then spec 008 once approved.
 - The proposal, Figma wireframe and pitch slide are due Wed 18 Nov. The product batch must follow soon after the bots batch.
 
@@ -38,6 +38,23 @@ Answered 2026-11-10: C8 (D104: yes, the adviser contrasts every phase in T0), C9
 Open:
 
 - **C11. Trula in one trick at your table.** The sources say the pagat wins in any order (D113). Does your table play "only if the pagat falls last"? If yes, it becomes a toggle with your table's value as the Default, like the −70 radelci. If you are not sure, the sourced rule stays.
+
+## Batch 12 — readings of the encoding contract (asked 2026-11-11, open)
+
+Context: the `engine-core` session read `docs/encoding.md` against the engine before writing spec 006 and found eight places the contract leaves open. None changes a size or an id. The session builds the recommended reading of each in one marked place, so another ruling is a small edit. Checked by the main session against `docs/encoding.md` sections 3, 4, 6, 7 and the learner's `contract.py` and `ppo.py`. After your answer the contract is amended; it stays version 1, because no model has been trained on it.
+
+| # | Place in the contract | Question | Options | Recommended | Reason |
+|---|-----------------------|----------|---------|-------------|--------|
+| B12-1 | G1, scoring toggles (19 bits) | The engine has no toggles yet. What do the bits hold now? | a) the one-hot of the Default preset's values; b) all zero | a | The inputs then mean the same when toggles arrive. "One-hot each" already implies one bit per toggle. |
+| B12-2 | Critic, "the true partner seat" (4) | Whose partner? | a) the declarer's true partner, relative to the acting seat, like B6; b) the acting seat's own team-mate | a | The contract's wording. The same information for the critic either way. |
+| B12-3 | Partner target | What is the target when the acting seat has no single team-mate: the declarer alone, an opponent in a one-against-three game, every seat during the bidding? | a) "none", and the loss skips the decision; b) something else | a | The learner already skips "none". An opponent in a two-against-two game keeps a normal target: the other opponent. |
+| B12-4 | F5, "own card is the highest unseen of its suit" | Which own cards get the bit? | a) every own card that no unseen card of its suit beats (king and queen in hand: both); b) only the single highest own card | a | (a) marks every sure winner of the suit. |
+| B12-5 | F3, "certainly holds", "includes the revealed called king" | The partner is public only when the king is played, and then nobody holds it. Reading: a king or trula card in the packet the declarer took is certainly in the declarer's hand until played; so is a taken tarok that was not shown as a discard. Plus plain elimination. | a) this reading; b) elimination only | a | All of it follows from public facts: kings and trula cannot be discarded, discarded taroks are shown. The soundness test (criterion 8) covers each source. |
+| B12-6 | F6, two counts | "Card points unseen / 70": the unseen cards counted as one pile. "Most taroks a seat can still hold / 12": the smaller of its hand size and the taroks it can still hold, capped at 12. | a) as written here; b) other | a | The cap keeps every feature in 0 to 1; the declarer holds 15 cards during the exchange. |
+| B12-7 | Token seat field | Which seat do tokens without an actor carry? | a) the start token and the six shown talon cards: "no seat"; contract, called king, taken packet, shown discard: the declarer; b) other | a | The declarer did those four things. Nobody did the other two. |
+| B12-8 | Record and deal seeds | Three details not fixed anywhere: the seed in the JSON record, the mixing function for (base seed, table, run, deal), the first dealer of a run. | a) seed as a decimal string; SplitMix64 mixing; first dealer of run r at table t = (t + r) mod 4; all frozen by a golden test; b) other | a | A 64-bit seed does not survive JavaScript numbers. The rest only has to be fixed and written down. |
+
+Not a question: the trainer (`train.py`) still builds only the mock environment. Switching it to the real one is in spec 008's scope.
 
 ## Batch 11 — rulings and settings found while building (asked 2026-11-11, open)
 
