@@ -101,8 +101,8 @@ impl PlayState {
 
     /// Starts the play with the hands of a deal. The talon stays out.
     ///
-    /// This cannot fail: a [`Deal`] only comes from [`Deal::from_seed`], so
-    /// it always holds four separate hands of twelve.
+    /// This cannot fail: a [`Deal`] always holds four separate hands of
+    /// twelve (see [`Deal::new`]).
     pub fn from_deal(deal: &Deal, leader: Seat) -> PlayState {
         PlayState::new(deal.hands(), leader).expect("a deal has four separate hands of twelve")
     }

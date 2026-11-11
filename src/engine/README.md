@@ -2,7 +2,12 @@
 
 The Rust crate `tarok-engine`: cards, deals, rules of four-player Slovenian tarok, scoring, seeded deals, game records and the encoding the network sees. It is built natively for training and tests and as WASM for the browser.
 
-Built so far (spec 002): cards, card sets, card points, the seeded deal, the trick winner and legal cards for normal contracts, and the card play of one deal. Not yet: bidding, king call, talon, contracts, scoring, klop and berač rules, bindings.
+Built so far:
+
+- Spec 002: cards, card sets, card points, the seeded deal, the trick winner and legal cards for normal contracts, the card play of one deal.
+- Spec 005 (flow A): a whole deal of the six normal contracts. Bidding, choice of the contract, king call, talon exchange, twelve tricks, score with its parts.
+
+Not yet: announcements and kontra (spec 009); klop, berač, solo brez, valat as a bid, radelci (spec 010); the encoding of observations, game records, bindings (spec 006).
 
 ## Layout
 
@@ -14,9 +19,33 @@ Built so far (spec 002): cards, card sets, card points, the seeded deal, the tri
 | `src/deal.rs` | `Seat`, `Deal`, the seeded shuffle. |
 | `src/trick.rs` | Trick winner and legal cards. |
 | `src/play.rs` | `PlayState`: twelve tricks of one deal. |
-| `src/bin/bench_play.rs` | Benchmark: random legal play, card plays per second. |
+| `src/contract.rs` | `Contract`: the ladder of twelve contracts, game values, packet sizes. |
+| `src/action.rs` | `Action`, `ActionSet`, `Packet`. The 160 action slots of `docs/encoding.md`. |
+| `src/bidding.rs` | `Bidding`: the auction. |
+| `src/talon.rs` | Talon packets and the cards that may not be discarded. |
+| `src/score.rs` | `Score`, `ScoreParts`: the entry of each seat and its parts. |
+| `src/game.rs` | `Game`: the state machine of a whole deal, and its public, private and full views. |
+| `src/bin/bench_play.rs` | Benchmark: random legal card play, card plays per second. |
+| `src/bin/bench_game.rs` | Benchmark: whole deals with random legal actions, deals per second. |
 | `examples/print_deal.rs` | Prints the deal for a seed. CI compares it with `tests/golden_deal_reference.py`. |
 | `tests/` | Tests named by acceptance criterion; the name starts with the criterion number. |
+
+Test files of spec 002: `cards_and_counting.rs`, `cardset.rs`, `deal.rs`, `trick_winner.rs`, `legal_cards.rs`, `whole_deals.rs`. Of spec 005: `bidding.rs`, `king_call.rs`, `talon.rs`, `game_play.rs`, `scoring.rs`, `written_deals.rs`, `whole_games.rs`, `actions.rs`. Shared helpers are in `tests/common/`.
+
+## One deal
+
+```rust
+use tarok_engine::{Game, Phase, Seat};
+
+let mut game = Game::from_seed(7, Seat::ALL[3]); // seat 3 deals, seat 0 is forehand
+while game.phase() != Phase::Over {
+    let action = game.legal_actions().iter().next().unwrap();
+    game.apply(action).unwrap();
+}
+let entries = game.score().unwrap().entries(); // what each seat writes
+```
+
+What a seat may know is split in three: `game.public()` is what all see, `game.private(seat)` adds that seat's hand and discards, `game.full()` has everything (the true partner, the hidden discards). A player or an actor network must not read `full()`.
 
 ## Commands
 
@@ -27,6 +56,7 @@ cargo test
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 cargo run --release --bin bench_play
+cargo run --release --bin bench_game
 ```
 
 The property tests take a new seed from the clock on every run. A failure prints the seed. To replay it:

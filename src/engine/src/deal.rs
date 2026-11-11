@@ -17,6 +17,8 @@
 //! 5. Positions 0-5 are the talon. Then packets of six go to seats 0, 1, 2,
 //!    3 and again 0, 1, 2, 3 (talon first, packets of six: research/01 B3).
 
+use std::fmt;
+
 use rand_chacha::ChaCha8Rng;
 use rand_chacha::rand_core::{Rng, SeedableRng};
 
@@ -57,9 +59,8 @@ impl Seat {
 /// once.
 ///
 /// The fields are private, so a `Deal` can only come from
-/// [`Deal::from_seed`] and is always whole. Code that builds hands itself
-/// (tests, later the talon exchange) starts the play with
-/// [`crate::PlayState::new`], which checks the hands.
+/// [`Deal::from_seed`] or from [`Deal::new`], which checks the cards. A
+/// `Deal` is always whole.
 ///
 /// ```compile_fail
 /// use tarok_engine::{Card, CardSet, Deal};
@@ -72,7 +73,43 @@ pub struct Deal {
     talon: [Card; 6],
 }
 
+/// The cards given to [`Deal::new`] are not a whole deal.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum DealError {
+    /// Not four hands of twelve and six talon cards with every card of the
+    /// deck exactly once.
+    NotWhole,
+}
+
+impl fmt::Display for DealError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("not four hands of twelve and a talon of six with every card once")
+    }
+}
+
+impl std::error::Error for DealError {}
+
 impl Deal {
+    /// A deal of chosen cards, for tests and written examples. Each hand
+    /// must hold twelve cards, and the hands and the talon together every
+    /// card of the deck exactly once.
+    pub fn new(hands: [CardSet; 4], talon: [Card; 6]) -> Result<Deal, DealError> {
+        let mut seen = CardSet::EMPTY;
+        for hand in hands {
+            if hand.len() != 12 || !seen.is_disjoint(hand) {
+                return Err(DealError::NotWhole);
+            }
+            seen = seen | hand;
+        }
+        for card in talon {
+            if !seen.insert(card) {
+                return Err(DealError::NotWhole);
+            }
+        }
+        // 48 + 6 different cards are the whole deck.
+        Ok(Deal { hands, talon })
+    }
+
     /// The deal for a seed. The same seed always gives the same deal.
     pub fn from_seed(seed: u64) -> Deal {
         let deck = shuffled_deck(seed);

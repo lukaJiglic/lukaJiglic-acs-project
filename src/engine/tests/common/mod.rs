@@ -5,6 +5,10 @@
 
 #![allow(dead_code)]
 
+pub mod flow;
+pub mod second_scorer;
+pub mod written;
+
 use proptest::strategy::Strategy;
 use proptest::test_runner::{Config, RngAlgorithm, TestCaseError, TestRng, TestRunner};
 use tarok_engine::{Card, CardSet, Rank, Seat, Suit};

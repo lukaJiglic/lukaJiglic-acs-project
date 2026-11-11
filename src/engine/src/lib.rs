@@ -1,13 +1,44 @@
 //! `tarok-engine`: the rules of four-player Slovenian tarok.
 //!
-//! This is the first part (spec 002): cards, card sets, card points, the
-//! seeded deal, the trick winner and legal cards for normal contracts, and
-//! the card play of one deal. Bidding, contracts, the talon, scoring and the
-//! bindings come with later specs.
+//! Built so far:
+//!
+//! - Spec 002: cards, card sets, card points, the seeded deal, the trick
+//!   winner and legal cards for normal contracts, the card play of one deal
+//!   ([`PlayState`]).
+//! - Spec 005 (flow A): a whole deal of the six normal contracts ([`Game`]):
+//!   bidding, choice of the contract, king call, talon exchange, twelve
+//!   tricks and the score with its parts.
+//!
+//! Announcements, kontra, klop, berač and the higher contracts, the
+//! encoding and the bindings come with later specs.
 //!
 //! Card names are Slovenian without diacritics: `Kralj`, `Dama`, `Kaval`,
 //! `Fant`; `PAGAT` (tarok I), `MOND` (tarok XXI), `SKIS`; `Srce`, `Karo`,
 //! `Pik`, `Kriz`.
+//!
+//! A whole deal with the lowest legal action at every step:
+//!
+//! ```
+//! use tarok_engine::{Game, Phase, Seat};
+//!
+//! // Seat 3 deals, so seat 0 is forehand.
+//! let mut game = Game::from_seed(7, Seat::ALL[3]);
+//! while game.phase() != Phase::Over {
+//!     let seat = game.to_act().unwrap();
+//!     let action = game.legal_actions().iter().next().unwrap();
+//!     // What the seat may look at: the public state and its own view.
+//!     assert!(game.private(seat).hand().len() <= 15);
+//!     game.apply(action).unwrap();
+//! }
+//! let score = game.score().unwrap();
+//! assert_eq!(score.declarer_points() + score.opponents_points(), 70);
+//! // The entries: declarer and partner the same, opponents 0, and -20 for
+//! // a lost mond.
+//! let entries = score.entries();
+//! assert!(entries.iter().all(|entry| entry % 5 == 0));
+//! ```
+//!
+//! The card play alone, without bidding and scoring:
 //!
 //! ```
 //! use tarok_engine::{Deal, PlayState, Seat, points};
@@ -25,14 +56,25 @@
 
 #![forbid(unsafe_code)]
 
+pub mod action;
+pub mod bidding;
 pub mod card;
 pub mod cardset;
+pub mod contract;
 pub mod deal;
+pub mod game;
 pub mod play;
 pub mod points;
+pub mod score;
+pub mod talon;
 pub mod trick;
 
+pub use action::{Action, ActionSet, Packet};
+pub use bidding::{BidEvent, Bidding};
 pub use card::{Card, Face, Rank, Suit};
 pub use cardset::CardSet;
-pub use deal::{Deal, Seat, shuffled_deck};
+pub use contract::Contract;
+pub use deal::{Deal, DealError, Seat, shuffled_deck};
+pub use game::{FullView, Game, GameError, Phase, PrivateView, PublicPartner, PublicView};
 pub use play::{PlayError, PlayState, Trick};
+pub use score::{Score, ScoreParts};
