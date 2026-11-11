@@ -1,10 +1,12 @@
 # CPU-only test environment for the GitHub runner (spec 003, criterion 9).
 # Same PyTorch release as requirements.txt, CPU build, from the PyTorch CPU index:
 #   index URL: https://download.pytorch.org/whl/cpu
-# No maturin and no tensorboard: the runner does not build the PyO3 probe.
+# No maturin: the runner does not build the PyO3 probe. tensorboard is needed by the
+# logging tests of spec 007.
 
 --extra-index-url https://download.pytorch.org/whl/cpu
 
 torch==2.14.1+cpu
 numpy==2.5.4
 pytest==9.2.0
+tensorboard==2.21.0

@@ -19,4 +19,5 @@ addopts = "-ra"
 markers = [
     "gpu: needs a usable CUDA device; skipped where CUDA is absent (CI runner)",
     "pyo3: needs the PyO3 probe built with maturin; skipped when it is not built",
+    "slow: long tests that the criteria do not need twice (controls, second network); run by default, left out with -m \"not slow\"",
 ]

@@ -52,6 +52,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+# The transformer layer and the L2 mask are shared with the real model (spec 007).
+from .model import Block, l2_mask  # noqa: F401  (l2_mask is also used by tests/test_bench.py)
+
 VOCAB = 256
 MAX_PLAY = 70  # play and bid tokens in one deal, upper end
 N_STATE = 15  # decisions of one seat in one deal
@@ -121,36 +124,6 @@ class Heads(nn.Module):
         return logits, self.q(h), self.value(h).squeeze(-1)
 
 
-class Block(nn.Module):
-    """Pre-norm transformer layer. Attention is split in two steps so a cache can sit between."""
-
-    def __init__(self, width: int, heads: int, d_ff: int):
-        super().__init__()
-        self.heads = heads
-        self.norm1 = nn.LayerNorm(width)
-        self.qkv = nn.Linear(width, 3 * width)
-        self.proj = nn.Linear(width, width)
-        self.norm2 = nn.LayerNorm(width)
-        self.ff1 = nn.Linear(width, d_ff)
-        self.ff2 = nn.Linear(d_ff, width)
-
-    def qkv_of(self, x):
-        b, t, d = x.shape
-        qkv = self.qkv(self.norm1(x)).view(b, t, 3, self.heads, d // self.heads)
-        q, k, v = qkv.permute(2, 0, 3, 1, 4).unbind(0)  # each (b, heads, t, d/heads)
-        return q, k, v
-
-    def finish(self, x, attn):
-        b, h, t, dh = attn.shape
-        x = x + self.proj(attn.transpose(1, 2).reshape(b, t, h * dh))
-        return x + self.ff2(F.gelu(self.ff1(self.norm2(x))))
-
-    def forward(self, x, mask=None, causal=False):
-        q, k, v = self.qkv_of(x)
-        attn = F.scaled_dot_product_attention(q, k, v, attn_mask=mask, is_causal=causal)
-        return self.finish(x, attn)
-
-
 class KVCache:
     """Keys and values of the play tokens of a batch of deals, per layer (cached acting)."""
 
@@ -164,18 +137,6 @@ class KVCache:
 
     def reset(self):
         self.filled = 0
-
-
-def l2_mask(points, n_play: int):
-    """Attention mask for layout L2. True = may attend. Shape (batch, 1, T, T), T = n_play + n_state."""
-    b, s = points.shape
-    t = n_play + s
-    dev = points.device
-    mask = torch.zeros(b, t, t, dtype=torch.bool, device=dev)
-    mask[:, :n_play, :n_play] = torch.tril(torch.ones(n_play, n_play, dtype=torch.bool, device=dev))
-    mask[:, n_play:, :n_play] = torch.arange(n_play, device=dev)[None, None, :] < points[:, :, None]
-    mask[:, n_play:, n_play:] = torch.eye(s, dtype=torch.bool, device=dev)
-    return mask[:, None]
 
 
 class TransformerNet(nn.Module):

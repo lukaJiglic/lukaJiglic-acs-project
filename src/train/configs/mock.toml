@@ -1,0 +1,63 @@
+# Run config: the training loop on the mock environment (spec 007).
+#
+# Every hyperparameter of a run is in this file. The code has no defaults: a
+# missing key stops the run with an error. "From" names the origin of each value;
+# the spec's Results section repeats the list.
+
+[run]
+name = "mock"
+seed = 3
+network = "transformer"   # "transformer" or "mlp"; --network on the command line overrides it
+updates = 200             # spec 007, criterion 22
+device = "auto"           # "auto": the GPU when CUDA is usable, else the CPU
+checkpoint_every = 100    # updates between checkpoints; one more at the end
+out_dir = "runs"          # under src/train; not tracked by git
+
+[env]
+kind = "mock"
+mode = "learnable"        # "learnable": the state names the rewarded slot; "tokens": a cue token does; "random": noise
+tables = 1024             # spec 007 table (proposal; fits the benchmark's fastest batches)
+min_rounds = 3            # mock only: decisions per seat and deal, least
+max_rounds = 6            # mock only: decisions per seat and deal, most
+legal_per_decision = 4    # mock only: legal slots at every decision
+extra_token_probability = 0.5   # mock only: chance of one more public event after an action
+feature_density = 0.1     # mock only: share of state bits set at random
+
+[model]
+width = 256               # D18
+layers = 4                # D18
+heads = 4                 # D18
+feed_forward = 1024       # D18
+mlp_hidden = [512, 512, 256]      # D18, the MLP control
+critic_hidden = [512, 512, 256]   # Claude's proposal: the critic is an MLP (D119 B) of the control's size
+policy_init_scale = 1.0   # PyTorch default. Measured in the review of spec 007: with 0.01 the policy loss sends almost no gradient into the trunk
+cache_initial_tokens = 32 # speed only: first size of the acting cache per seat; it grows when needed
+act_bucket_tokens = 8     # speed only: seats with more new tokens than this are computed in a second pass
+
+[ppo]
+seat_deals_per_update = 2048   # Claude's proposal: an update waits for this many finished seat-deals (8 update batches)
+clip_range = 0.2          # research/05 G1 (0.1-0.2)
+epochs = 2                # D119 A
+gamma = 1.0               # spec 007 table (proposal): one reward per deal
+gae_lambda = 0.95         # spec 007 table (proposal)
+learning_rate = 3e-4      # spec 007 table (proposal, common default)
+adam_beta1 = 0.9          # PyTorch default
+adam_beta2 = 0.999        # PyTorch default
+adam_eps = 1e-8           # PyTorch default
+update_batch = 256        # spec 003: fastest L2 batch, in seat-deals
+entropy_weight = 0.01     # spec 007 table (proposal); research/05 e7
+critic_weight = 0.5       # spec 007 table (proposal)
+value_head_weight = 0.5   # NOT APPROVED: Claude's proposal, a question to the user. The actor's own value head.
+q_weight = 0.5            # spec 007 table (proposal)
+partner_weight = 0.1      # research/05 C2 (0.1 or lower)
+card_location_weight = 0.1   # research/05 C2 (0.1 or lower)
+value_loss = "huber"      # review of spec 007: "huber" or "mse", for the critic, the value head and the Q head
+huber_delta = 1.0         # Claude's proposal: errors above this count linearly (rewards are about -10 to +10)
+gradient_clip = 0.5       # spec 007 table (proposal); actor and critic are clipped apart
+normalise_advantage = true   # spec 007, In scope
+
+[opponents]
+past_share = 0.2          # D14: share of deals with one or more seats played by a past checkpoint
+max_frozen_seats = 3      # Claude's proposal: such a deal has 1 to 3 frozen seats
+pool_size = 10            # Claude's proposal: the last N snapshots (research/05 C5)
+snapshot_every = 20       # Claude's proposal: updates between snapshots

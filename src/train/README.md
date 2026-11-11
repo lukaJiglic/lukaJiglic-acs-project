@@ -2,7 +2,7 @@
 
 The Python training code: environment check, the model, the PPO learner, run configs in `configs/`, evaluation and weight export. It talks to the engine through a PyO3 module.
 
-Built so far (spec 003): the pinned environment, the GPU check, a PyO3 probe and a throughput benchmark. The model and the learner come with spec 007.
+Built so far: the pinned environment, the GPU check, a PyO3 probe and a throughput benchmark (spec 003); the networks, the PPO learner and the training loop on a mock environment (spec 007). The Rust engine replaces the mock with spec 006.
 
 ## Files
 
@@ -12,6 +12,15 @@ Built so far (spec 003): the pinned environment, the GPU check, a PyO3 probe and
 | `requirements-ci.txt` | CPU-only set for the GitHub runner (`.github/workflows/train.yml`). |
 | `tarok_train/envcheck.py` | Prints versions, the GPU, its capability and the free VRAM. Exit code 1 if CUDA is not usable. |
 | `tarok_train/bench_model.py` | Times the stand-in transformer (layouts L1 and L2) and the MLP control on random data. |
+| `tarok_train/contract.py` | The sizes and index ranges of `docs/encoding.md` (encoding version 1). A test compares them with the document. |
+| `tarok_train/model.py` | The transformer in layout L2 with cached acting, the MLP control, the heads, the full-information critic. |
+| `tarok_train/ppo.py` | GAE, the clipped policy loss, the critic, Q and auxiliary losses, the update. |
+| `tarok_train/rollout.py` | Storage by table, seat and deal. One seat's deal is one sequence. |
+| `tarok_train/opponents.py` | Past checkpoints as opponents: which seats they play, the pool of snapshots. |
+| `tarok_train/mock_env.py` | Mock environment with the contract's arrays: a learnable task and a random one. |
+| `tarok_train/train.py` | The loop, config check, checkpoints, TensorBoard logs. |
+| `configs/` | One TOML file per run (D79). Every hyperparameter is in the file; the code has no defaults. |
+| `runs/` | Checkpoints and TensorBoard files of local runs. Not tracked by git. |
 | `pyo3_probe/` | Throwaway Rust crate: fills an array on 12 threads with the GIL released, returns NumPy arrays. |
 | `bench_results/` | Raw rows of each benchmark run, JSON. Numbers only: no process names, no paths. |
 | `tests/` | pytest. Tests marked `gpu` are skipped without CUDA. PyO3 tests are skipped when the probe is not built. |
@@ -60,3 +69,36 @@ Benchmark options:
 | `--quick` | Tiny batches, a smoke test. |
 
 The PyO3 setting `PYO3_USE_RAW_DYLIB=0` is read by cargo from the folder it runs in. A new binding crate needs its own `.cargo\config.toml`, or one at the repo root.
+
+## Train on the mock environment (cmd, venv active, from the repo root)
+
+```bat
+python -m tarok_train.train --config src\train\configs\mock.toml --mode tokens
+python -m tarok_train.train --config src\train\configs\mock.toml --network mlp
+tensorboard --logdir src\train\runs
+```
+
+The first line trains the transformer for 200 updates on the mock task that needs the tokens, the second the MLP control on the task that needs the state only. Each run writes a folder under `src\train\runs\` with its checkpoints and TensorBoard files.
+
+To go on from a checkpoint, up to 300 updates in all:
+
+```bat
+python -m tarok_train.train --resume src\train\runs\<run folder>\checkpoint-000200.pt --updates 300
+```
+
+Training options (each overrides a value of the config file; the checkpoint records what ran):
+
+| Option | Meaning |
+|--------|---------|
+| `--network mlp` | `transformer` or `mlp`. |
+| `--updates 50` | Number of updates, in all. |
+| `--tables 256` | Tables stepped in parallel. |
+| `--seat-deals 512` | Finished seat-deals an update waits for. |
+| `--mode tokens` | Mock mode: `learnable` (a state feature names the rewarded slot), `tokens` (a cue token does) or `random`. |
+| `--device cpu` | `cuda` or `cpu`. |
+| `--out-dir other\folder` | Another folder for checkpoints and logs. |
+| `--resume checkpoint.pt` | Go on from a checkpoint, with its config. On the CPU the result equals an unbroken run. |
+
+How an update collects its data: the tables play until enough seat-deals have finished that began under the current weights. Deals that straddle an update are played but not trained on. `rollout/decision_age_max` in the logs must be 0 and `ppo/behaviour_mismatch` about 1e-6; anything else is a bug in the pipeline.
+
+A checkpoint holds the config, the encoding version, the step counts, the weights, the optimiser, the pool of past checkpoints, the random generators and the environment's state. Loading a checkpoint of another encoding version fails with a message.
