@@ -51,7 +51,7 @@ The user approves these before tests are written (D73).
 15. The same base seed and the same actions give identical arrays, with 1 thread and with 12.
 16. Tables are independent: changing the actions of one table changes nothing in another.
 17. When a deal ends, that table's next observation is a new deal with the dealer one seat on. After 24 deals the table starts a new run.
-18. Each deal's rewards and score parts are delivered once. The parts of each seat sum to its entry.
+18. Each deal's rewards and `reward_parts` (4 seats × 10 parts, D121) are delivered once. The ten parts of each seat add up to its reward within 1e-6.
 19. A random-policy run of 100,000 deals raises no error and no panic.
 
 **Python module**

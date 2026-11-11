@@ -26,7 +26,7 @@ At every decision the engine gives, for the acting seat:
 | `critic` | 1382 + 274 | numbers in 0–1 | training only: the state plus the hidden information (section 6) |
 | `targets` | section 7 | | training only: labels for the auxiliary heads |
 
-At the end of the deal it gives one reward per seat (section 8).
+At the end of the deal it gives one reward per seat and the same reward split into ten score parts, 4 seats × 10 numbers (section 8).
 
 The MLP control (D18) reads `state` only. The transformer reads `tokens` and `state`.
 
@@ -177,13 +177,29 @@ Decided (D117): a zero-sum form of the paper score.
 
 Why not the raw paper score: opponents always write 0, so they would get no signal for defending. The relative form pays them the negative of what the declarer's side gains.
 
-The decomposed value head (D15) predicts the parts of `e` separately: game and difference, each bonus, mondfang.
+**Score parts (D121).** The entry `e` of each seat is a sum of ten parts, in this order:
+
+| Index | Part | Content |
+|-------|------|---------|
+| 0 | game | the contract's value, with its sign |
+| 1 | difference | the rounded difference, with its sign |
+| 2 | trula | silent or announced |
+| 3 | kralji | silent or announced |
+| 4 | kralj ultimo | silent or announced |
+| 5 | pagat ultimo | silent or announced |
+| 6 | valat | ±250 silent, ±500 announced; when it applies, parts 0–5 are zero |
+| 7 | mondfang | the individual −20 |
+| 8 | klop | the entries of a klop deal (zero until flow C of the engine) |
+| 9 | radelc | the +70 of a cancelled radelc in training (zero until flow C) |
+
+Kontra and radelc doubling multiply the parts they apply to. The engine emits `reward_parts`: for each seat and part, ( own part − mean of the other three seats' part ) / 50. The ten numbers of a seat add up to its reward. The decomposed value head (D15) and the critic predict these ten numbers.
 
 ## 9. Versioning
 
 - `ENCODING_VERSION = 1` is stored in every checkpoint, weight file and game record.
 - Adding a meaning to a reserved slot keeps the version. Moving or resizing anything raises it.
-- The Rust engine exports the sizes (288, 1382, 160, 128) as constants; a test on each side checks them against this file.
+- Amended on 2026-11-11, before any model was trained on it: ten score parts and the `reward_parts` array (D121). The version stays 1.
+- The Rust engine exports the sizes (288, 1382, 160, 128, and 10 score parts) as constants; a test on each side checks them against this file.
 
 ## 10. Answers to the open points (D117)
 
