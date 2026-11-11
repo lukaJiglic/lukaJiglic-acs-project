@@ -33,12 +33,12 @@ Outside this folder: `CLAUDE.md` at the repo root (standing instructions), `docs
 
 ## Status
 
-See the top of `open-questions.md` for where planning stands. As of 2026-11-10: the eight plan batches are answered (D1–D88). The model changed to Claude Fable 5.2 (D89). Batch 9 is answered (D90–D102) and the user said work can begin (D103). C8–C10 are answered (D104–D106). Building has started in the sense of D106: specs first, training as early as possible. Batch 10 is answered (D107–D113): the first run trains every phase; specs 001–003 are approved. Open: C11. `plan.md` is the plan. Two provisional choices (P2, P5 in `decisions.md`) are in use but never explicitly confirmed by the user.
+See the top of `open-questions.md` for where planning stands. As of 2026-11-10: the eight plan batches are answered (D1–D88). The model changed to Claude Fable 5.2 (D89). Batch 9 is answered (D90–D102) and the user said work can begin (D103). C8–C10 are answered (D104–D106). Building has started in the sense of D106: specs first, training as early as possible. Batch 10 is answered (D107–D113): the first run trains every phase; specs 001–003 are approved. Specs 004–007 approved (D117–D120), ten score parts (D121), specs 005 and 007 committed (D122). Open: C11 and Batch 11. `plan.md` is the plan. Two provisional choices (P2, P5 in `decisions.md`) are in use but never explicitly confirmed by the user.
 
 ## What a fresh session does next
 
 1. Read `docs/build-plan.md` (outside this folder), draft 2. It orders specs 001–012 up to the first full training run.
 2. Check `docs/specs/`: each spec's status line says draft, approved, or done, and approved specs carry a "Results" section once executed. Execute only approved specs (D70, D73). Code changes are committed only after the user has read the diff (D72).
-3. Spec 004 (encoding contract, `docs/encoding.md`) needs the user's approval; it unblocks 006 and 007.
+3. As of 2026-11-11: specs 001–005 and 007 are done. Spec 006 (encoding in Rust, vectorised environment, bindings, record) is in execution in the `engine-core` session; verify its output, run a review pass, wait for the user's read, commit. Spec 008 (pipeline smoke run) needs a draft and the user's approval. Batch 11 in `open-questions.md` is open.
 4. Still owed for Wed 18 Nov: the proposal text (format unknown; ask), corrections to the wireframe (frames A-3 and A-5 need the D104 step) and to `pitch.md`.
 5. User-only actions: confirm the topic with the lecturer on Mon 16 Nov (R2); make the repo public or add the instructor by Mon 23 Nov (R5); share the Figma file with the lecturer.

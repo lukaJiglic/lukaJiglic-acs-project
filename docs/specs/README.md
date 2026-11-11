@@ -36,8 +36,8 @@ Tool and model: ...
 |---|------|--------|
 | 001 | [Repo skeleton](001-repo-skeleton.md) | done 2026-11-10 |
 | 002 | [Engine core](002-engine-core.md) | done 2026-11-10 |
-| 003 | [Training environment and benchmark](003-training-environment.md) | committed 2026-11-10, CI green; GPU-free run pending |
-| 004 | [Encoding contract](004-encoding-contract.md) | approved 2026-11-10; check script waits for the diff read |
-| 005 | [Deal flow A](005-deal-flow-a.md) | approved 2026-11-10; in execution |
-| 006 | [Encoding, environment, bindings, record](006-bindings-and-environment.md) | approved 2026-11-10; starts after 005 is committed |
-| 007 | [Model and PPO learner](007-model-and-learner.md) | approved 2026-11-10; in execution |
+| 003 | [Training environment and benchmark](003-training-environment.md) | done 2026-11-11 (GPU-free run added) |
+| 004 | [Encoding contract](004-encoding-contract.md) | done 2026-11-11 |
+| 005 | [Deal flow A](005-deal-flow-a.md) | done 2026-11-11 |
+| 006 | [Encoding, environment, bindings, record](006-bindings-and-environment.md) | approved 2026-11-10; in execution from 2026-11-11 (session `engine-core`) |
+| 007 | [Model and PPO learner](007-model-and-learner.md) | done 2026-11-11 |

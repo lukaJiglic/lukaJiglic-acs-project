@@ -1,6 +1,6 @@
 # 005 — Deal flow A: bidding, king call, talon, scoring of the normal contracts
 
-Status: **approved 2026-11-10 (D118), executed 2026-11-10, committed 2026-11-11 (D122).** Needs spec 002 (done). See "Results" at the end.
+Status: **done 2026-11-11.** Approved 2026-11-10 (D118), executed 2026-11-10, committed in `2bd5f21` (D122), CI green on `819220d`. Needs spec 002 (done). See "Results" at the end.
 
 Build-plan row 005. Tool and model: Claude Code 2.1.306, `claude-fable-5-2`.
 

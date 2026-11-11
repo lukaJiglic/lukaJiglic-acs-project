@@ -1,6 +1,6 @@
 # 007 — Model and PPO learner
 
-Status: **approved** by the user on 2026-11-10 (D119), **executed 2026-11-10, review fixes worked in on 2026-11-11, committed 2026-11-11 (D122).** Built on `docs/encoding.md` version 1 (approved, D117) and spec 003.
+Status: **approved** by the user on 2026-11-10 (D119), **executed 2026-11-10, review fixes worked in on 2026-11-11, committed in `2cd15e3` (D122), CI green on `819220d`. Done 2026-11-11.** Built on `docs/encoding.md` version 1 (approved, D117) and spec 003.
 
 Build-plan row 007. Tool and model: Claude Code 2.1.306, `claude-fable-5-2`.
 

@@ -23,9 +23,9 @@
 - 2026-11-10, night: the layout is L2 (D116). Specs 005 (deal flow A, 53 criteria) and 007 (model and PPO learner, 24 criteria) are drafted.
 - 2026-11-10, late: specs 004, 005 and 007 approved (D117–D119). Specs 005 and 007 are in execution in the two track sessions (`engine-core`, `train-env`). `tools/check_encoding.py` (spec 004, criterion 2) is written and passes; it is uncommitted until the user has read it. Spec 006 (encoding in Rust, vectorised environment, bindings, game record; 28 criteria) is drafted.
 - Spec 006 approved (D120).
-- **Waiting on the user, to approve:** the small diff of `tools/check_encoding.py`.
-- **Waiting on the user, other:** one GPU-free benchmark run (`python -m tarok_train.bench_model --label "gpu free"` in the activated `.venv`, game closed); the local compiler pin (`rust-toolchain.toml.disabled`: delete or restore); C11; "fant" or "pob"; corrections to the wireframe and `pitch.md`; the proposal format.
-- Next: verify and review the output of 005 and 007; the user's diff read; commit. Then 006 in one session, then the smoke run (008).
+- 2026-11-11: specs 005 and 007 executed, reviewed, fixed and verified. The score has ten parts (D121). The user gave the go-ahead to commit (D122); five commits pushed, all three workflows green on `819220d`. Specs 003, 004, 005 and 007 are done. Spec 006 is in execution in the `engine-core` session.
+- **Waiting on the user:** Batch 11 below (rule readings, learner settings, G3, the compiler pin, "fant" or "pob"); C11; corrections to the wireframe and `pitch.md`; the proposal format.
+- Next: verify and review the output of 006; the user's diff read; commit. Spec 008 (pipeline smoke run) is drafted for approval meanwhile.
 - The proposal, Figma wireframe and pitch slide are due Wed 18 Nov. The product batch must follow soon after the bots batch.
 
 ## Clarifications
@@ -37,6 +37,24 @@ Answered 2026-11-10: C8 (D104: yes, the adviser contrasts every phase in T0), C9
 Open:
 
 - **C11. Trula in one trick at your table.** The sources say the pagat wins in any order (D113). Does your table play "only if the pagat falls last"? If yes, it becomes a toggle with your table's value as the Default, like the −70 radelci. If you are not sure, the sourced rule stays.
+
+## Batch 11 — rulings and settings found while building (asked 2026-11-11, open)
+
+Context: specs 005 and 007 are done. Their sessions and the two review passes left these points. None blocks spec 006. Items 4 to 6 should be answered before the first real run; they can also be settled inside spec 008. Sources: `docs/specs/005-deal-flow-a.md` ("Readings and deviations", "Questions for the user"), `docs/specs/007-model-and-learner.md` ("Questions for the user"), `docs/progress.md`.
+
+| # | Question | Options | Recommended | Reason |
+|---|----------|---------|-------------|--------|
+| B11-1 | **Valat and a lost mond.** One side takes all twelve tricks and someone lost the mond. Four cases: (i) declarer's side takes all, an opponent loses the mond to the škis; (ii) declarer's side takes all, one of the two loses the mond to the other's škis; (iii) opponents take all, the declarer loses the mond or leaves it in the talon; (iv) opponents take all, one of them loses the mond to another opponent. | a) the valat cancels the −20 in all four (the code now); b) the −20 is written next to ±250 in all four; c) your table's answer per case | a | Checked: research/01 B3 says a valat cancels all other scores of the hand. Inferred: that this includes the mondfang; no source names the case. Five tests pin (a). |
+| B11-2 | **Pagat ultimo when the pagat's own side wins the last trick with another card** (the partner's pagat is in the trick, the declarer takes it with a higher tarok). | a) lost, −25 for that side (the code now); b) won | a | The usual meaning: the pagat itself must take the last trick. |
+| B11-3 | **Kralj ultimo when the called king is in the last trick and the declarer's side wins it with another card.** | a) +10, the side decides (the code now, criterion 38); b) the king itself must take the trick | a | The spec's criterion as approved (D118). Your table decides. |
+| B11-4 | **Weight of the actor's own value head in the loss.** Measured: at the transformer's first update its gradient on the trunk is 15 times the policy's. | a) 0.5 (now); b) 0.1; c) leave the head out of the loss until the app needs it | b | The critic, not this head, drives PPO. The head is for the app's explanations. 0.1 keeps it learning without steering the trunk. |
+| B11-5 | **First scale of the policy head.** | a) 1.0 (now; learns fastest on the mock, first policy not uniform); b) 0.3, then measure on the smoke run; c) 0.1 (uniform start, slower) | b | 0.01 did not learn the stronger mock task; 1.0 may be part of the early entropy collapse. A middle value, checked by measurement. |
+| B11-6 | **An entropy controller before the first real run** (target entropy per phase, research/05 e7). Measured: the transformer's policy entropy is near zero from update 20 on the token task, and it stops at 0.81. | a) yes, built and tested before the first real run; b) only if the monitors show a collapse | a | D107 trains every phase from the start; a collapse in bidding is the documented failure there. The mock already shows one. |
+| B11-7 | **G3, 10,000 steps per second.** Measured and derived: the transformer learner alone reaches about 7,700 with two epochs; the MLP is far above. | a) G3 stays for the pipeline, measured with the MLP; the transformer's number is reported next to it; b) G3 is lowered to a figure the transformer can reach; c) G3 stays as written and is reported as not met | a | The goal was set to show the pipeline is fast enough. The transformer's limit is the GPU, and the report should say so with numbers. |
+| B11-8 | **The local compiler pin** (`rust-toolchain.toml.disabled`, untracked). | a) delete the file; the pin lives in the `engine` workflow only; b) switch the rustup default host to GNU and restore the file | a | CI already pins 1.94.1 (D115). The file caused the MSVC install incident. Option (b) changes a machine-wide setting of yours. |
+| B11-9 | **"Fant" or "pob"** for the jack, in code and in the app. | a) fant (the code now); b) pob | a | research/01 and the Tarok.net rules use "fant". Your table's word wins if it differs. |
+
+Moved into spec 008 (the smoke run), not asked here: the number of tables for the first run (512, because the acting cache of 1,024 tables does not fit in 6 GB) and the number of seat-deals per update.
 
 ## Batch 10 — build decisions (asked 2026-11-10, answered 2026-11-10; see D107–D113 and `docs/build-plan.md` draft 2)
 

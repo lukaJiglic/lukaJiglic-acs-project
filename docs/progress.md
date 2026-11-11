@@ -12,6 +12,15 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 **Next:** the next step.
 ```
 
+## 2026-11-11 — commit of specs 005 and 007, CI (main session, ai-log row 6; Claude Code 2.1.306, claude-fable-5-2)
+
+**Done:** five commits pushed, `2bd5f21` to `819220d`: the engine's deal flow A (spec 005), the GPU-free benchmark results (spec 003), the encoding check script (spec 004), the model and learner (spec 007), and D122. The user's go-ahead was the word "Continue" in answer to the commit question; D122 records it as said. Specs 003, 004, 005 and 007 are done. Spec 006 is handed to the `engine-core` session. The open rulings are written down as Batch 11 in `docs/planning/open-questions.md`.
+**Measurements:**
+- Before the commits, on this PC: `cargo fmt --check` and clippy clean, 130 engine tests pass; the full training suite, with the GPU and the slow tests: 75 passed in 1,100 s. The CI set without a GPU (`-m "not slow"`, `CUDA_VISIBLE_DEVICES=-1`): 65 passed, 5 skipped, 5 deselected in 285 s.
+- CI on `819220d`: `ci` success; `engine` success (format, clippy, 130 tests, the deal against the Python reference); `train` success: 62 passed, 8 skipped, 5 deselected in 148 s on the runner. The three more skips than here are the PyO3 probe tests; the probe is not built on the runner.
+**Broken:** nothing new. The open points of the entries below stand: G3 and the transformer, the plateau on the token task, the value head's gradient, the acting cache, the valat and mond ruling.
+**Next:** spec 006 (encoding in Rust, vectorised environment, bindings, record). Spec 008 (pipeline smoke run) to be drafted for approval. Batch 11 for the user.
+
 ## 2026-11-10 — session 2 continued and session 3, ai-log rows 4–5 (Claude Code 2.1.306, claude-fable-5-1 then claude-fable-5-2)
 
 **Done:** Batches 7–10 answered; decisions D70–D113. Plan finalised as `docs/planning/plan.md`. Screen spec draft 2. Figma wireframe: 28 greyscale frames and one styled sample (`docs/wireframe/wireframe-overview.png`). Pitch text draft. Build plan with twelve specs to the first full training run. Specs 001–003 approved; spec 001 (this skeleton) executed.

@@ -1,6 +1,6 @@
 # 004 — Encoding contract
 
-Status: **approved** by the user on 2026-11-10 (D117). The check script of criterion 2 was committed on 2026-11-11 (D122).
+Status: **approved** by the user on 2026-11-10 (D117). The check script of criterion 2 was committed in `b3927e0` on 2026-11-11 (D122). **Done 2026-11-11.**
 
 Build-plan row 004. Tool and model: Claude Code 2.1.306, `claude-fable-5-2`.
 
