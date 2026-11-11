@@ -19,6 +19,57 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 **Broken:** nothing built yet. The proposal format is unknown. Wireframe frames A-3 and A-5 do not show the D104 step.
 **Next:** specs 002 (engine core) and 003 (training environment and benchmark) in parallel; spec 004 (encoding contract) for approval.
 
+## 2026-11-11 — GPU-free benchmark (spec 003, open point B) and spec 007, model and PPO learner (session `train-env`, claude-fable-5-2)
+
+**Done:** the benchmark of spec 003 ran once with the GPU idle. Spec 007 is written: the transformer in layout L2, the MLP control, the full-information critic, PPO with ten-part decomposed values (D121), whole-deal collection, past-checkpoint seats, checkpoints with resume, TensorBoard logs, a mock environment. A review subagent found no bug in the PPO math or the model, but showed that the first learning test let ten planted bugs through; thirteen findings were fixed. Not committed: waiting for the user's read of the diff.
+
+**Measurements, GPU free** (nvidia-smi before and after: 0% busy, 234 MiB used; 3 repeats per row, medians, fp32; repeats agree within 1%):
+
+| Network | Case | Acting decisions/s | Update samples/s |
+|---|---|---|---|
+| MLP 512-512-256 | | 1,546,968 | 640,075 |
+| transformer | L1 bucketed, acting uncached | 7,673 | 2,532 |
+| transformer | L2, acting cached, ragged, action copied to host | 34,911 | 19,864 |
+
+- The free GPU is 4.0 to 4.8 times faster than under the game, in every row.
+- Update, L2 against L1 bucketed: 7.8 times. The layout choice (D116) now stands on free-GPU numbers.
+- Half precision is 2.6 to 4.5 times slower. fp32 stays.
+- End-to-end estimate, **derived**, learner alone, the benchmark's synthetic shape: L2 gives 7,732 steps/s with 2 epochs, 4,348 with 4, 12,660 with 1. MLP 265,177 with 2 epochs.
+
+**Measurements, spec 007** (session's numbers; tests re-run by the main session):
+
+- Parameters: transformer 3,767,076; MLP control 1,242,916; critic 1,244,424.
+- Mock task that can only be solved from the observation (random play 0.25, best 1.0), CPU test, 30 updates: transformer 0.28 → 0.80 in 49 s (the rewarded slot is named by a token); MLP 0.25 → 0.94 in 12 s (named by a state feature). Controls: reward to the wrong seat stays at 0.25; the MLP on the token task stays under 0.52.
+- Ten planted bugs (mask left out of the update, stored log-probability zeroed, critic never trained, advantages reversed, no bootstrapping, reward averaged or swapped across deals, state from another seat-deal, decision points zeroed, cache never reset): each now fails at least one test. With the first version of the test all ten passed.
+- 200 updates on the free GPU, 1,024 tables: MLP plays 19,604 decisions per second (median), transformer 5,621. Only whole deals under the current weights are trained on, so 39% of the decisions played are trained on with 2,048 seat-deals per update. Decision age in every update: 0. Peak GPU memory of the transformer run: 3,621 MiB.
+- Gradient norms on the trunk at the transformer's first update: policy 1.33, value head 19.9, Q head 2.21; whole actor 22.2 against a clip of 0.5.
+
+**Broken or open:**
+- G3 (10,000 steps/s): not reached by the transformer in any measured or derived number with 2 or more epochs, before the engine is counted. The MLP is far above it.
+- The transformer stops at 0.81 on the token task: it follows the token (1.000 right) and ignores the state hint (0.248 right), with policy entropy near zero from update 20. The cause is not established; an early entropy collapse is the guess.
+- The policy head's first scale had to go from 0.01 to 1.0 for anything to learn on the stronger task; with 1.0 the first policy is not uniform.
+- The acting cache needs about 8 KB per token per table and seat: 1,024 tables with 128-token deals do not fit on the 6 GB card next to the update.
+- Whole-deal collection wastes the deal that straddles each update.
+- The `train` workflow is unverified for this code until the push.
+
+**Next:** the user's answers on loss weights, first scale and the plateau; the read of the diff; commit; then spec 006.
+
+## 2026-11-10 — spec 005, deal flow A (session `engine-core`, claude-fable-5-2)
+
+**Done:** in `src/engine`: bidding with priority, the declarer's contract choice, king call, talon packets and discards, the called king in the talon, play, and the score of the six normal contracts with silent bonuses and mondfang. Actions map to the 160 slots of the encoding contract. Public, private and full-information views are separate types. A review subagent found one bug (the debug text of the public view printed hidden cards) and test gaps in scoring and bidding; all are fixed. Not committed: waiting for the user's read of the diff.
+**Measurements:**
+- `cargo test --locked`: 130 tests pass (re-run by the main session); 47 of them are spec 002's. Format and clippy clean.
+- Benchmark, `cargo run --release --bin bench_game`, one thread, CPU shared with a training run: 349,000 to 362,000 whole random deals per second, about 20 million actions per second, 56.8 actions per deal on average. The reviewer measured 316,000.
+- Auctions: 1,297 possible in this slice, all walked for each dealer against a model written from the criteria. The longest has 13 calls. For the full ladder of the Default preset the longest has 19 calls (36,182 auctions, by the same model), so the 128-token limit of the encoding holds with room.
+- A second scorer written only from the criteria agrees with the engine on 10,000 random deals.
+- Mutation checks: 32 wrong rules by the author, 4 more scoring rules and 4 leaks after the review; each fails at least one test.
+**Broken:**
+- Open ruling: what a valat does to a lost mond (three cases). The current behaviour (the valat cancels every mondfang) is pinned by five tests.
+- Random test auctions are thin (85% have one bid); the exhaustive walk covers the bidding instead.
+- No rules parameter yet for score values, phase order and legality; flows B and C need one. No ordered action history yet; spec 006 adds the event log.
+- The `engine` workflow is unverified for this code until the push.
+**Next:** the user's read of the diff; commit; then spec 006.
+
 ## 2026-11-10 — first CI runs after the commit of specs 001–003
 
 **Done:** five commits pushed (`011e288` to `3dbe257`).
