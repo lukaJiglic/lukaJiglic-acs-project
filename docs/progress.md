@@ -12,6 +12,25 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 **Next:** the next step.
 ```
 
+## 2026-11-11 — spec 006, encoding, vectorised environment, bindings, record (session `engine-core`, claude-fable-5-2; verified by the main session, ai-log rows 6 and 6c)
+
+**Done:** in `src/engine`: an event log on `Game`; the module `encode` (tokens, the 1,382 state features with the exact inference bits, mask, critic features, targets, reward with ten parts); `vecenv` (N tables, runs of 24 deals, own thread pool, behind a feature so a build without threads stays possible); `record` (JSON, replay). A separate binding crate `src/train/tarok_env` (PyO3 0.30.1, no `unsafe`, no rule in it) and `src/train/tarok_train/env.py` with the mock's interface. A review subagent found no leak, no unsound bit and no wrong reward in the code. It found six planted wrong rules that the suite let through (one a leak), loose array checks in the binding, a contract reading nobody had listed (C4) and three overclaims; 19 items, all fixed. Not committed: waiting for the user's read of the diff.
+**Measurements:**
+- Re-run by the main session on the fixed tree: `cargo fmt --check` and clippy clean for both crates; `cargo test --locked` 180 tests; `--no-default-features` 169; no `pyo3` in the engine's dependency tree. Full pytest with the GPU and the slow tests: 101 passed in 253 s.
+- Environment alone, 1,024 tables, random legal play, a full observation written at every step (session's run after the fixes, median of 3): through Python 396,822 steps/s with 1 thread and 976,682 with 12; inside the engine 564,587 and 3,213,112. The main session measured 374,161 and 968,028 through Python before the fixes. With 12 threads the single Python thread is the limit. The environment does not limit G3.
+- Longest token sequence: 66 in 100,000 random deals; 71 is the longest possible in this slice. The limit is 128.
+- No-leak test, last run: 15,415 cases compared in four kinds, 1,287 of them the kind the review added (which card the declarer put down).
+- Soundness: 10,000 deals, four observers at every decision; 4.2 million void bits, 223 million "cannot hold" bits and 1.0 million "certainly holds" bits checked against the true hands, none wrong.
+- Planted wrong rules: 26 by the author (24 caught; one changes nothing in this slice, one was dead code and is removed), 6 by the reviewer (0 caught before the fixes), 22 for the review items after the fixes (all caught). The main session planted the reviewer's leak again in a scratch copy: the no-leak test fails, the soundness test passes, as it should.
+**Broken or open:**
+- The two workflows are unverified for this code until the push: the build of the module on Linux, and `cargo test` of the binding crate there.
+- A thread that holds the observation arrays can read half-written rows while another thread steps. `EngineEnv` has a lock for its own calls and the rule is written down; the code cannot enforce the rest without copying every observation.
+- A stale installed module is not detected: after a change in `src/engine` the module must be built again (`maturin develop --release` in `src\train\tarok_env`).
+- The trainer still starts the mock; the switch to the engine is in spec 008.
+- The declarer's hidden discards give repeated token sequences; only the state token differs between them.
+- Fifteen points wait for the user in Batch 12.
+**Next:** the user's read of the diff of spec 006; commit; push; the two workflows. Then spec 008 once approved.
+
 ## 2026-11-11 — commit of specs 005 and 007, CI (main session, ai-log row 6; Claude Code 2.1.306, claude-fable-5-2)
 
 **Done:** five commits pushed, `2bd5f21` to `819220d`: the engine's deal flow A (spec 005), the GPU-free benchmark results (spec 003), the encoding check script (spec 004), the model and learner (spec 007), and D122. The user's go-ahead was the word "Continue" in answer to the commit question; D122 records it as said. Specs 003, 004, 005 and 007 are done. Spec 006 is handed to the `engine-core` session. The open rulings are written down as Batch 11 in `docs/planning/open-questions.md`.
