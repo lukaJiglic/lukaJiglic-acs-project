@@ -41,3 +41,4 @@ Tool and model: ...
 | 005 | [Deal flow A](005-deal-flow-a.md) | done 2026-11-11 |
 | 006 | [Encoding, environment, bindings, record](006-bindings-and-environment.md) | approved 2026-11-10; in execution from 2026-11-11 (session `engine-core`) |
 | 007 | [Model and PPO learner](007-model-and-learner.md) | done 2026-11-11 |
+| 008 | [Pipeline smoke run](008-pipeline-smoke-run.md) | draft 2026-11-11; waits for approval |

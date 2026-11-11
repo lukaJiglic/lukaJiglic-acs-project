@@ -24,8 +24,9 @@
 - 2026-11-10, late: specs 004, 005 and 007 approved (D117–D119). Specs 005 and 007 are in execution in the two track sessions (`engine-core`, `train-env`). `tools/check_encoding.py` (spec 004, criterion 2) is written and passes; it is uncommitted until the user has read it. Spec 006 (encoding in Rust, vectorised environment, bindings, game record; 28 criteria) is drafted.
 - Spec 006 approved (D120).
 - 2026-11-11: specs 005 and 007 executed, reviewed, fixed and verified. The score has ten parts (D121). The user gave the go-ahead to commit (D122); five commits pushed, all three workflows green on `819220d`. Specs 003, 004, 005 and 007 are done. Spec 006 is in execution in the `engine-core` session.
+- **Waiting on the user, to approve:** spec 008 (pipeline smoke run; 19 criteria, open points A–E in the spec).
 - **Waiting on the user:** Batch 11 below (rule readings, learner settings, G3, the compiler pin, "fant" or "pob"); C11; corrections to the wireframe and `pitch.md`; the proposal format.
-- Next: verify and review the output of 006; the user's diff read; commit. Spec 008 (pipeline smoke run) is drafted for approval meanwhile.
+- Next: verify and review the output of 006; the user's diff read; commit. Then spec 008 once approved.
 - The proposal, Figma wireframe and pitch slide are due Wed 18 Nov. The product batch must follow soon after the bots batch.
 
 ## Clarifications
