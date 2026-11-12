@@ -27,7 +27,8 @@
 - 2026-11-11, evening: spec 006 executed by `engine-core` (174 engine tests, 89 training tests in the CI set, verified by the main session). The review pass found no leak, no unsound bit and no wrong reward, but six planted wrong rules that the tests let through, loose array checks in the binding and three overclaims; the fixes are with the session. Nothing of 006 is committed.
 - 2026-11-11, night: all 19 review items of spec 006 are fixed and verified by the main session (180 engine tests, 169 without the thread feature). **Spec 006 waits for the user's read of the diff.** Its two workflows are unverified until the push.
 - 2026-11-12: the user answered everything open: spec 006 committed (D123; `8f24dbb`, `8cb2bb0`), spec 008 approved (D124), Batch 11 (D125–D129), Batch 12 (D130), C11 (D131). Three rulings change the engine: a valat does not cancel a lost mond, pagat ultimo follows the side, the pagat wins a trula trick only if it falls last. They are spec 013. `docs/encoding.md` has the readings of Batch 12 in section 4a.
-- **Waiting on the user:** C12 (what "falls last" means exactly; the recommended reading is built meanwhile); corrections to the wireframe and `pitch.md`; the proposal format. Later: C13 (the new figure of G3, after the smoke run), C14 (tier of the trula toggle).
+- 2026-11-12, later: C12 answered (D132).
+- **Waiting on the user:** corrections to the wireframe and `pitch.md`; the proposal format. Later: C13 (the new figure of G3, after the smoke run), C14 (tier of the trula toggle).
 - Next: spec 013 in the `engine-core` session and spec 008 in the `train-env` session; verification, review pass, the user's read of each diff, commit.
 - The proposal, Figma wireframe and pitch slide are due Wed 18 Nov. The product batch must follow soon after the bots batch.
 
@@ -37,11 +38,10 @@ Answered 2026-11-09: C1 (by D16), C2 (D27), C3 (D28), C4 (D29), C5 (D30: both ce
 
 Answered 2026-11-10: C8 (D104: yes, the adviser contrasts every phase in T0), C9 (D105: names later), C10 (D106: building confirmed, training first).
 
-Answered 2026-11-12: C11 (D131: the user's table plays "the pagat wins only if it falls last"; a toggle, S40, with that as the Default).
+Answered 2026-11-12: C11 (D131: the user's table plays "the pagat wins only if it falls last"; a toggle, S40, with that as the Default); C12 (D132: the pagat wins when played after both the škis and the mond; a fourth card may follow).
 
 Open:
 
-- **C12. "Falls last", exactly.** Škis, mond and pagat are in one trick of four cards. (a) The pagat wins when it is played after both the škis and the mond; a fourth card may still follow it. (b) The pagat wins only as the fourth card of the trick. Recommended: (a); the trula is complete when the pagat falls on the other two, and the fourth card cannot beat it either way. Spec 013 builds (a) in one marked place.
 - **C13. The new figure of G3** (D128). Asked after the smoke run of spec 008 has measured the transformer end to end.
 - **C14. Tier of S40's other option** ("in any order"). Recommended: like S14 and S18 in D98: selectable in T0 with the note "agent ni učen s tem pravilom". Asked when the engine gets its toggles.
 
