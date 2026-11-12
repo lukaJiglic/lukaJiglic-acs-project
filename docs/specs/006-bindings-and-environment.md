@@ -1,6 +1,6 @@
 # 006 — Observation encoding, vectorised environment, Python bindings, game record
 
-Status: **approved** by the user on 2026-11-10 (D120), executed 2026-11-11, waiting for the user's read of the diff. Nothing is committed. See "Results" at the end.
+Status: **done** (2026-11-12). Approved on 2026-11-10 (D120), executed 2026-11-11, committed on the user's go-ahead (D123) as `8f24dbb` and `8cb2bb0`. The three workflows are green on `8cb2bb0`; the `train` run built the module on Linux and passed 88 tests. See "Results" at the end.
 
 Build-plan row 006. Tool and model: Claude Code 2.1.306, `claude-fable-5-2`.
 

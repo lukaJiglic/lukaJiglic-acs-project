@@ -12,6 +12,19 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 **Next:** the next step.
 ```
 
+## 2026-11-12 — spec 006 committed, the user's answers recorded, specs 008 and 013 started (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 6)
+
+**Done:** the user answered everything open ("Specs accepted, continue"; D123–D131). Spec 006 is committed in two commits (`8f24dbb` engine, `8cb2bb0` bindings) and pushed. Batch 11, Batch 12 and C11 are recorded. `docs/encoding.md` has section 4a with the fifteen readings; the version stays 1. Spec 008 is approved and carries the settings of D127 and the stale-module check. Spec 013 is new: three rulings that change the engine (a valat keeps the mondfang; pagat ultimo by side; the pagat wins a trula trick only if it falls last). The local compiler pin file is deleted (D129). Spec 013 went to the `engine-core` session and spec 008 to the `train-env` session.
+**Measurements:**
+- CI on `8cb2bb0`: `ci` success; `engine` success in 3 min 1 s; `train` success in 4 min 45 s. The `train` log shows the wheel of `tarok_env` built on Linux in 27 s and pytest with 88 passed, 8 skipped (GPU), 5 deselected (slow). The binding crate has no Rust tests of its own ("0 passed"), so `cargo test` there only proves that it links.
+- After the amendment of `docs/encoding.md`: `tools/check_encoding.py` 3 of 3, the engine's `c01` contract test and the learner's three `c01` tests pass.
+**Broken or open:**
+- The engine plays the old readings of the three rulings until spec 013 is in.
+- C12 is open: what "falls last" means exactly. Spec 013 builds reading (a) in one marked place.
+- G3 has no figure now (D128); it is proposed after the smoke run (C13).
+- Open issues of spec 006 stay as listed in its entry below.
+**Next:** verify and review the output of spec 013 and of spec 008's code; the user's read of each diff; then the three smoke runs (about three hours with the GPU free).
+
 ## 2026-11-11 — spec 006, encoding, vectorised environment, bindings, record (session `engine-core`, claude-fable-5-2; verified by the main session, ai-log rows 6 and 6c)
 
 **Done:** in `src/engine`: an event log on `Game`; the module `encode` (tokens, the 1,382 state features with the exact inference bits, mask, critic features, targets, reward with ten parts); `vecenv` (N tables, runs of 24 deals, own thread pool, behind a feature so a build without threads stays possible); `record` (JSON, replay). A separate binding crate `src/train/tarok_env` (PyO3 0.30.1, no `unsafe`, no rule in it) and `src/train/tarok_train/env.py` with the mock's interface. A review subagent found no leak, no unsound bit and no wrong reward in the code. It found six planted wrong rules that the suite let through (one a leak), loose array checks in the binding, a contract reading nobody had listed (C4) and three overclaims; 19 items, all fixed. Not committed: waiting for the user's read of the diff.
