@@ -30,7 +30,7 @@
 - 2026-11-12, later: C12 answered (D132).
 - 2026-11-12, later: spec 013 executed and reviewed (no code defect; test gaps in fixing). The review found a fifth valat case; the user ruled it (D133: in the declarer's valat the untaken talon is the declarer's, a mond in it is not lost).
 - 2026-11-12, evening: spec 013 is fixed after the review, D133 is built, and the main session verified it (182 engine tests). **Spec 013 waits for the user's read of the diff.**
-- **Waiting on the user, to approve:** the diff of spec 013 (D72 step 3).
+- 2026-11-12, evening: the user read the diff of spec 013 and approved the commit (D134; `ce175f6`).
 - **Waiting on the user:** corrections to the wireframe and `pitch.md`; the proposal format. Later: C13 (the new figure of G3, after the smoke run), C14 (tier of the trula toggle).
 - Next: spec 013 in the `engine-core` session and spec 008 in the `train-env` session; verification, review pass, the user's read of each diff, commit.
 - The proposal, Figma wireframe and pitch slide are due Wed 18 Nov. The product batch must follow soon after the bots batch.
@@ -46,6 +46,7 @@ Answered 2026-11-12: C11 (D131: the user's table plays "the pagat wins only if i
 Open:
 
 - **C13. The new figure of G3** (D128). Asked after the smoke run of spec 008 has measured the transformer end to end.
+- **C15. Old game records.** A record written by engine 0.1.0 can replay to other entries under 0.2.0. (a) Replay keeps going and names both versions in the error when entries differ; (b) replay refuses a record of another engine version. Recommended: (a); most old records still replay. Asked 2026-11-12, not answered yet.
 - **C14. Tier of S40's other option** ("in any order"). Recommended: like S14 and S18 in D98: selectable in T0 with the note "agent ni učen s tem pravilom". Asked when the engine gets its toggles.
 
 ## Batch 12 — readings of the encoding contract (asked 2026-11-11, answered 2026-11-12: a for all fifteen; see D130 and `docs/encoding.md` section 4a)

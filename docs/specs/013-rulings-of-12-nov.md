@@ -1,6 +1,6 @@
 # 013 — Three rulings of 12 November in the engine
 
-Status: **approved** (2026-11-12), executed and reviewed 2026-11-12, committed on the user's go-ahead (D134). Done once the workflows are green. The criteria restate the user's rulings D125, D126, D131 and D133. Reading C12 is decided (D132) and is built in one marked place.
+Status: **done** (2026-11-12). Executed and reviewed 2026-11-12, committed on the user's go-ahead (D134) as `ce175f6`. The three workflows are green on it: `engine` in 3 min 2 s, `train` with 88 tests passed against the module built from these sources. The criteria restate the user's rulings D125, D126, D131 and D133. Reading C12 is decided (D132) and is built in one marked place.
 
 Tool and model: Claude Code 2.1.306, `claude-fable-5-2`. Session `engine-core`.
 

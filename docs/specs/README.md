@@ -42,4 +42,4 @@ Tool and model: ...
 | 006 | [Encoding, environment, bindings, record](006-bindings-and-environment.md) | done 2026-11-12 |
 | 007 | [Model and PPO learner](007-model-and-learner.md) | done 2026-11-11 |
 | 008 | [Pipeline smoke run](008-pipeline-smoke-run.md) | approved 2026-11-12 (D124); in execution (session `train-env`) |
-| 013 | [Three rulings of 12 November](013-rulings-of-12-nov.md) | approved 2026-11-12 (D125, D126, D131); in execution (session `engine-core`) |
+| 013 | [Three rulings of 12 November](013-rulings-of-12-nov.md) | done 2026-11-12 |

@@ -23,7 +23,8 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 - The module in `.venv` is still built from engine 0.1.0; the `train-env` session builds it again when its jobs end. The Python parity tests passed only against a wheel in a scratch folder (26 of 26, session's run).
 - Replay does not look at the engine version: a 0.1.0 record can replay to other entries under 0.2.0. A question for the user in the spec.
 - CI is unverified for this code until the push.
-**Next:** the user's read of the diff of spec 013; commit; push. Then verify and review the code of spec 008 before its three long runs.
+**Committed** on the user's go-ahead (D134) as `ce175f6`. CI on it: `ci` success; `engine` success in 3 min 2 s; `train` success in 7 min 9 s with 88 passed, 8 skipped, 5 deselected, the module built from engine 0.2.0 on Linux.
+**Next:** verify and review the code of spec 008 before its three long runs.
 
 ## 2026-11-12 — spec 006 committed, the user's answers recorded, specs 008 and 013 started (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 6)
 
