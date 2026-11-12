@@ -28,6 +28,7 @@
 - 2026-11-11, night: all 19 review items of spec 006 are fixed and verified by the main session (180 engine tests, 169 without the thread feature). **Spec 006 waits for the user's read of the diff.** Its two workflows are unverified until the push.
 - 2026-11-12: the user answered everything open: spec 006 committed (D123; `8f24dbb`, `8cb2bb0`), spec 008 approved (D124), Batch 11 (D125–D129), Batch 12 (D130), C11 (D131). Three rulings change the engine: a valat does not cancel a lost mond, pagat ultimo follows the side, the pagat wins a trula trick only if it falls last. They are spec 013. `docs/encoding.md` has the readings of Batch 12 in section 4a.
 - 2026-11-12, later: C12 answered (D132).
+- 2026-11-12, later: spec 013 executed and reviewed (no code defect; test gaps in fixing). The review found a fifth valat case; the user ruled it (D133: in the declarer's valat the untaken talon is the declarer's, a mond in it is not lost).
 - **Waiting on the user:** corrections to the wireframe and `pitch.md`; the proposal format. Later: C13 (the new figure of G3, after the smoke run), C14 (tier of the trula toggle).
 - Next: spec 013 in the `engine-core` session and spec 008 in the `train-env` session; verification, review pass, the user's read of each diff, commit.
 - The proposal, Figma wireframe and pitch slide are due Wed 18 Nov. The product batch must follow soon after the bots batch.
