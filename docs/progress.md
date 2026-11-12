@@ -12,6 +12,44 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 **Next:** the next step.
 ```
 
+## 2026-11-12 — spec 008, pipeline smoke run on the real engine: run log (session `train-env`, claude-fable-5-2; verified by the main session, ai-log rows 6 and 6e)
+
+**This is a test of the pipeline, not a result about playing strength.** The opponent in the evaluation is random legal play.
+
+**Done:** the trainer runs on the real engine (`kind = "engine"`); monitors per phase; `evaluate.py` (a checkpoint against random legal play, 95% interval, records exported and replayed); the control fault `rewards_to_next_seat`; the entropy controller with a target per phase (D127, targets of D136); the stale-module check (D130); three configs. A review subagent found no defect that corrupts training or evaluation, seven lesser defects in reporting and checks, and 20 planted bugs that the tests let through; all fixed, 26 planted bugs caught after the fixes (session's count). Then the three runs. Not committed: waiting for the user's read of the diff.
+**Run log (D79).** Commit `c7d1fa3` plus the uncommitted diff of spec 008 (16 paths, listed in each `run-info.json`). Engine 0.2.0, source fingerprint `64a6157fb05f43c4`. 512 tables, 2,048 seat-deals per update, 200 updates, seed 8. GPU before: 0% busy, 518 MiB. Folders in `src/train/runs/`, untracked; nothing is released.
+
+| | MLP | Transformer | Control (MLP, rewards handed to the next seat) |
+|---|---|---|---|
+| Config | `smoke-a-mlp.toml` | `smoke-a-transformer.toml` | `smoke-a-mlp.toml`, `--name control-smoke-a --fault rewards_to_next_seat` |
+| Run folder | `smoke-a-mlp-20261112-170937` | `smoke-a-transformer-20261112-171542` | `control-smoke-a-mlp-20261112-174730` |
+| Updates, exit code | 200 of 200, 0 | 200 of 200, 0 | 200 of 200, 0 |
+| Duration | 351.8 s | 1,881.7 s | 342.6 s |
+| What failed | nothing | nothing | nothing in the run; it fails criterion 7, as it must |
+
+**Measurements** (from each run's `summary.json`, `evaluation-*.json` and the report script; read again by the main session from the files):
+- Loop: 0 illegal actions, 0 non-finite logged numbers, largest sum of a deal's four rewards 1.2e-07, oldest trained decision 0 updates, in all three runs.
+- Against random legal play, 2,000 deals in four seatings, seed 2008: MLP +0.598 per deal (95% interval +0.590 to +0.606); transformer +0.605 (+0.597 to +0.613); untrained MLP −0.005 (−0.029 to +0.019); untrained transformer −0.124 (−0.148 to −0.099); control −0.211 (−0.239 to −0.184). Reward 1 is 50 points of the paper score. 100 of 100 exported records replay to the same entries in each run.
+- The same three checkpoints evaluated again by the main session on other deals (seed 4040, copies in a scratch folder): MLP +0.595 (+0.587 to +0.603), transformer +0.605 (+0.597 to +0.612), control −0.184 (−0.211 to −0.157).
+- Speed end to end: MLP 34,743 decisions played per second and 17,050 trained; transformer 6,506 played and 3,194 trained. 49.1% of the played decisions are trained on. Against the old G3 of 10,000: the MLP is 3.5 times above, the transformer at 65% played and 32% trained.
+- Time split (environment, acting, bookkeeping, update): MLP 1.9%, 24.3%, 30.7%, 42.5%; transformer 0.4%, 46.2%, 5.8%, 47.5%.
+- GPU memory, transformer: tensors' peak 4,441 MiB, allocator 5,156 MiB, whole card at the end 5,350 of 6,144 MiB. MLP: 294, 506, 1,115 MiB.
+- Seat-deal length: 14.4 decisions on average, 20 at most; 67 tokens at most (limit 128).
+- Bidding: the untrained policy bids solo ena in over 90% of the deals and the declarer's side wins 3.7%. After 200 updates: MLP dve 34.7%, ena 65.3%; transformer tri 6.8%, dve 48.8%, ena 44.1%; the declarer's side wins 65.7% and 66.9%.
+- Entropy: the bidding collapsed around update 24 in both runs (0.012 to 0.016 against a target of 0.2); the controller raised that phase's weight from 0.01 to 0.38 and 0.59 and the entropy was back at 0.21 and 0.24 at the end. Play, discard and talon pick never came down to their targets.
+- Heads at the last update: partner seat 95.6% and 92.4% (uniform guess over the possible seats 90.4% and 85.8%); card location 36.3% and 37.1% (guess 30.9% and 30.8%). Critic's explained variance 0.59 and 0.61.
+- Tests on the final tree, re-run by the main session: 159 passed with the GPU tests, 6 slow left out. Three bugs planted by the main session in a scratch copy (the fault always on; the controller never steps; the interval over seat-deals) each fail a test.
+**Broken or open:**
+- The transformer run leaves about 800 MiB of the card free. 512 tables are the limit on this card; longer sequences (flow B) may not fit.
+- Half of the play is not trained on (deals that straddle an update are dropped; 8.7% are a past checkpoint's seats).
+- The controller steers on a phase mean that includes forced decisions; their share moved from 28% to 0% in the bidding during the runs. In the control run a phase with 99% forced decisions drove its weight to the upper limit without effect. Both means are logged; the user decides which one steers (C16).
+- No run without the controller on real deals, so its effect on the bidding collapse is not measured against a fixed weight.
+- The untrained transformer is under zero against random play (−0.12); the session's reading (first scale 0.3 gives fixed preferences) is not checked.
+- The control corrupts about half the signal (two of three opponents of a solo keep their reward); it still failed clearly.
+- `test_c20` of spec 006 fails on an idle PC (18.5% against 20%) and passes under load. Cause not established.
+- CI is unverified for this code until the push.
+**Next:** the user's read of the diff of spec 008; commit; push; CI. Then the new figure of G3 (C13), the controller's mean (C16), and specs 009 to 011.
+
 ## 2026-11-12 — spec 013, three rulings and D133 in the engine (session `engine-core`, claude-fable-5-2; verified by the main session, ai-log rows 6 and 6d)
 
 **Done:** the trick winner and the score follow the user's table: the pagat wins a trula trick only when played after the škis and the mond (D131, D132); pagat ultimo is signed by the side that takes the last trick (D126); a valat keeps a mondfang lost in a trick (D125); in the declarer's valat the packets not taken are the declarer's, so a mond in them costs nothing (D133, ruled during the review). Crate version 0.2.0. The shared random-case helper of the tests has fixed seeds now. A review subagent found no defect in the code; it found two wrong rules that the suite let through, a clock-seeded test that almost never drew a trula trick, and two statements in Results that held only in some runs. All fixed. Not committed: waiting for the user's read of the diff.

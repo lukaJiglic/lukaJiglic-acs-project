@@ -32,6 +32,8 @@
 - 2026-11-12, evening: spec 013 is fixed after the review, D133 is built, and the main session verified it (182 engine tests). **Spec 013 waits for the user's read of the diff.**
 - 2026-11-12, evening: the user read the diff of spec 013 and approved the commit (D134; `ce175f6`).
 - 2026-11-12, night: spec 008's code and short tests are built by `train-env` (138 tests pass here with the GPU tests). The user agreed with the open proposals (D135, D136). The review pass over spec 008 runs; the three long runs wait for it.
+- 2026-11-12, late: spec 008 is executed: review fixes in, the three smoke runs done. Both networks beat random play (+0.60 per deal), the control run does not (−0.21). Verified by the main session (159 tests; the checkpoints evaluated again on other deals). **Spec 008 waits for the user's read of the diff.**
+- **Waiting on the user, to approve:** the diff of spec 008 (D72 step 3). To decide: C13 (the new figure of G3), C16 (which entropy mean the controller steers on).
 - **Waiting on the user:** corrections to the wireframe and `pitch.md`; the proposal format. Later: C13 (the new figure of G3, after the smoke run), C14 (tier of the trula toggle).
 - Next: spec 013 in the `engine-core` session and spec 008 in the `train-env` session; verification, review pass, the user's read of each diff, commit.
 - The proposal, Figma wireframe and pitch slide are due Wed 18 Nov. The product batch must follow soon after the bots batch.
@@ -46,7 +48,8 @@ Answered 2026-11-12: C11 (D131: the user's table plays "the pagat wins only if i
 
 Open:
 
-- **C13. The new figure of G3** (D128). Asked after the smoke run of spec 008 has measured the transformer end to end.
+- **C13. The new figure of G3** (D128). Measured in spec 008, end to end on this PC with 512 tables and two epochs: transformer 6,506 decisions played per second and 3,194 trained; MLP 34,743 and 17,050. (a) at least 5,000 decisions played per second with the transformer; (b) at least 6,000 played; (c) at least 3,000 trained. Recommended: (a); it is met with a margin of 30%, which flow B's longer sequences will use up in part. Asked 2026-11-12.
+- **C16. Which entropy mean the controller steers on.** Now: the mean over all decisions of a phase, forced ones included. In the smoke runs the share of forced decisions in the bidding went from 28% to 0%, so the mean moved without the policy getting firmer or looser. (a) the mean over decisions with two or more legal actions, with the targets set again as a quarter of random play under that mean; (b) keep the mean over all decisions. Recommended: (a). Asked 2026-11-12.
 - **C14. Tier of S40's other option** ("in any order"). Recommended: like S14 and S18 in D98: selectable in T0 with the note "agent ni učen s tem pravilom". Asked when the engine gets its toggles.
 
 ## Batch 12 — readings of the encoding contract (asked 2026-11-11, answered 2026-11-12: a for all fifteen; see D130 and `docs/encoding.md` section 4a)
