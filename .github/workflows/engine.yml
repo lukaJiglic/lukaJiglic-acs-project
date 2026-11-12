@@ -1,7 +1,9 @@
 name: engine
 
 # Spec 002, criterion 32: fmt, clippy and tests for the Rust crate in
-# src/engine, on every push and on pull requests.
+# src/engine, on every push and on pull requests. The tests of spec 005
+# (deal flow) and spec 006 (encoding, vectorised environment, game record)
+# are part of `cargo test`.
 on: [push, pull_request]
 
 permissions:
@@ -29,6 +31,17 @@ jobs:
         run: cargo clippy --locked --all-targets -- -D warnings
       - name: Tests
         run: cargo test --locked
+      # Spec 006, criterion 28: the engine has no Python dependency, and it
+      # builds and passes its tests without the thread pool (the feature
+      # "vecenv"), as a WASM build will need. tests/vecenv.rs is left out
+      # there (required-features in Cargo.toml).
+      - name: No Python in the dependency tree
+        run: |
+          cargo tree --locked > "$RUNNER_TEMP/tree.txt"
+          test -s "$RUNNER_TEMP/tree.txt"
+          if grep -i pyo3 "$RUNNER_TEMP/tree.txt"; then echo "pyo3 in the engine's tree"; exit 1; fi
+      - name: Tests without the vecenv feature
+        run: cargo test --locked --no-default-features
       # The deal of the Rust code against a separate pure-Python derivation
       # (standard library only). Seeds 0 and 81985529216486895 are the two
       # golden deals of tests/deal.rs, so the reference is tied to them too.

@@ -62,12 +62,19 @@ pub mod card;
 pub mod cardset;
 pub mod contract;
 pub mod deal;
+pub mod encode;
 pub mod game;
 pub mod play;
 pub mod points;
+pub mod record;
 pub mod score;
 pub mod talon;
 pub mod trick;
+#[cfg(feature = "vecenv")]
+pub mod vecenv;
+
+/// The version of this crate. Game records carry it.
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub use action::{Action, ActionSet, Packet};
 pub use bidding::{BidEvent, Bidding};
@@ -75,6 +82,8 @@ pub use card::{Card, Face, Rank, Suit};
 pub use cardset::CardSet;
 pub use contract::Contract;
 pub use deal::{Deal, DealError, Seat, shuffled_deck};
-pub use game::{FullView, Game, GameError, Phase, PrivateView, PublicPartner, PublicView};
+pub use game::{
+    Event, EventKind, FullView, Game, GameError, Phase, PrivateView, PublicPartner, PublicView,
+};
 pub use play::{PlayError, PlayState, Trick};
 pub use score::{Score, ScoreParts};

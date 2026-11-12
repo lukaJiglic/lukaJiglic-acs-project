@@ -63,6 +63,49 @@ pub enum PublicPartner {
     With(Seat),
 }
 
+/// What a public event is. Every event is seen by all four seats.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum EventKind {
+    /// The deal starts. Always the first event.
+    Start,
+    /// A call in the auction: a bid, or `None` for a pass.
+    Bid(Option<Contract>),
+    /// The declarer names the contract to play.
+    Contract(Contract),
+    /// The declarer calls the king of a suit.
+    King(Suit),
+    /// A talon card is turned up. Six in a row, in the talon's order.
+    TalonShown(Card),
+    /// The declarer takes a packet.
+    TalonTaken(Packet),
+    /// The declarer puts down a tarok, face up (S14 a). Other discards are
+    /// hidden and are not events.
+    DiscardShown(Card),
+    /// A card is played to a trick.
+    Play(Card),
+}
+
+/// One public event of a deal.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Event {
+    pub kind: EventKind,
+    /// The seat that did it. `None` for the start and the talon turned up.
+    pub seat: Option<Seat>,
+    /// The trick number, 1 to 12, of a played card. 0 for everything else.
+    pub trick: u8,
+    /// The position in the trick, 1 to 4, of a played card. 0 otherwise.
+    pub position: u8,
+}
+
+/// Room for the events of a deal: the sequence limit of the encoding
+/// (`docs/encoding.md` section 3). The longest deal of this slice has 71.
+pub const MAX_EVENTS: usize = 128;
+
+/// Room for the actions of a deal. The longest deal of this slice has 64:
+/// 13 calls, the contract, a packet, 1 discard and 48 cards (solo ena
+/// after the longest auction; a test walks every auction).
+pub const MAX_ACTIONS: usize = 96;
+
 /// Why an action was refused.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum GameError {
@@ -105,7 +148,22 @@ pub struct Game {
     taken: Option<Packet>,
     discards: CardSet,
     play: Option<PlayState>,
+    /// The public events so far. Only the first `n_events` entries count.
+    events: [Event; MAX_EVENTS],
+    n_events: usize,
+    /// The slots of the actions taken so far, hidden discards included.
+    /// Only the first `n_actions` entries count.
+    actions: [u8; MAX_ACTIONS],
+    n_actions: usize,
 }
+
+/// The first event of every deal, and the filler of the unused entries.
+const START: Event = Event {
+    kind: EventKind::Start,
+    seat: None,
+    trick: 0,
+    position: 0,
+};
 
 impl Game {
     /// A new deal. `dealer` deals; the next seat is forehand. The hands go
@@ -125,6 +183,10 @@ impl Game {
             taken: None,
             discards: CardSet::EMPTY,
             play: None,
+            events: [START; MAX_EVENTS],
+            n_events: 1,
+            actions: [0; MAX_ACTIONS],
+            n_actions: 0,
         }
     }
 
@@ -209,20 +271,31 @@ impl Game {
         if !self.legal_actions().contains(action) {
             return Err(GameError::NotLegal(action));
         }
+        let seat = self.to_act();
         match (self.phase, action) {
-            (Phase::Bidding, Action::Pass) => self.bid(None),
-            (Phase::Bidding, Action::Bid(contract)) => self.bid(Some(contract)),
+            (Phase::Bidding, Action::Pass) => {
+                self.log(EventKind::Bid(None), seat);
+                self.bid(None);
+            }
+            (Phase::Bidding, Action::Bid(contract)) => {
+                self.log(EventKind::Bid(Some(contract)), seat);
+                self.bid(Some(contract));
+            }
             (Phase::ContractChoice, Action::Bid(contract)) => {
                 self.contract = Some(contract);
+                self.log(EventKind::Contract(contract), seat);
                 // After the choice the talon is shown, unless a king is
                 // called first.
                 self.phase = if contract.calls_king() {
                     Phase::KingCall
                 } else {
+                    self.log_talon();
                     Phase::TalonPick
                 };
             }
             (Phase::KingCall, Action::CallKing(suit)) => {
+                self.log(EventKind::King(suit), seat);
+                self.log_talon();
                 self.called = Some(suit);
                 let king = Card::court(suit, Rank::Kralj);
                 // The partner is the seat that holds the king now. A
@@ -234,6 +307,7 @@ impl Game {
                 self.phase = Phase::TalonPick;
             }
             (Phase::TalonPick, Action::TakePacket(packet)) => {
+                self.log(EventKind::TalonTaken(packet), seat);
                 self.taken = Some(packet);
                 if let Some(declarer) = self.declarer {
                     let taken = self.taken_cards();
@@ -246,6 +320,10 @@ impl Game {
                     self.hands[declarer.index()].remove(card);
                 }
                 self.discards.insert(card);
+                // A discarded tarok is shown to all; any other card is not.
+                if card.is_tarok() {
+                    self.log(EventKind::DiscardShown(card), seat);
+                }
                 if Some(self.discards.len() as usize) == self.packet_size() {
                     // Every hand is back to twelve. Forehand leads,
                     // whoever the declarer is.
@@ -259,6 +337,11 @@ impl Game {
                 if Some(card) == self.called_king() {
                     self.called_king_played = true;
                 }
+                if let Some(play) = &self.play {
+                    let trick = play.trick_history().len() + 1;
+                    let position = play.current_trick().len() + 1;
+                    self.log_play(card, seat, trick, position);
+                }
                 if let Some(play) = &mut self.play {
                     play.play(card).expect("a legal card is accepted");
                     if play.is_over() {
@@ -270,6 +353,7 @@ impl Game {
             // gets here.
             _ => return Err(GameError::NotLegal(action)),
         }
+        self.push_action(action);
         Ok(())
     }
 
@@ -308,6 +392,65 @@ impl Game {
     /// Everything, the hidden things too. Not for players.
     pub fn full(&self) -> FullView<'_> {
         FullView { game: self }
+    }
+
+    /// Adds a public event that is not a played card.
+    ///
+    /// Reading B12-7 (Batch 12, open): the contract, the called king, the
+    /// taken packet and a shown discard carry the declarer's seat. The
+    /// start and the six shown talon cards carry none.
+    fn log(&mut self, kind: EventKind, seat: Option<Seat>) {
+        self.push_event(Event {
+            kind,
+            seat,
+            trick: 0,
+            position: 0,
+        });
+    }
+
+    /// Adds the six talon cards, turned up, in the talon's order.
+    fn log_talon(&mut self) {
+        for card in self.talon {
+            self.log(EventKind::TalonShown(card), None);
+        }
+    }
+
+    fn log_play(&mut self, card: Card, seat: Option<Seat>, trick: usize, position: usize) {
+        // A trick number is at most 12 and a position at most 4.
+        self.push_event(Event {
+            kind: EventKind::Play(card),
+            seat,
+            trick: trick as u8,
+            position: position as u8,
+        });
+    }
+
+    /// No deal of the rules built so far has more than [`MAX_EVENTS`]
+    /// events; a test walks the longest. A rule that adds events (spec 009)
+    /// may pass the limit. Then this panics: a log that silently stopped
+    /// would give the network a sequence with its end cut off.
+    fn push_event(&mut self, event: Event) {
+        assert!(
+            self.n_events < MAX_EVENTS,
+            "a deal has more than {MAX_EVENTS} public events (MAX_EVENTS in game.rs, the \
+             sequence limit of docs/encoding.md): the limit must be raised"
+        );
+        self.events[self.n_events] = event;
+        self.n_events += 1;
+    }
+
+    /// Adds the slot of an action to the history. Panics past
+    /// [`MAX_ACTIONS`], for the same reason as [`Game::push_event`]: a
+    /// history that silently stopped could not be replayed.
+    fn push_action(&mut self, action: Action) {
+        assert!(
+            self.n_actions < MAX_ACTIONS,
+            "a deal has more than {MAX_ACTIONS} actions (MAX_ACTIONS in game.rs): the limit \
+             must be raised"
+        );
+        // The slot of an action is below 160 and fits a byte.
+        self.actions[self.n_actions] = action.slot() as u8;
+        self.n_actions += 1;
     }
 
     fn bid(&mut self, bid: Option<Contract>) {
@@ -411,6 +554,18 @@ impl<'a> PublicView<'a> {
     /// bidding and leads the first trick.
     pub fn forehand(&self) -> Seat {
         self.game.dealer.next()
+    }
+
+    /// The public events of the deal so far, in the order they happened.
+    /// The first is always [`EventKind::Start`]. The tokens of the encoding
+    /// are these events, one token each.
+    pub fn events(&self) -> &'a [Event] {
+        &self.game.events[..self.game.n_events]
+    }
+
+    /// True once the called king has been played to a trick.
+    pub fn called_king_played(&self) -> bool {
+        self.game.called_king_played
     }
 
     /// The calls of the auction, in order.
@@ -588,6 +743,13 @@ impl PrivateView<'_> {
             CardSet::EMPTY
         }
     }
+
+    /// True if this seat is the declarer's partner: it held the called king
+    /// when the king was called. The seat itself knows that from its hand,
+    /// long before the others do.
+    pub fn is_called_partner(&self) -> bool {
+        self.game.partner == Some(self.seat)
+    }
 }
 
 /// Everything about the deal, hidden things included. See [`Game::full`].
@@ -627,6 +789,21 @@ impl FullView<'_> {
     /// All discards, the hidden ones too.
     pub fn discards(&self) -> CardSet {
         self.game.discards
+    }
+
+    /// Every action taken so far, in order, the hidden discards included.
+    /// Replaying them on the same deal with the same dealer gives this
+    /// game again.
+    pub fn actions(&self) -> impl Iterator<Item = Action> + '_ {
+        // Every stored slot is the slot of an action: nothing is dropped.
+        self.action_slots()
+            .iter()
+            .filter_map(|&slot| Action::from_slot(usize::from(slot)))
+    }
+
+    /// The slots of the actions taken so far (`docs/encoding.md` section 5).
+    pub fn action_slots(&self) -> &[u8] {
+        &self.game.actions[..self.game.n_actions]
     }
 
     /// The talon cards the declarer did not take. All six before the pick.
@@ -680,5 +857,49 @@ impl FullView<'_> {
             pile = pile | self.talon_rest();
         }
         pile
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fresh() -> Game {
+        Game::from_seed(0, Seat::ALL[0])
+    }
+
+    /// The logs take exactly their limit.
+    #[test]
+    fn the_logs_have_room_up_to_their_limits() {
+        let mut game = fresh();
+        // The start event is there from the beginning.
+        for _ in 1..MAX_EVENTS {
+            game.push_event(START);
+        }
+        assert_eq!(game.n_events, MAX_EVENTS);
+        for _ in 0..MAX_ACTIONS {
+            game.push_action(Action::Pass);
+        }
+        assert_eq!(game.n_actions, MAX_ACTIONS);
+    }
+
+    /// A full event log is a panic that names the limit, not a log that
+    /// silently stops (spec 006, review item D11).
+    #[test]
+    #[should_panic(expected = "more than 128 public events")]
+    fn the_event_log_panics_when_it_is_full() {
+        let mut game = fresh();
+        for _ in 0..MAX_EVENTS {
+            game.push_event(START);
+        }
+    }
+
+    #[test]
+    #[should_panic(expected = "more than 96 actions")]
+    fn the_action_history_panics_when_it_is_full() {
+        let mut game = fresh();
+        for _ in 0..=MAX_ACTIONS {
+            game.push_action(Action::Pass);
+        }
     }
 }

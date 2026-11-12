@@ -12,8 +12,31 @@ publish = false
 # No default features: the crate needs only the ChaCha8 block function.
 rand_chacha = { version = "=0.10.0", default-features = false }
 
+# The game record (D59) is JSON.
+serde = { version = "=1.0.229", features = ["derive"] }
+serde_json = "=1.0.154"
+# The vectorised environment steps its tables on a thread pool. Optional:
+# a build without threads (WASM) turns the feature "vecenv" off.
+rayon = { version = "=1.12.0", optional = true }
+
+[features]
+default = ["vecenv"]
+vecenv = ["dep:rayon"]
+
+# tests/vecenv.rs tests the module behind the feature. Without the
+# feature `cargo test --no-default-features` leaves it out.
+[[test]]
+name = "vecenv"
+required-features = ["vecenv"]
+
 [dev-dependencies]
 # Without the "std" feature proptest does not pull in `getrandom`, which
 # needs `dlltool` and an assembler on the windows-gnu toolchain. The tests
 # seed the runner themselves (tests/common/mod.rs).
 proptest = { version = "1.12", default-features = false, features = ["alloc", "no_std"] }
+
+# The tests play several hundred thousand deals and encode every decision.
+# Unoptimised that takes minutes. Checks for overflow and debug assertions
+# stay on.
+[profile.dev]
+opt-level = 2
