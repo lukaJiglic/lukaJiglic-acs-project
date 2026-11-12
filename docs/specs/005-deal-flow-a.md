@@ -56,6 +56,7 @@ The user approves these before tests are written (D73). Seats in the examples: A
 19. The declarer then discards the same number of cards, one per action. Kings, škis, mond and pagat are never legal discards.
 20. Other taroks may be discarded freely (S14 a). A discarded tarok is public. Other discards are hidden from the other seats.
 21. The discards count for the declarer's side. The packets not taken count for the opponents.
+    One exception since spec 013 (D133): when the declarer's side takes all twelve tricks, the packets not taken count for the declarer's side. See `docs/specs/013-rulings-of-12-nov.md`, criterion 16.
 
 **Called king in the talon (S12 a)**
 22. If the called king is among the talon cards, there is no partner and the declarer plays alone. This is public once the talon is shown.
@@ -80,11 +81,14 @@ The user approves these before tests are written (D73). Seats in the examples: A
 37. Silent kralji: the same with the four kings, ±10.
 38. Silent kralj ultimo: if the called king is played to the last trick, +10 when the declarer's side wins that trick and −10 when the opponents win it. Otherwise 0. Never in a solo contract.
 39. Silent pagat ultimo: if the pagat is played to the last trick, the declarer's side scores +25 when their pagat wins it or an opponent's pagat loses it, and −25 when an opponent's pagat wins it or their own pagat loses it. Otherwise 0.
+    Changed by spec 013 (D126): the bonus follows the side that takes the last trick, as in criterion 38. See `docs/specs/013-rulings-of-12-nov.md`, criteria 4 to 7.
 40. Game and bonuses are independent: a lost game with a silent trula scores the loss plus 10.
 41. Silent valat: the declarer's side wins all twelve tricks. The entry is +250 and nothing else is scored (no game, no difference, no other bonus). See open point A for the opposite case.
+    Changed by spec 013 (D125): a lost mond is still written, −20 for its player next to the ±250. See `docs/specs/013-rulings-of-12-nov.md`, criteria 1 to 3.
 42. Mondfang: škis and mond in the same trick. The player of the mond writes −20, alone, whoever wins the trick, also when the škis was the partner's and also in a trick the pagat wins (S22 a, S29 a, S30 a).
 43. An opponent who loses the mond writes −20 although the game entry of opponents is 0.
 44. The mond lies in a packet the declarer does not take: the declarer writes −20. Not in the case of criterion 23, where the declarer wins the rest of the talon.
+    Also not when the declarer's side takes all twelve tricks (spec 013, D133). See `docs/specs/013-rulings-of-12-nov.md`, criterion 16.
 45. Three whole deals written out by hand, with chosen hands and plays, give the expected entries for all four seats. One has a partner, one a solo, one the called king in the talon.
 
 **Whole deals (property tests, 10,000 random deals with random legal actions)**
@@ -378,7 +382,9 @@ The constructor for tests with chosen hands, talon and dealer is `Game::new(&Dea
 
 1. **Forehand after three passes acts twice.** Forehand first names a contract as a bid in the bidding (criterion 10), then names the contract to play in the contract choice like every declarer (criterion 11): the bid or a higher one. Every deal so has exactly one contract-choice decision.
 2. **A valat cancels every mondfang, on both sides.** Criterion 41 says "nothing else is scored (no game, no difference, no other bonus)"; research/01 B3 says "Valat cancels all other scores of the hand". When one side takes all twelve tricks, the code writes ±250 and no −20 for anyone. That covers four cases: (i) the declarer's side takes all twelve and an opponent loses the mond to the škis; (ii) the declarer's side takes all twelve and one of the two loses the mond to the other's škis; (iii) the opponents take all twelve and the declarer loses the mond in a trick or leaves it in the talon; (iv) the opponents take all twelve and one of them loses the mond to another opponent's škis. One place in `score.rs`. Each case has a `reading2_…` test that fixes the present behaviour. The main session puts the cases to the user; the behaviour is unchanged until then. See question 1.
+   Replaced by spec 013 (D125): a valat does not cancel a lost mond, in any of the four cases. The five `reading2_…` tests are now the `d125_…` tests. See `docs/specs/013-rulings-of-12-nov.md`.
 3. **"The pagat wins the last trick"** is read as: the pagat is the card that takes the trick. If the partner's pagat is in the last trick and the declarer takes that trick with a higher tarok, that is "own pagat loses", −25. The last case of `c39` fixes this reading. See question 2.
+   Replaced by spec 013 (D126): pagat ultimo follows the side that takes the last trick, also when it takes it with another card. See `docs/specs/013-rulings-of-12-nov.md`, criteria 4 to 7.
 4. **Kralj ultimo follows criterion 38 as written:** the side that wins the last trick decides, not the king itself. A partner's king taken by the declarer's tarok in the last trick is +10.
 5. **Random test deals are not uniform in the bidding.** With uniform choices nearly every auction climbs to solo ena; of 3,000 random deals 5 had a partner. The test player takes the lowest legal action three times out of four in the bidding and in the contract choice (`tests/common/flow.rs`, `play_random`). A coverage test with fixed seeds checks that all six contracts, all four declarer positions, partner games, own-king games, the king in the talon and the mondfang all occur.
 6. **Files beyond the expected list:** `tests/common/flow.rs` and `tests/common/written.rs` (helpers and the written deals), `tests/actions.rs`. No `tests/contract.rs`: contract values are tested in `scoring.rs` (criterion 32).

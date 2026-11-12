@@ -26,7 +26,7 @@ use crate::card::{Card, Rank, Suit};
 use crate::cardset::CardSet;
 use crate::contract::Contract;
 use crate::deal::{Deal, Seat};
-use crate::play::{PlayState, Trick};
+use crate::play::{PlayState, TRICKS, Trick};
 use crate::score::{self, Outcome, Score};
 use crate::talon;
 
@@ -811,10 +811,25 @@ impl FullView<'_> {
         self.game.talon_set() - self.game.taken_cards()
     }
 
-    /// True if the rest of the talon has gone to the declarer: the called
-    /// king lay in the talon, the declarer took its packet, played the
-    /// king and won that trick (S12 a).
+    /// True if the rest of the talon has gone to the declarer. Two ways:
+    ///
+    /// - The called king lay in the talon, the declarer took its packet,
+    ///   played the king and won that trick (S12 a).
+    /// - The declarer's side took all twelve tricks (D133, see below).
+    ///   This is known only after the last trick.
     pub fn talon_rest_won(&self) -> bool {
+        // D133 (spec 013, criterion 16): "In case of valat, the declarer
+        // gets the packet he did not pick so he did not lose the mond".
+        // Only the declarer's own valat: when the opponents take all
+        // twelve, the packets stay with them.
+        let tricks = self.game.tricks();
+        if tricks.len() == TRICKS
+            && tricks
+                .iter()
+                .all(|trick| self.on_declarer_side(trick.winner))
+        {
+            return true;
+        }
         let Some(king) = self.game.called_king() else {
             return false;
         };
@@ -829,7 +844,7 @@ impl FullView<'_> {
 
     /// The cards that count for the declarer's side so far: the tricks of
     /// the declarer and the partner, the discards, and the rest of the
-    /// talon if it was won.
+    /// talon if it was won (see [`FullView::talon_rest_won`]).
     pub fn declarer_pile(&self) -> CardSet {
         let mut pile = self.game.discards;
         for trick in self.game.tricks() {

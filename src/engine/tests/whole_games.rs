@@ -96,8 +96,9 @@ fn c47_all_54_cards_end_in_the_two_piles_and_the_counts_sum_to_70() {
 
 /// Not a numbered criterion: the engine's score against the second scorer
 /// of the tests (`tests/common/second_scorer.rs`, written from criteria
-/// 29-44 and the answers of D118) on 10,000 random deals: both piles, both
-/// counts and all eight parts of all four entries.
+/// 29-44 of spec 005 with the answers of D118, and from spec 013: a valat
+/// keeps the mondfang, pagat ultimo follows the side) on 10,000 random
+/// deals: both piles, both counts and all eight parts of all four entries.
 #[test]
 fn score_matches_the_second_scorer_on_random_deals() {
     run_cases(CASES, case(), |(seed, dealer, choices)| {

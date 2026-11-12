@@ -1,7 +1,10 @@
 //! Scoring of the six normal contracts.
 //!
 //! Rules source: spec 005 criteria 29-44 with the answers of D118, written
-//! from pagat.com's four-player rules, and research/01 B3.
+//! from pagat.com's four-player rules, and research/01 B3. Two points are
+//! the rulings of the user's table (spec 013): a valat does not cancel a
+//! lost mond (D125), and pagat ultimo follows the side that takes the last
+//! trick (D126).
 //!
 //! The score of a deal is one entry per seat. An entry is the sum of eight
 //! parts, kept apart because the value head of the network predicts them
@@ -43,9 +46,12 @@ pub struct ScoreParts {
     pub kralj_ultimo: i32,
     pub pagat_ultimo: i32,
     /// +250 or -250 when one side took all twelve tricks. Every other part
-    /// is then 0.
+    /// is then 0, except the mondfang.
     pub valat: i32,
-    /// -20 for the player who lost the mond. Each player's own.
+    /// -20 for the player who lost the mond. Each player's own. Written in
+    /// every deal, also next to a valat (D125). A mond in a packet not
+    /// taken is not lost when the declarer's side takes all twelve tricks
+    /// (D133).
     pub mondfang: i32,
 }
 
@@ -144,7 +150,8 @@ pub(crate) struct Outcome<'a> {
     /// All cards that count for the declarer's side.
     pub declarer_pile: CardSet,
     /// The talon cards the declarer did not take, if they stayed with the
-    /// opponents. Empty if the declarer won them (spec 005 criterion 23).
+    /// opponents. Empty if the declarer won them: with the called king
+    /// (spec 005 criterion 23) or by taking all twelve tricks (D133).
     pub talon_with_opponents: CardSet,
 }
 
@@ -180,9 +187,9 @@ pub(crate) fn score(outcome: &Outcome<'_>) -> Score {
     };
 
     if valat != 0 {
-        // All twelve tricks to one side: 250 for or against, and nothing
-        // else is scored (criterion 41, answer A of D118). Read here as
-        // "no mondfang either"; see the Results of spec 005.
+        // All twelve tricks to one side: 250 for or against, and no game,
+        // no difference and no other bonus (criterion 41, answer A of
+        // D118). The mondfang is not cancelled: see below.
         side.valat = valat;
     } else {
         if let Some((game, difference)) = game_and_difference(outcome.contract, declarer_points) {
@@ -218,34 +225,38 @@ pub(crate) fn score(outcome: &Outcome<'_>) -> Score {
                     -SILENT_KRALJ_ULTIMO
                 };
             }
-            // Pagat ultimo: the pagat in the last trick. It "wins" when
-            // the pagat itself takes the trick, so when its player is the
-            // winner. The declarer's side gains when its own pagat wins or
-            // an opponent's pagat loses.
-            if let Some(player) = player_of(last, Card::PAGAT) {
-                let pagat_wins = last.winner == player;
-                side.pagat_ultimo = if on_declarer_side(player) == pagat_wins {
+            // Pagat ultimo: the pagat in the last trick. The bonus follows
+            // the side, as kralj ultimo does (D126): the declarer's side
+            // writes plus when it takes the trick, with the pagat or with
+            // another card, and minus when the opponents take it. Who
+            // played the pagat does not change the sign: the side of the
+            // pagat's player wins the bonus exactly when it takes the
+            // trick, and the bonus of one side is the loss of the other.
+            if last.cards.contains(&Card::PAGAT) {
+                side.pagat_ultimo = if on_declarer_side(last.winner) {
                     SILENT_PAGAT_ULTIMO
                 } else {
                     -SILENT_PAGAT_ULTIMO
                 };
             }
         }
+    }
 
-        // Mondfang: škis and mond in one trick. The mond's player pays,
-        // whoever wins the trick, also to the partner's škis and in a
-        // trick the pagat wins (S22 a, S30 a).
-        for trick in outcome.tricks {
-            if trick.cards.contains(&Card::SKIS)
-                && let Some(player) = player_of(trick, Card::MOND)
-            {
-                parts[player.index()].mondfang = MONDFANG;
-            }
+    // Mondfang: škis and mond in one trick. The mond's player pays, whoever
+    // wins the trick, also to the partner's škis and in a trick the pagat
+    // wins (S22 a, S30 a). A valat does not cancel it (D125).
+    for trick in outcome.tricks {
+        if trick.cards.contains(&Card::SKIS)
+            && let Some(player) = player_of(trick, Card::MOND)
+        {
+            parts[player.index()].mondfang = MONDFANG;
         }
-        // The mond left in the talon and lost with it: the declarer pays.
-        if outcome.talon_with_opponents.contains(Card::MOND) {
-            parts[declarer.index()].mondfang = MONDFANG;
-        }
+    }
+    // The mond left in the talon and lost with it: the declarer pays. Not
+    // in the declarer's valat, where the packets not taken are won
+    // (D133); the set is then empty.
+    if outcome.talon_with_opponents.contains(Card::MOND) {
+        parts[declarer.index()].mondfang = MONDFANG;
     }
 
     for seat in Seat::ALL {

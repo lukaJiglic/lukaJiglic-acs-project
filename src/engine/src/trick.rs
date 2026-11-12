@@ -10,15 +10,18 @@ use crate::cardset::CardSet;
 /// The position (0-3) of the card that wins the trick. The cards are in the
 /// order of play; position 0 is the led card.
 ///
-/// - Škis, mond and pagat all in the trick: the pagat wins, in any order of
-///   play (TARZS 2010 "v poljubnem vrstnem redu", D113).
+/// - Škis, mond and pagat all in the trick: the pagat wins if it falls
+///   last (spec 013, D131; toggle S40, of which this is the Default).
+///   Otherwise the škis wins, as the highest tarok.
 /// - Otherwise the highest tarok wins. The škis is the highest tarok.
 /// - With no tarok, the highest card of the led suit wins.
 pub fn winner(cards: &[Card; 4]) -> usize {
-    let has = |wanted: Card| cards.contains(&wanted);
-    if has(Card::SKIS)
-        && has(Card::MOND)
-        && let Some(pagat) = cards.iter().position(|&c| c == Card::PAGAT)
+    let position = |wanted: Card| cards.iter().position(|&c| c == wanted);
+    if let (Some(skis), Some(mond), Some(pagat)) = (
+        position(Card::SKIS),
+        position(Card::MOND),
+        position(Card::PAGAT),
+    ) && pagat_falls_last(skis, mond, pagat)
     {
         return pagat;
     }
@@ -30,6 +33,16 @@ pub fn winner(cards: &[Card; 4]) -> usize {
         }
     }
     best
+}
+
+/// Škis, mond and pagat are in one trick, at these positions (0-3) in the
+/// order of play. True if the pagat "falls last".
+///
+/// Reading C12 (decided, D132): the pagat was played after both the škis
+/// and the mond; a fourth card may still follow it. The reading that was
+/// not chosen, "only as the fourth card of the trick", is `pagat == 3`.
+const fn pagat_falls_last(skis: usize, mond: usize, pagat: usize) -> bool {
+    pagat > skis && pagat > mond
 }
 
 /// True if `card`, played later, takes the trick from `best`. `best` is the

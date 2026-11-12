@@ -10,7 +10,7 @@
 //! {
 //!   "record_version": 1,
 //!   "encoding_version": 1,
-//!   "engine_version": "0.1.0",
+//!   "engine_version": "0.2.0",
 //!   "seed": "42",
 //!   "dealer": 3,
 //!   "preset": "default",

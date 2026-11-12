@@ -7,7 +7,7 @@ mod common;
 
 use common::flow::{
     A, B, C, D, NORMAL, REST_WITHOUT_KING, act, deal_with, declare, exchange, finish, game,
-    king_in_talon_deal, king_taken_and_led, legal, packet,
+    king_in_talon_deal, king_taken_and_led, legal, packet, run_until,
 };
 use common::second_scorer::second_score;
 use common::{SUITS, kralj, pip, set, tarok};
@@ -244,6 +244,7 @@ fn c20_discarded_taroks_are_public_other_discards_hidden() {
 
 #[test]
 fn c21_discards_count_for_declarer_untaken_packets_for_opponents() {
+    let mut valats = 0;
     for contract in NORMAL {
         let size = packet_size(contract);
         let last = (6 / size - 1) as u8;
@@ -260,12 +261,32 @@ fn c21_discards_count_for_declarer_untaken_packets_for_opponents() {
         let untaken = set(&TALON) - taken;
         assert_eq!(untaken.len() as usize, 6 - size);
 
+        // Until the last trick the packets not taken lie in the opponents'
+        // pile, in every contract.
+        run_until(&mut game, |game| game.public().tricks().len() == 11);
+        assert!(untaken.is_subset(game.full().opponents_pile()));
+
         finish(&mut game);
         let full = game.full();
+        // One exception (spec 013, criterion 16, D133): the declarer's
+        // side took all twelve tricks. Then the packets are the
+        // declarer's. With the lowest legal cards that happens here in
+        // some of the six contracts and not in others.
+        let side = |seat| seat == A || Some(seat) == full.partner();
+        let valat = game
+            .public()
+            .tricks()
+            .iter()
+            .all(|trick| side(trick.winner));
+        valats += usize::from(valat);
         // The discards lie in the declarer's pile, the packets not taken in
         // the opponents' pile.
         assert!(discards.is_subset(full.declarer_pile()));
-        assert!(untaken.is_subset(full.opponents_pile()));
+        if valat {
+            assert!(untaken.is_subset(full.declarer_pile()));
+        } else {
+            assert!(untaken.is_subset(full.opponents_pile()));
+        }
         assert!(full.declarer_pile().is_disjoint(full.opponents_pile()));
         assert_eq!(full.declarer_pile() | full.opponents_pile(), CardSet::FULL);
 
@@ -273,12 +294,21 @@ fn c21_discards_count_for_declarer_untaken_packets_for_opponents() {
         // collects each pile on its own and counts each by itself.
         let second = second_score(&game);
         assert!(discards.is_subset(second.declarer_pile));
-        assert!(untaken.is_subset(second.opponents_pile));
+        if valat {
+            assert!(untaken.is_subset(second.declarer_pile));
+        } else {
+            assert!(untaken.is_subset(second.opponents_pile));
+        }
         let score = game.score().unwrap();
         assert_eq!(score.declarer_points(), second.declarer_points);
         assert_eq!(score.opponents_points(), second.opponents_points);
         assert_eq!(second.declarer_points + second.opponents_points, 70);
     }
+    println!("criterion 21: {valats} of the 6 contracts ended in a valat of the declarer's side");
+    assert!(
+        valats < 6,
+        "the rule itself is tested in a contract or more"
+    );
 }
 
 #[test]

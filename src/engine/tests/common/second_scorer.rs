@@ -1,32 +1,21 @@
 //! A second scorer, for the tests only.
 //!
-//! It is written from spec 005 criteria 29-44 and the answers of D118, seat
-//! by seat, and does not call the engine's `score` module or the pile
-//! accessors of the full view. It reads the record of a finished deal: the
-//! contract, the declarer, the called king, the talon, the taken packet and
-//! the tricks from the public view; the partner and the discards from the
-//! full view. Card points come from `points::count` (spec 002) and the
-//! winner of the last trick from the tests' own `reference_winner`.
+//! It is written from spec 005 criteria 29-44 with the answers of D118 and
+//! from spec 013 (D125: a valat keeps the mondfang; D126: pagat ultimo
+//! follows the side; D133: in a valat the declarer wins the packets not
+//! taken), seat by seat. It does not call the engine's `score`
+//! module or the pile accessors of the full view. It reads the record of a
+//! finished deal: the contract, the declarer, the called king, the talon,
+//! the taken packet and the tricks from the public view; the partner and
+//! the discards from the full view. Card points come from `points::count`
+//! (spec 002) and the winner of the last trick from the tests' own
+//! `reference_winner`.
 //!
 //! The tests compare it with `Game::score` on random deals.
 
 use tarok_engine::{Card, CardSet, Contract, Game, Seat, Suit, points};
 
 use super::{kralj, reference_winner};
-
-/// D118, reading 2 of the Results (open with the user): when one side takes
-/// all twelve tricks, is a mondfang still written? Three cases, each with
-/// its own switch, so a ruling changes one line here.
-///
-/// The declarer's side takes all twelve and an opponent loses the mond.
-pub const MONDFANG_FOR_AN_OPPONENT_IN_A_VALAT: bool = false;
-/// The side that takes all twelve loses the mond to a škis of its own: the
-/// declarer to the partner (or the other way round) in a valat, or one
-/// opponent to another in a valat against.
-pub const MONDFANG_INSIDE_THE_SIDE_IN_A_VALAT: bool = false;
-/// The opponents take all twelve and the declarer's side loses the mond,
-/// in a trick or left in the talon.
-pub const MONDFANG_IN_A_VALAT_AGAINST: bool = false;
 
 /// The eight parts of one seat's entry, in the order of the spec: game,
 /// difference, trula, kralji, kralj ultimo, pagat ultimo, valat, mondfang.
@@ -124,6 +113,10 @@ pub fn second_score(game: &Game) -> Second {
             theirs.extend(trick.cards);
         }
     }
+    // In a valat the declarer gets the packets not taken (spec 013,
+    // criterion 16, D133): the opponents have no trick to put them with.
+    // Not in a valat against.
+    let rest_won = rest_won || theirs.is_empty();
     if rest_won {
         ours.extend(&untaken);
     } else {
@@ -155,19 +148,11 @@ pub fn second_score(game: &Game) -> Second {
 
     // --- What the declarer's side writes (criteria 30-41) ---------------
     let mut side: Parts = [0; 8];
-    let mut mondfang_counts = true;
     if our_tricks == 12 || our_tricks == 0 {
-        // Criterion 41 and answer A: 250 for or against, nothing else.
+        // Criterion 41 and answer A: 250 for or against, and none of the
+        // parts of the side. The mondfang is not one of them: it is
+        // written below in every deal (spec 013, D125).
         side[6] = if our_tricks == 12 { 250 } else { -250 };
-        mondfang_counts = match (our_tricks == 12, mond_loser.map(with_declarer)) {
-            (_, None) => false,
-            // The declarer's side takes all twelve.
-            (true, Some(false)) => MONDFANG_FOR_AN_OPPONENT_IN_A_VALAT,
-            (true, Some(true)) => MONDFANG_INSIDE_THE_SIDE_IN_A_VALAT,
-            // The opponents take all twelve.
-            (false, Some(true)) => MONDFANG_IN_A_VALAT_AGAINST,
-            (false, Some(false)) => MONDFANG_INSIDE_THE_SIDE_IN_A_VALAT,
-        };
     } else {
         // Game and difference: 36 wins, 35 loses.
         let value = game_value(contract);
@@ -198,14 +183,22 @@ pub fn second_score(game: &Game) -> Second {
         {
             side[4] = if with_declarer(last.winner) { 10 } else { -10 };
         }
-        // Pagat ultimo: the pagat in the last trick. It wins only if it is
-        // the card that takes the trick (reading 3).
+        // Pagat ultimo: the pagat in the last trick. The side of the
+        // pagat's player wins the bonus when one of its seats takes the
+        // trick, with the pagat or with another card (spec 013, D126). The
+        // seat that takes the trick is found here from the cards.
         if let Some(position) = last.cards.iter().position(|&c| c == Card::PAGAT) {
-            let pagat_takes_it = reference_winner(last.cards) == position;
             let own_pagat = with_declarer(seat_at(last.leader, position));
-            side[5] = match (own_pagat, pagat_takes_it) {
-                (true, true) | (false, false) => 25,
-                (true, false) | (false, true) => -25,
+            let taker = seat_at(last.leader, reference_winner(last.cards));
+            side[5] = match (own_pagat, with_declarer(taker)) {
+                // The declarer's side played it and took the trick.
+                (true, true) => 25,
+                // The declarer's side played it and lost the trick.
+                (true, false) => -25,
+                // An opponent played it and the declarer's side took it.
+                (false, true) => 25,
+                // An opponent played it and the opponents took the trick.
+                (false, false) => -25,
             };
         }
     }
@@ -216,7 +209,7 @@ pub fn second_score(game: &Game) -> Second {
         if with_declarer(seat) {
             parts[seat.index()] = side;
         }
-        if mondfang_counts && mond_loser == Some(seat) {
+        if mond_loser == Some(seat) {
             parts[seat.index()][7] = -20;
         }
     }

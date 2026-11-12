@@ -1,4 +1,7 @@
-//! Spec 005, criteria 29-44: scoring of the six normal contracts.
+//! Spec 005, criteria 29-44: scoring of the six normal contracts, with the
+//! rulings of spec 013: a valat keeps the mondfang (D125, the `d125_`
+//! tests), pagat ultimo follows the side (D126, `c39`), and in a valat the
+//! declarer wins the packets not taken (D133, the `d133_` test).
 //!
 //! Seats: A is forehand (seat 0), then B, C, D; D (seat 3) deals.
 //!
@@ -1110,80 +1113,120 @@ fn c38_silent_kralj_ultimo() {
     assert_eq!(score.parts(A).kralj_ultimo, 0);
 }
 
+/// Criterion 39 as changed by spec 013 (criteria 4 to 7, D126): pagat
+/// ultimo follows the side that takes the last trick, like kralj ultimo.
 #[test]
 fn c39_silent_pagat_ultimo() {
-    // +25: the declarer's pagat wins the last trick.
+    let last_trick = |game: &Game| game.public().tricks()[11];
+
+    // 1. +25: the declarer's pagat wins the last trick.
     let (game, score) = pagat_ultimo_own_wins();
     assert_eq!(trick_of(&game, PAGAT), 12);
-    assert_eq!(game.public().tricks()[11].winner, A);
-    assert_eq!(game.public().tricks()[11].cards[3], PAGAT);
+    assert_eq!(last_trick(&game).winner, A);
+    assert_eq!(last_trick(&game).cards[3], PAGAT);
     assert_eq!(score.parts(A).valat, 0);
     assert_eq!(score.parts(A).pagat_ultimo, 25);
     for seat in [B, C, D] {
         assert_eq!(score.parts(seat).pagat_ultimo, 0);
     }
 
-    // -25: the declarer's pagat is played to the last trick and loses it.
-    let (game, score) = pagat_ultimo_own_loses();
-    assert_eq!(trick_of(&game, PAGAT), 12);
-    assert_eq!(game.public().tricks()[11].winner, D);
-    assert!(game.private(A).hand().is_empty());
-    assert_eq!(score.parts(A).pagat_ultimo, -25);
-
-    // -25: an opponent's pagat wins the last trick.
-    let (game, score) = trula_for_the_opponents();
-    assert_eq!(trick_of(&game, PAGAT), 12);
-    assert_eq!(game.public().tricks()[11].winner, B);
-    assert_eq!(game.public().tricks()[11].cards[0], PAGAT);
-    assert_eq!(score.parts(A).valat, 0);
-    assert_eq!(score.parts(A).pagat_ultimo, -25);
-
-    // +25: an opponent's pagat is played to the last trick and loses it.
-    let (game, score) = pagat_ultimo_opponent_loses();
-    assert_eq!(trick_of(&game, PAGAT), 12);
-    assert_eq!(game.public().tricks()[11].cards[0], PAGAT);
-    assert_eq!(game.public().tricks()[11].winner, A);
-    assert_eq!(score.parts(A).valat, 0);
-    assert_eq!(score.parts(A).pagat_ultimo, 25);
-
-    // The pagat "loses" whenever it is not the card that takes the trick,
-    // also when a player of its own side takes it.
-    //
-    // +25: C's pagat is played to the last trick and D takes the trick with
-    // the XIX. A plays solo, so C and D are both opponents: an opponent's
-    // pagat loses.
-    let game = a_declares(&pagat_and_a_higher_tarok(D), SoloTri, None);
-    let (game, score) = finished(game, pagat_and_a_higher_tarok_scripts(D));
-    assert_eq!(tricks_won(&game), [9, 1, 1, 1]);
-    assert_eq!(trick_of(&game, PAGAT), 12);
-    assert_eq!(game.public().tricks()[11].cards[2], PAGAT);
-    assert_eq!(game.public().tricks()[11].winner, D);
-    assert_eq!(score.parts(A).pagat_ultimo, 25);
-
-    // -25: the same hands in tri with križ called. C holds the križ kralj
-    // and is A's partner, so the pagat is the declarer's side's own, and
-    // the opponent D takes the last trick.
-    let game = a_declares(&pagat_and_a_higher_tarok(D), Tri, Some(Suit::Kriz));
-    assert_eq!(game.full().partner(), Some(C));
-    let (game, score) = finished(game, pagat_and_a_higher_tarok_scripts(D));
-    assert_eq!(game.public().tricks()[11].winner, D);
-    assert_eq!(score.parts(A).pagat_ultimo, -25);
-    assert_eq!(score.parts(C).pagat_ultimo, -25);
-
-    // -25 (reading 3 of the Results; question 2 for the user): the partner
-    // C plays the pagat to the last trick and the declarer A takes the
-    // trick with the XIX. The side wins the trick, but not with the pagat.
+    // 2. +25: the partner C plays the pagat to the last trick and the
+    // declarer A takes the trick with the XIX. The side takes the trick
+    // with another card and wins the bonus. (Spec 005 scored this -25.)
     let game = a_declares(&pagat_and_a_higher_tarok(A), Tri, Some(Suit::Kriz));
     assert_eq!(game.full().partner(), Some(C));
     let (game, score) = finished(game, pagat_and_a_higher_tarok_scripts(A));
     assert_eq!(tricks_won(&game), [10, 1, 1, 0]);
     assert_eq!(trick_of(&game, PAGAT), 12);
-    assert_eq!(game.public().tricks()[11].winner, A);
+    assert_eq!(last_trick(&game).cards[2], PAGAT);
+    assert_eq!(last_trick(&game).winner, A);
     assert_eq!(score.parts(A).valat, 0);
+    assert_eq!(score.parts(A).pagat_ultimo, 25);
+    assert_eq!(score.parts(C).pagat_ultimo, 25);
+    assert_eq!(score.entry(A), score.entry(C));
+    assert_eq!(
+        [score.parts(B).pagat_ultimo, score.parts(D).pagat_ultimo],
+        [0, 0]
+    );
+
+    // 3. +25: the same cards and the same play, but C is the declarer (dve,
+    // srce called) and A, who holds the srce kralj, is the partner. The
+    // declarer's pagat is taken by the partner's XIX.
+    let mut game = common::flow::game(&pagat_and_a_higher_tarok(A));
+    declare(&mut game, C, Dve);
+    act(&mut game, C, Action::CallKing(Suit::Srce));
+    exchange_back(&mut game, 0);
+    assert_eq!(game.full().partner(), Some(A));
+    let (game, score) = finished(game, pagat_and_a_higher_tarok_scripts(A));
+    assert_eq!(tricks_won(&game), [10, 1, 1, 0]);
+    assert_eq!(game.public().declarer(), Some(C));
+    assert_eq!(last_trick(&game).cards[2], PAGAT);
+    assert_eq!(last_trick(&game).winner, A);
+    assert_eq!(score.parts(C).valat, 0);
+    assert_eq!(score.parts(C).pagat_ultimo, 25);
+    assert_eq!(score.parts(A).pagat_ultimo, 25);
+    assert_eq!(
+        [score.parts(B).pagat_ultimo, score.parts(D).pagat_ultimo],
+        [0, 0]
+    );
+
+    // 4. -25: an opponent's pagat is taken by another opponent. A plays
+    // solo, so B, C and D are one side: C plays the pagat, D takes the
+    // trick with the XIX, and the opponents win the bonus. (Spec 005
+    // scored this +25.)
+    let game = a_declares(&pagat_and_a_higher_tarok(D), SoloTri, None);
+    let (game, score) = finished(game, pagat_and_a_higher_tarok_scripts(D));
+    assert_eq!(tricks_won(&game), [9, 1, 1, 1]);
+    assert_eq!(trick_of(&game, PAGAT), 12);
+    assert_eq!(last_trick(&game).cards[2], PAGAT);
+    assert_eq!(last_trick(&game).winner, D);
+    assert_eq!(score.parts(A).pagat_ultimo, -25);
+    for seat in [B, C, D] {
+        assert_eq!(score.parts(seat).pagat_ultimo, 0);
+    }
+
+    // The same in tri when A calls its own srce kralj: A is alone, C and D
+    // are opponents again.
+    let game = a_declares(&pagat_and_a_higher_tarok(D), Tri, Some(Suit::Srce));
+    assert_eq!(game.full().partner(), None);
+    let (game, score) = finished(game, pagat_and_a_higher_tarok_scripts(D));
+    assert_eq!(last_trick(&game).winner, D);
+    assert_eq!(score.parts(A).pagat_ultimo, -25);
+
+    // -25: an opponent's pagat wins the last trick itself.
+    let (game, score) = trula_for_the_opponents();
+    assert_eq!(trick_of(&game, PAGAT), 12);
+    assert_eq!(last_trick(&game).winner, B);
+    assert_eq!(last_trick(&game).cards[0], PAGAT);
+    assert_eq!(score.parts(A).valat, 0);
+    assert_eq!(score.parts(A).pagat_ultimo, -25);
+
+    // 5. -25: the declarer's pagat is played to the last trick and an
+    // opponent takes it.
+    let (game, score) = pagat_ultimo_own_loses();
+    assert_eq!(trick_of(&game, PAGAT), 12);
+    assert_eq!(last_trick(&game).winner, D);
+    assert!(game.private(A).hand().is_empty());
+    assert_eq!(score.parts(A).pagat_ultimo, -25);
+
+    // -25: the partner's pagat, taken by an opponent. Tri with križ
+    // called: C holds the križ kralj and the pagat, D takes the last trick.
+    let game = a_declares(&pagat_and_a_higher_tarok(D), Tri, Some(Suit::Kriz));
+    assert_eq!(game.full().partner(), Some(C));
+    let (game, score) = finished(game, pagat_and_a_higher_tarok_scripts(D));
+    assert_eq!(last_trick(&game).winner, D);
     assert_eq!(score.parts(A).pagat_ultimo, -25);
     assert_eq!(score.parts(C).pagat_ultimo, -25);
 
-    // 0 when the pagat falls earlier: trick 11 here, trick 6 in deal 1.
+    // 6. +25: an opponent's pagat is taken by the declarer's side.
+    let (game, score) = pagat_ultimo_opponent_loses();
+    assert_eq!(trick_of(&game, PAGAT), 12);
+    assert_eq!(last_trick(&game).cards[0], PAGAT);
+    assert_eq!(last_trick(&game).winner, A);
+    assert_eq!(score.parts(A).valat, 0);
+    assert_eq!(score.parts(A).pagat_ultimo, 25);
+
+    // 7. 0 when the pagat falls earlier: trick 11 here, trick 6 in deal 1.
     let (game, score) = trula_for_a();
     assert_eq!(trick_of(&game, PAGAT), 11);
     assert_eq!(score.parts(A).pagat_ultimo, 0);
@@ -1265,9 +1308,18 @@ fn twelve_from_the_top() -> Vec<Card> {
     script
 }
 
-fn only_valat(score: &Score, seat: Seat, value: i32) {
+/// A seat's parts in a deal in which one side took all twelve tricks: the
+/// valat, the mondfang if this seat lost the mond, and nothing else (spec
+/// 013, criterion 2).
+fn valat_and_mondfang(score: &Score, seat: Seat, valat: i32, mondfang: i32) {
     let parts = score.parts(seat);
-    assert_eq!(parts.valat, value);
+    assert_eq!(parts.valat, valat, "valat of seat {}", seat.index());
+    assert_eq!(
+        parts.mondfang,
+        mondfang,
+        "mondfang of seat {}",
+        seat.index()
+    );
     assert_eq!(
         [
             parts.game,
@@ -1276,12 +1328,17 @@ fn only_valat(score: &Score, seat: Seat, value: i32) {
             parts.kralji,
             parts.kralj_ultimo,
             parts.pagat_ultimo,
-            parts.mondfang
         ],
-        [0; 7],
-        "nothing else is scored"
+        [0; 6],
+        "no game, no difference and no other bonus for seat {}",
+        seat.index()
     );
-    assert_eq!(score.entry(seat), value);
+    assert_eq!(score.entry(seat), valat + mondfang);
+}
+
+/// A valat in which this seat lost no mond: the 250 and nothing else.
+fn only_valat(score: &Score, seat: Seat, value: i32) {
+    valat_and_mondfang(score, seat, value, 0);
 }
 
 #[test]
@@ -1381,14 +1438,53 @@ fn c42_mondfang_the_mond_player_writes_minus_20() {
     assert_eq!(score.entry(A), score.entry(C) - 20);
     assert_eq!([score.entry(B), score.entry(D)], [0, 0]);
 
-    // Škis, mond and pagat in one trick: the pagat wins it and the mond's
-    // player still writes -20 (S22 a).
+    // Škis, mond and pagat in one trick, the pagat last: the pagat wins
+    // it and the mond's player still writes -20 (S22 a; spec 013,
+    // criterion 10).
     let deal = deal_with([&[MOND], &[S], &[PAGAT], &[]], &low_talon());
     let game = a_declares(&deal, SoloEna, None);
     let (game, score) = finished(game, [&[MOND], &[S], &[PAGAT], &[]]);
     assert_eq!(skis_mond_trick(&game), Some(0));
-    assert!(game.public().tricks()[0].cards.contains(&PAGAT));
+    assert_eq!(game.public().tricks()[0].cards[..3], [MOND, S, PAGAT]);
     assert_eq!(game.public().tricks()[0].winner, C);
+    assert_eq!(score.parts(A).valat, 0);
+    assert_eq!(score.parts(A).mondfang, -20);
+    for seat in [B, C, D] {
+        assert_eq!(score.parts(seat).mondfang, 0);
+    }
+
+    // The same three cards with the pagat led: the škis wins the trick
+    // (spec 013, criterion 8). It is the plain mondfang: C, who played the
+    // mond, writes -20 and nobody else does.
+    let deal = deal_with([&[PAGAT], &[S], &[MOND], &[]], &low_talon());
+    let game = a_declares(&deal, SoloEna, None);
+    let (game, score) = finished(game, [&[PAGAT], &[S], &[MOND], &[]]);
+    assert_eq!(skis_mond_trick(&game), Some(0));
+    assert_eq!(game.public().tricks()[0].cards[..3], [PAGAT, S, MOND]);
+    assert_eq!(game.public().tricks()[0].winner, B);
+    assert_eq!(score.parts(A).valat, 0);
+    assert_eq!(score.parts(C).mondfang, -20);
+    assert_eq!(score.entry(C), -20);
+    for seat in [A, B, D] {
+        assert_eq!(score.parts(seat).mondfang, 0);
+    }
+
+    // The pagat between the two (škis, pagat, mond): the škis wins again,
+    // and A, who played the mond, writes -20. C wins the first trick with
+    // the XX and leads the škis; D's only tarok left is the pagat.
+    let deal = deal_with(
+        [&[MOND], &[tarok(2)], &[S, tarok(20)], &[PAGAT, tarok(4)]],
+        &low_talon(),
+    );
+    let game = a_declares(&deal, SoloEna, None);
+    let (game, score) = finished(
+        game,
+        [&[tarok(3), MOND], &[], &[tarok(20), S], &[tarok(4), PAGAT]],
+    );
+    assert_eq!(skis_mond_trick(&game), Some(1));
+    assert_eq!(game.public().tricks()[0].winner, C);
+    assert_eq!(game.public().tricks()[1].cards[..3], [S, PAGAT, MOND]);
+    assert_eq!(game.public().tricks()[1].winner, C);
     assert_eq!(score.parts(A).valat, 0);
     assert_eq!(score.parts(A).mondfang, -20);
     for seat in [B, C, D] {
@@ -1705,17 +1801,16 @@ fn c36_c37_trula_and_kralji_count_the_tricks_of_the_partner() {
 }
 
 // ---------------------------------------------------------------------
-// Reading 2 of the Results (D118, open with the user): a valat cancels
-// every mondfang. These four tests fix what the code does now in each
-// case. A ruling of the user changes exactly these tests (and the three
-// switches at the top of `tests/common/second_scorer.rs`).
+// Spec 013, criteria 1 to 3 (D125): a valat does not cancel a lost mond.
+// The mond's player writes -20 next to the 250. These tests replace the
+// five `reading2_...` tests of spec 005, which pinned the other reading.
 // ---------------------------------------------------------------------
 
 #[test]
-fn reading2_valat_and_an_opponent_who_loses_the_mond() {
-    // A (solo ena) holds škis, XX-XI and the pagat and takes all twelve
-    // tricks. B's only tarok is the mond: it falls under the škis in the
-    // first trick. Now: +250 for A and nothing for B.
+fn d125_valat_and_an_opponent_who_loses_the_mond() {
+    // Case (i). A (solo ena) holds škis, XX-XI and the pagat and takes all
+    // twelve tricks. B's only tarok is the mond: it falls under the škis
+    // in the first trick. +250 for A, -20 for B.
     let mut a = vec![S];
     a.extend((11..=20).rev().map(tarok));
     a.push(PAGAT);
@@ -1724,21 +1819,17 @@ fn reading2_valat_and_an_opponent_who_loses_the_mond() {
     let (game, score) = finished(game, [&a, &[MOND], &[], &[]]);
     assert_eq!(tricks_won(&game), [12, 0, 0, 0]);
     assert_eq!(skis_mond_trick(&game), Some(0));
-    only_valat(&score, A, 250);
-    assert_eq!(
-        score.parts(B).mondfang,
-        0,
-        "reading 2: no mondfang in a valat"
-    );
-    assert_eq!(score.entries(), [250, 0, 0, 0]);
+    valat_and_mondfang(&score, A, 250, 0);
+    valat_and_mondfang(&score, B, 0, -20);
+    assert_eq!(score.entries(), [250, -20, 0, 0]);
 }
 
 #[test]
-fn reading2_valat_and_the_declarers_mond_taken_by_the_partner() {
-    // A plays tri and calls srce: mond, XX-XI and the pagat. The partner
-    // C holds the škis and the srce kralj. A leads the mond, C must play
-    // the škis. The two take all twelve tricks. Now: +250 for both and no
-    // -20 for A.
+fn d125_valat_and_a_mond_lost_inside_the_declarers_side() {
+    // Case (ii). A plays tri and calls srce: mond, XX-XI and the pagat.
+    // The partner C holds the škis and the srce kralj. A leads the mond, C
+    // must play the škis. The two take all twelve tricks. +250 for both,
+    // and -20 for A alone.
     let mut a = vec![MOND];
     a.extend((11..=20).rev().map(tarok));
     a.push(PAGAT);
@@ -1751,14 +1842,28 @@ fn reading2_valat_and_the_declarers_mond_taken_by_the_partner() {
     assert_eq!(tricks_won(&game), [11, 0, 1, 0]);
     assert_eq!(skis_mond_trick(&game), Some(0));
     assert_eq!(game.public().tricks()[0].winner, C);
-    only_valat(&score, A, 250);
-    only_valat(&score, C, 250);
-    assert_eq!(
-        score.parts(A).mondfang,
-        0,
-        "reading 2: no mondfang in a valat"
+    valat_and_mondfang(&score, A, 250, -20);
+    valat_and_mondfang(&score, C, 250, 0);
+    assert_eq!(score.entries(), [230, 0, 250, 0]);
+
+    // The other way round: A holds škis, XX-XI and the pagat; the partner
+    // C holds the mond as its only tarok and the srce kralj. A leads the
+    // škis and takes all twelve tricks. -20 for C alone.
+    let mut a = vec![S];
+    a.extend((11..=20).rev().map(tarok));
+    a.push(PAGAT);
+    let deal = deal_with(
+        [&a, &taroks(2..=10), &[MOND, kralj(Suit::Srce)], &[]],
+        &low_talon(),
     );
-    assert_eq!(score.entries(), [250, 0, 250, 0]);
+    let game = a_declares(&deal, Tri, Some(Suit::Srce));
+    assert_eq!(game.full().partner(), Some(C));
+    let (game, score) = finished(game, [&a, &[], &[MOND], &[]]);
+    assert_eq!(tricks_won(&game), [12, 0, 0, 0]);
+    assert_eq!(skis_mond_trick(&game), Some(0));
+    valat_and_mondfang(&score, A, 250, 0);
+    valat_and_mondfang(&score, C, 250, -20);
+    assert_eq!(score.entries(), [250, 0, 230, 0]);
 }
 
 /// B, an opponent, holds škis, XX-XI and the pagat and takes all twelve
@@ -1779,28 +1884,41 @@ fn b_strong_hand() -> Vec<Card> {
 }
 
 #[test]
-fn reading2_valat_against_and_the_declarers_lost_mond() {
-    // A (solo ena) holds the mond and II-X. B takes all twelve tricks and
-    // catches the mond with the škis in the tenth. Now: -250 for A and no
-    // further -20.
+fn d125_valat_against_and_the_declarers_lost_mond() {
+    // Case (iii), the mond lost in a trick. A (solo ena) holds the mond
+    // and II-X. B takes all twelve tricks and catches the mond with the
+    // škis in the tenth. -250 and -20 for A.
     let deal = deal_with([&[MOND], &b_strong_hand(), &[], &[]], &low_talon());
     let game = a_declares(&deal, SoloEna, None);
     let (game, score) = finished(game, [&[tarok(2)], &b_takes_all_twelve_script(), &[], &[]]);
     assert_eq!(tricks_won(&game), [0, 12, 0, 0]);
     assert_eq!(skis_mond_trick(&game), Some(9));
-    only_valat(&score, A, -250);
-    assert_eq!(
-        score.parts(A).mondfang,
-        0,
-        "reading 2: no mondfang in a valat"
+    valat_and_mondfang(&score, A, -250, -20);
+    assert_eq!(score.entries(), [-270, 0, 0, 0]);
+
+    // The partner loses it. A plays tri and calls srce; C holds the mond
+    // as its only tarok and the srce kralj. A leads the II, B plays the
+    // škis and C must play the mond. B takes all twelve tricks. -250 for
+    // both, and -20 for C alone.
+    let deal = deal_with(
+        [&[], &b_strong_hand(), &[MOND, kralj(Suit::Srce)], &[]],
+        &low_talon(),
     );
-    assert_eq!(score.entries(), [-250, 0, 0, 0]);
+    let game = a_declares(&deal, Tri, Some(Suit::Srce));
+    assert_eq!(game.full().partner(), Some(C));
+    let (game, score) = finished(game, [&[tarok(2)], &b_strong_hand(), &[MOND], &[]]);
+    assert_eq!(tricks_won(&game), [0, 12, 0, 0]);
+    assert_eq!(skis_mond_trick(&game), Some(0));
+    valat_and_mondfang(&score, A, -250, 0);
+    valat_and_mondfang(&score, C, -250, -20);
+    assert_eq!(score.entries(), [-250, 0, -270, 0]);
 }
 
 #[test]
-fn reading2_valat_against_and_the_mond_left_in_the_talon() {
-    // The mond lies in the first packet; A (solo tri) takes the second. B
-    // takes all twelve tricks. Now: -250 for A and no -20 for the mond.
+fn d125_valat_against_and_the_mond_left_in_the_talon() {
+    // Case (iii), the mond in a packet not taken. The mond lies in the
+    // first packet; A (solo tri) takes the second. B takes all twelve
+    // tricks. -250 and -20 for A.
     let talon = [MOND, karo(4), karo(3), srce(4), srce(3), srce(2)];
     let deal = deal_with([&[], &b_strong_hand(), &[], &[]], &talon);
     let mut game = common::flow::game(&deal);
@@ -1812,23 +1930,23 @@ fn reading2_valat_against_and_the_mond_left_in_the_talon() {
     b_script.push(PAGAT);
     let (game, score) = finished(game, [&[], &b_script, &[], &[]]);
     assert_eq!(tricks_won(&game), [0, 12, 0, 0]);
+    // D133 is for the declarer's valat only: here the packet not taken
+    // stays with the opponents.
+    assert!(!game.full().talon_rest_won());
     assert!(game.full().opponents_pile().contains(MOND));
     assert!(!game.public().taken_cards().contains(MOND));
-    only_valat(&score, A, -250);
-    assert_eq!(
-        score.parts(A).mondfang,
-        0,
-        "reading 2: no mondfang in a valat"
-    );
-    assert_eq!(score.entries(), [-250, 0, 0, 0]);
+    assert_eq!(skis_mond_trick(&game), None);
+    assert_scores_agree(&game);
+    valat_and_mondfang(&score, A, -250, -20);
+    assert_eq!(score.entries(), [-270, 0, 0, 0]);
 }
 
 #[test]
-fn reading2_valat_against_and_an_opponents_mond_taken_by_an_opponent() {
-    // A fourth case of the same reading. A plays solo ena. C holds škis,
-    // XX-XI and the pagat; B's only tarok is the mond. A leads a tarok, B
-    // must play the mond and C takes it with the škis. C takes all twelve
-    // tricks. Now: -250 for A and nothing for B.
+fn d125_valat_against_and_an_opponents_mond_taken_by_an_opponent() {
+    // Case (iv). A plays solo ena. C holds škis, XX-XI and the pagat; B's
+    // only tarok is the mond. A leads a tarok, B must play the mond and C
+    // takes it with the škis. C takes all twelve tricks. -250 for A, -20
+    // for B.
     let deal = deal_with([&[], &[MOND], &b_strong_hand(), &[]], &low_talon());
     let game = a_declares(&deal, SoloEna, None);
     let mut c_script = vec![S];
@@ -1837,11 +1955,274 @@ fn reading2_valat_against_and_an_opponents_mond_taken_by_an_opponent() {
     let (game, score) = finished(game, [&[], &[MOND], &c_script, &[]]);
     assert_eq!(tricks_won(&game), [0, 0, 12, 0]);
     assert_eq!(skis_mond_trick(&game), Some(0));
-    only_valat(&score, A, -250);
-    assert_eq!(
-        score.parts(B).mondfang,
-        0,
-        "reading 2: no mondfang in a valat"
-    );
-    assert_eq!(score.entries(), [-250, 0, 0, 0]);
+    valat_and_mondfang(&score, A, -250, 0);
+    valat_and_mondfang(&score, B, 0, -20);
+    assert_eq!(score.entries(), [-250, -20, 0, 0]);
+}
+
+// ---------------------------------------------------------------------
+// Review of spec 013: two cases the suite did not have. The first one
+// was then ruled on by the user (D133, criterion 16).
+// ---------------------------------------------------------------------
+
+/// Spec 013, criterion 16 (D133). The user's words: "In case of valat, the
+/// declarer gets the packet he did not pick so he did not lose the mond".
+/// The declarer's side takes all twelve tricks and the mond lies in a
+/// packet not taken: the packets go to the declarer's side, +250, and no
+/// mondfang for anyone.
+#[test]
+fn d133_in_a_valat_the_declarer_wins_the_packets_not_taken() {
+    let talon = [MOND, karo(4), karo(3), srce(4), srce(3), srce(2)];
+
+    // Alone. The mond lies in the first packet; A (solo tri) takes the
+    // second and puts the same cards down. A holds škis, XX-XI and the
+    // pagat and takes all twelve tricks.
+    let mut a = vec![S];
+    a.extend((11..=20).rev().map(tarok));
+    a.push(PAGAT);
+    let deal = deal_with([&a, &[], &[], &[]], &talon);
+    let mut game = common::flow::game(&deal);
+    declare(&mut game, A, SoloTri);
+    exchange_back(&mut game, 1);
+    // Eleven tricks first: until the last trick is taken the packet still
+    // lies with the opponents.
+    let mut led = 0;
+    while game.public().tricks().len() < 11 {
+        let action = if game.to_act() == Some(A) {
+            led += 1;
+            Action::Play(a[led - 1])
+        } else {
+            game.legal_actions().iter().next().expect("a legal card")
+        };
+        game.apply(action).expect("a legal card is accepted");
+    }
+    assert_eq!(tricks_won(&game), [11, 0, 0, 0]);
+    assert!(!game.full().talon_rest_won());
+    assert!(game.full().opponents_pile().contains(MOND));
+    let (game, score) = finished(game, [&a[11..], &[], &[], &[]]);
+    assert_eq!(tricks_won(&game), [12, 0, 0, 0]);
+    assert!(!game.public().taken_cards().contains(MOND));
+    assert_eq!(skis_mond_trick(&game), None);
+    // The packet not taken is the declarer's: all 54 cards, all 70 points.
+    assert!(game.full().talon_rest_won());
+    assert_eq!(game.full().declarer_pile(), CardSet::FULL);
+    assert!(game.full().opponents_pile().is_empty());
+    assert_eq!((score.declarer_points(), score.opponents_points()), (70, 0));
+    assert_scores_agree(&game);
+    only_valat(&score, A, 250);
+    for seat in [B, C, D] {
+        valat_and_mondfang(&score, seat, 0, 0);
+    }
+    assert_eq!(score.entries(), [250, 0, 0, 0]);
+
+    // With a partner, who takes one of the twelve tricks. A plays tri and
+    // calls srce: X, XX-XI and the pagat. C holds the škis and the srce
+    // kralj. A leads the X, C takes it with the škis and leads the srce
+    // kralj; A trumps it with the XX and leads the rest from the top, the
+    // pagat last. The mond lies in the packet A did not take.
+    let mut a = vec![tarok(10)];
+    a.extend((11..=20).rev().map(tarok));
+    a.push(PAGAT);
+    let deal = deal_with([&a, &[], &[S, kralj(Suit::Srce)], &[]], &talon);
+    let mut game = common::flow::game(&deal);
+    declare(&mut game, A, Tri);
+    act(&mut game, A, Action::CallKing(Suit::Srce));
+    exchange_back(&mut game, 1);
+    assert_eq!(game.full().partner(), Some(C));
+    let (game, score) = finished(game, [&a, &[], &[S, kralj(Suit::Srce)], &[]]);
+    assert_eq!(tricks_won(&game), [11, 0, 1, 0]);
+    assert!(!game.public().taken_cards().contains(MOND));
+    assert_eq!(skis_mond_trick(&game), None);
+    assert!(game.full().talon_rest_won());
+    assert!(game.full().declarer_pile().contains(MOND));
+    assert!(game.full().opponents_pile().is_empty());
+    assert_scores_agree(&game);
+    only_valat(&score, A, 250);
+    only_valat(&score, C, 250);
+    for seat in [B, D] {
+        valat_and_mondfang(&score, seat, 0, 0);
+    }
+    assert_eq!(score.entries(), [250, 0, 250, 0]);
+}
+
+/// The hands for the tests with the whole trula in the last trick. A holds
+/// the škis, B the mond and C the pagat; every seat keeps its trula card
+/// for the last trick. All 48 cards are played in the order of the lists.
+///
+///  1-6.  A leads srce kralj, pik kralj, pik dama, križ kralj, križ dama,
+///        karo kralj and wins each; all follow.
+///  7-10. A leads XX, XIX, XVIII, XVII and wins each.
+///  11.   A leads its fifth tarok, B plays its lowest, C the VI, D the
+///        karo 2. With `b_leads_the_last` A holds the XI and B the XVI: B
+///        wins the trick. Else A holds the XVI and B the XI: A wins it.
+///  12.   Led by A: škis, mond, pagat, karo 1. Led by B: mond, pagat,
+///        karo 1, škis.
+fn trula_in_the_last_trick_deal(b_leads_the_last: bool) -> (Deal, [Vec<Card>; 4]) {
+    use Suit::{Karo, Kriz, Pik, Srce};
+    let a_low = if b_leads_the_last { 11 } else { 16 };
+    let a = vec![
+        kralj(Srce),
+        kralj(Pik),
+        dama(Pik),
+        kralj(Kriz),
+        dama(Kriz),
+        kralj(Karo),
+        tarok(20),
+        tarok(19),
+        tarok(18),
+        tarok(17),
+        tarok(a_low),
+        S,
+    ];
+    let mut b = vec![
+        dama(Srce),
+        pik(7),
+        kaval(Pik),
+        kriz(7),
+        kaval(Kriz),
+        dama(Karo),
+    ];
+    if b_leads_the_last {
+        b.extend([15, 14, 13, 12, 16].map(tarok));
+    } else {
+        b.extend([15, 14, 13, 12, 11].map(tarok));
+    }
+    b.push(MOND);
+    let c = vec![
+        kaval(Srce),
+        pik(8),
+        fant(Pik),
+        kriz(8),
+        fant(Kriz),
+        kaval(Karo),
+        tarok(10),
+        tarok(9),
+        tarok(8),
+        tarok(7),
+        tarok(6),
+        PAGAT,
+    ];
+    let d = vec![
+        fant(Srce),
+        pik(9),
+        pik(10),
+        kriz(9),
+        kriz(10),
+        fant(Karo),
+        tarok(5),
+        tarok(4),
+        tarok(3),
+        tarok(2),
+        karo(2),
+        karo(1),
+    ];
+    let deal = whole_deal([&a, &b, &c, &d], low_talon());
+    (deal, [a, b, c, d])
+}
+
+/// Plays `trula_in_the_last_trick_deal` with `declarer` in `contract`. The
+/// declarer puts the first packet down again, so the hands stay as dealt.
+fn trula_in_the_last_trick(
+    b_leads_the_last: bool,
+    declarer: Seat,
+    contract: Contract,
+    call: Option<Suit>,
+) -> (Game, Score) {
+    let (deal, [a, b, c, d]) = trula_in_the_last_trick_deal(b_leads_the_last);
+    let mut game = common::flow::game(&deal);
+    declare(&mut game, declarer, contract);
+    if let Some(suit) = call {
+        act(&mut game, declarer, Action::CallKing(suit));
+    }
+    exchange_back(&mut game, 0);
+    let (game, score) = finished(game, [&a, &b, &c, &d]);
+    assert_eq!(game.public().declarer(), Some(declarer));
+    assert_scores_agree(&game);
+    (game, score)
+}
+
+/// Spec 013, criteria 4, 5, 8 and 10 together: škis, mond and pagat all
+/// fall in the last trick.
+#[test]
+fn c39_pagat_ultimo_when_the_trula_falls_in_the_last_trick() {
+    let last_trick = |game: &Game| game.public().tricks()[11];
+
+    // (a) Škis, mond, pagat, karo 1: the pagat falls last and wins.
+    //
+    // A plays tri and called its own srce kralj, so A is alone. C, an
+    // opponent, wins the trick with the pagat: -25 for A. The whole trula
+    // is in C's trick: -10. B played the mond under the škis: -20 for B.
+    let (game, score) = trula_in_the_last_trick(false, A, Tri, Some(Suit::Srce));
+    assert_eq!(game.full().partner(), None);
+    assert_eq!(last_trick(&game).cards, [S, MOND, PAGAT, karo(1)]);
+    assert_eq!(last_trick(&game).leader, A);
+    assert_eq!(last_trick(&game).winner, C);
+    assert_eq!(tricks_won(&game), [11, 0, 1, 0]);
+    assert_eq!(score.parts(A).valat, 0);
+    assert_eq!(score.parts(A).pagat_ultimo, -25);
+    assert_eq!(score.parts(A).kralj_ultimo, 0);
+    assert_eq!(score.parts(A).trula, -10);
+    assert_eq!(score.parts(A).mondfang, 0);
+    assert_eq!(score.parts(B).mondfang, -20);
+    assert_eq!(score.entry(B), -20);
+    assert_eq!([score.entry(C), score.entry(D)], [0, 0]);
+
+    // The same cards with C as the declarer, in solo tri: the declarer's
+    // own pagat wins the last trick. +25 and the trula for C; -20 for B.
+    let (game, score) = trula_in_the_last_trick(false, C, SoloTri, None);
+    assert_eq!(last_trick(&game).cards, [S, MOND, PAGAT, karo(1)]);
+    assert_eq!(last_trick(&game).winner, C);
+    assert_eq!(tricks_won(&game), [11, 0, 1, 0]);
+    assert_eq!(score.parts(C).valat, 0);
+    assert_eq!(score.parts(C).pagat_ultimo, 25);
+    assert_eq!(score.parts(C).trula, 10);
+    assert_eq!(score.parts(C).mondfang, 0);
+    assert_eq!(score.entry(B), -20);
+    assert_eq!([score.entry(A), score.entry(D)], [0, 0]);
+
+    // (b) Mond, pagat, karo 1, škis: the pagat is not last, the škis wins.
+    //
+    // A alone again. A takes the trick with the škis, and in it the pagat
+    // of the opponent C: +25 for A, and the trula. -20 for B.
+    let (game, score) = trula_in_the_last_trick(true, A, Tri, Some(Suit::Srce));
+    assert_eq!(game.full().partner(), None);
+    assert_eq!(last_trick(&game).cards, [MOND, PAGAT, karo(1), S]);
+    assert_eq!(last_trick(&game).leader, B);
+    assert_eq!(last_trick(&game).winner, A);
+    assert_eq!(tricks_won(&game), [11, 1, 0, 0]);
+    assert_eq!(score.parts(A).valat, 0);
+    assert_eq!(score.parts(A).pagat_ultimo, 25);
+    assert_eq!(score.parts(A).trula, 10);
+    assert_eq!(score.parts(A).mondfang, 0);
+    assert_eq!(score.parts(B).mondfang, -20);
+    assert_eq!(score.entry(B), -20);
+
+    // The pagat's own side takes the trick with the škis. C plays dve and
+    // calls srce; A holds the srce kralj and is the partner. The pagat
+    // loses the trick, but its side takes it: +25 for C and A, and the
+    // trula. B is an opponent and writes -20.
+    let (game, score) = trula_in_the_last_trick(true, C, Dve, Some(Suit::Srce));
+    assert_eq!(game.full().partner(), Some(A));
+    assert_eq!(last_trick(&game).cards, [MOND, PAGAT, karo(1), S]);
+    assert_eq!(last_trick(&game).winner, A);
+    assert_eq!(score.parts(C).valat, 0);
+    assert_eq!(score.parts(C).pagat_ultimo, 25);
+    assert_eq!(score.parts(A).pagat_ultimo, 25);
+    assert_eq!(score.parts(C).trula, 10);
+    assert_eq!(score.entry(A), score.entry(C));
+    assert_eq!(score.entry(B), -20);
+    assert_eq!(score.entry(D), 0);
+
+    // The same on the other side. B plays solo tri; A, C and D are the
+    // opponents. A takes the trick with the škis and in it the pagat of
+    // its fellow opponent C: the opponents win the bonus, -25 for B. The
+    // trula is theirs too, -10, and B lost its own mond: -20.
+    let (game, score) = trula_in_the_last_trick(true, B, SoloTri, None);
+    assert_eq!(last_trick(&game).cards, [MOND, PAGAT, karo(1), S]);
+    assert_eq!(last_trick(&game).winner, A);
+    assert_eq!(score.parts(B).valat, 0);
+    assert_eq!(score.parts(B).pagat_ultimo, -25);
+    assert_eq!(score.parts(B).trula, -10);
+    assert_eq!(score.parts(B).mondfang, -20);
+    assert_eq!([score.entry(A), score.entry(C), score.entry(D)], [0, 0, 0]);
 }

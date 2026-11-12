@@ -21,19 +21,26 @@ use tarok_engine::{Card, CardSet, Rank, Seat, Suit};
 /// cannot seed itself from the system and does not catch panics. This
 /// helper does both:
 ///
-/// - The seed comes from the clock, so every run tries new cases. It is
-///   printed before the first case. `cargo test` shows that line for every
-///   failing test, whatever the failure is. To replay a run, set the
-///   environment variable `TAROK_TEST_SEED` to the printed seed.
+/// - The seed is fixed: every run of a test tries the same cases, on every
+///   machine, so a test passes or fails the same way each time (review of
+///   spec 013; before that the seed came from the clock). Each call site
+///   has its own seed, made from [`FIXED_SEED`], the name of the test file
+///   and the line of the call, so two tests do not see the same deals. The
+///   seed is printed before the first case; `cargo test` shows that line
+///   for every failing test, whatever the failure is.
+/// - To try other cases, set the environment variable `TAROK_TEST_SEED` to
+///   `clock` (a new seed on every run) or to a number (that seed for every
+///   test, which also replays a printed seed).
 /// - A panic inside a case (an `unwrap` in the test, an `expect` or an index
 ///   out of bounds in the engine) is caught and handed to proptest as a
 ///   failed case, so the failing value is shrunk and printed too.
+#[track_caller]
 pub fn run_cases<S: Strategy>(
     cases: u32,
     strategy: S,
     test: impl Fn(S::Value) -> Result<(), TestCaseError>,
 ) {
-    let seed = run_seed();
+    let seed = run_seed(std::panic::Location::caller());
     eprintln!("property test: {cases} cases, seed {seed} (replay: TAROK_TEST_SEED={seed})");
     let mut bytes = [0u8; 32];
     bytes[..8].copy_from_slice(&seed.to_le_bytes());
@@ -56,14 +63,35 @@ pub fn run_cases<S: Strategy>(
     }
 }
 
-fn run_seed() -> u64 {
-    if let Ok(text) = std::env::var("TAROK_TEST_SEED") {
-        return text.parse().expect("TAROK_TEST_SEED is a whole number");
+/// The base of every property test's seed.
+pub const FIXED_SEED: u64 = 0x7A20_C0DE_2026_1112;
+
+fn run_seed(call_site: &std::panic::Location<'_>) -> u64 {
+    match std::env::var("TAROK_TEST_SEED") {
+        Ok(text) if text == "clock" => {
+            let since_epoch = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("the clock is after 1970");
+            since_epoch.as_nanos() as u64
+        }
+        Ok(text) => text
+            .parse()
+            .expect("TAROK_TEST_SEED is a whole number or the word clock"),
+        Err(_) => call_site_seed(call_site.file(), call_site.line()),
     }
-    let since_epoch = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .expect("the clock is after 1970");
-    since_epoch.as_nanos() as u64
+}
+
+/// The fixed seed of one call of `run_cases`. Only the file's name counts,
+/// not its folder, so Windows and Linux give the same seed.
+fn call_site_seed(file: &str, line: u32) -> u64 {
+    let name = file.rsplit(['/', '\\']).next().unwrap_or(file);
+    // FNV-1a over the name, then the line.
+    let mut hash = FIXED_SEED;
+    for byte in name.bytes().chain(line.to_le_bytes()) {
+        hash ^= u64::from(byte);
+        hash = hash.wrapping_mul(0x0000_0100_0000_01B3);
+    }
+    hash
 }
 
 /// Tarok by its number, 1 (pagat) to 21 (mond).
@@ -129,13 +157,18 @@ pub fn suit_cards() -> Vec<Card> {
 pub fn reference_winner(cards: [Card; 4]) -> usize {
     let position_of = |wanted: Card| cards.iter().position(|&c| c == wanted);
 
-    // Škis, mond and pagat in one trick: the pagat wins.
-    if let (Some(_), Some(_), Some(pagat)) = (
-        position_of(Card::SKIS),
-        position_of(Card::MOND),
-        position_of(Card::PAGAT),
-    ) {
-        return pagat;
+    // Škis, mond and pagat in one trick: the pagat wins if it is the last
+    // of the three to fall (spec 013, D131 and D132). Found by walking the
+    // trick backwards: the first trula card met is the last one played.
+    let trula = [Card::SKIS, Card::MOND, Card::PAGAT];
+    if trula.iter().all(|&card| cards.contains(&card)) {
+        let last_of_the_three = (0..4)
+            .rev()
+            .find(|&position| trula.contains(&cards[position]))
+            .unwrap();
+        if cards[last_of_the_three] == Card::PAGAT {
+            return last_of_the_three;
+        }
     }
 
     // Otherwise the highest tarok.

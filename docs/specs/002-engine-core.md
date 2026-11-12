@@ -53,6 +53,7 @@ The user approves these before tests are written (D73). Each scenario below beco
 15. Any tarok beats any suit card.
 16. A higher tarok beats a lower one; škis beats mond.
 17. Škis, mond and pagat in one trick: the pagat wins, **in any order of play**. Tested with the pagat played first, second, third and fourth, and with a fourth card that is a suit card or another tarok. (Checked on 2026-11-10: TARZS 2010 says "v poljubnem vrstnem redu"; D113.)
+    Changed by spec 013 (D131, D132): the pagat wins only if it falls last, after both the škis and the mond; otherwise the škis wins. See `docs/specs/013-rulings-of-12-nov.md`, criteria 8 and 9.
 18. Pagat with only one of škis and mond in the trick: the pagat does not win.
 19. The winner of a trick leads the next one.
 
