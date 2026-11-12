@@ -159,7 +159,7 @@ Decided in Batch 6 (D65–D69). Thresholds are realistic targets; aspirations in
 - G2. Native, WASM and PyTorch agree on legal-move sets and scores for 1,000 random games; forward-pass outputs within 1e-4 fp32 / 1e-2 fp16 on 1,000 random states. Parity tests in CI. [aspiration 10,000]
 
 **Pipeline**
-- G3. End-to-end self-play throughput of at least 10,000 steps/s on the training PC. Stage-0 benchmark, logged in `docs/progress.md`. [aspiration 20,000; D22's gate becomes 10,000]
+- G3. End-to-end self-play throughput of at least 10,000 steps/s on the training PC. Stage-0 benchmark, logged in `docs/progress.md`. [aspiration 20,000; D22's gate becomes 10,000] [D128, 2026-11-12: lowered to a figure the transformer can reach; the number is set from the measurement of spec 008 and confirmed by the user (C13)]
 
 **Agent strength** (8-seating duplicate protocol, D25)
 - G4. Transformer agent beats the rule bot: positive mean score per deal, 95% CI excluding zero, at least 1,000 deals. [aspiration +5 points per deal over 2,000 deals]

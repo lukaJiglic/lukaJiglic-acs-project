@@ -125,6 +125,23 @@ Rules for the inference block F:
 
 This is larger than the roughly 620 features sketched in research/06, because D30 adds the inference block and D107 adds the bidding and announcement state from the start.
 
+## 4a. Readings fixed on 2026-11-12 (D130)
+
+Spec 006 found places where sections 3 to 7 left a detail open. The user fixed each one (Batch 12). No size and no id changes. The code marks each place with "Reading B12-n".
+
+- **G1.** The engine has no toggles yet. The 19 bits hold the one-hot of the Default preset's values.
+- **Critic, true partner seat.** The declarer's true partner, relative to the observing seat, like B6. Zero if there is none.
+- **Partner target.** "None" when the acting seat has no single team-mate: the declarer alone, an opponent in a one-against-three game, every seat during the bidding. The loss skips these decisions. An opponent in a two-against-two game has the other opponent as target.
+- **F5.** Every own card that no unseen card of its suit beats. King and queen in hand: both.
+- **F3.** Sources: a king or a trula card in the packet the declarer took is in the declarer's hand until played; so is a taken tarok that was not shown as a discard; every taken card when the declarer has no hidden discard; plain elimination.
+- **F6.** "Card points unseen / 70" counts the unseen cards as one pile. "Most taroks a seat can still hold / 12" is the smaller of its hand size and the taroks it can still hold, capped at 12.
+- **F4.** The taken packet and the declarer's own discards count as seen. The card-location head is not trained on a taken card.
+- **Token seats.** The start token and the six shown talon cards carry "no seat". Contract, called king, taken packet and shown discard carry the declarer.
+- **C4.** A seat's last real bid, kept after it passes. All thirteen entries are zero for a seat that never bid; C3 holds the pass.
+- **B7, E3, E4.** "Called king lies in the shown talon" stays set after the king is taken and played. E3 rounds each seat's pile on its own. E4's trick number is 0 before play and 12/12 at the end.
+- **Hidden discards.** A hidden discard is no token. Between the declarer's discard decisions the token sequence is the same; only the state token differs.
+- **Seeds.** The record stores the seed as a decimal string. The seed of a deal is a SplitMix64 mixing of base seed, table, run and deal. The first dealer of run r at table t is (t + r) mod 4.
+
 ## 5. Actions (160 slots)
 
 One output vector for all phases (D19). The engine's `mask` marks the legal slots; the learner masks the logits before sampling and in the loss (research/05 C3).
@@ -187,7 +204,7 @@ Why not the raw paper score: opponents always write 0, so they would get no sign
 | 3 | kralji | silent or announced |
 | 4 | kralj ultimo | silent or announced |
 | 5 | pagat ultimo | silent or announced |
-| 6 | valat | ±250 silent, ±500 announced; when it applies, parts 0–5 are zero |
+| 6 | valat | ±250 silent, ±500 announced; when it applies, parts 0–5 are zero; the mondfang of part 7 is still written (D125) |
 | 7 | mondfang | the individual −20 |
 | 8 | klop | the entries of a klop deal (zero until flow C of the engine) |
 | 9 | radelc | the +70 of a cancelled radelc in training (zero until flow C) |
@@ -199,6 +216,7 @@ Kontra and radelc doubling multiply the parts they apply to. The engine emits `r
 - `ENCODING_VERSION = 1` is stored in every checkpoint, weight file and game record.
 - Adding a meaning to a reserved slot keeps the version. Moving or resizing anything raises it.
 - Amended on 2026-11-11, before any model was trained on it: ten score parts and the `reward_parts` array (D121). The version stays 1.
+- Amended on 2026-11-12, before any model was trained on it: the readings of section 4a (D130) and the valat row of section 8 (D125). The version stays 1.
 - The Rust engine exports the sizes (288, 1382, 160, 128, and 10 score parts) as constants; a test on each side checks them against this file.
 
 ## 10. Answers to the open points (D117)

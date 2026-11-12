@@ -39,6 +39,7 @@ Tool and model: ...
 | 003 | [Training environment and benchmark](003-training-environment.md) | done 2026-11-11 (GPU-free run added) |
 | 004 | [Encoding contract](004-encoding-contract.md) | done 2026-11-11 |
 | 005 | [Deal flow A](005-deal-flow-a.md) | done 2026-11-11 |
-| 006 | [Encoding, environment, bindings, record](006-bindings-and-environment.md) | approved 2026-11-10; executed, reviewed and fixed 2026-11-11; waits for the diff read |
+| 006 | [Encoding, environment, bindings, record](006-bindings-and-environment.md) | committed 2026-11-12 (D123); done once its two workflows are green |
 | 007 | [Model and PPO learner](007-model-and-learner.md) | done 2026-11-11 |
-| 008 | [Pipeline smoke run](008-pipeline-smoke-run.md) | draft 2026-11-11; waits for approval |
+| 008 | [Pipeline smoke run](008-pipeline-smoke-run.md) | approved 2026-11-12 (D124); in execution (session `train-env`) |
+| 013 | [Three rulings of 12 November](013-rulings-of-12-nov.md) | approved 2026-11-12 (D125, D126, D131); in execution (session `engine-core`) |

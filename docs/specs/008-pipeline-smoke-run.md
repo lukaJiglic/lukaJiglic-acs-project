@@ -1,6 +1,6 @@
 # 008 — Pipeline smoke run on deal flow A
 
-Status: **draft** (2026-11-11). Needs the user's approval of the acceptance criteria (D73). Needs spec 006 (in execution) and spec 007 (done). Its details may shift with spec 006's interface; any shift is reported before execution.
+Status: **approved** (2026-11-12, D124; open points A–E answered as recommended). Spec 006 is committed (D123). In execution in the `train-env` session.
 
 Build-plan row 008. Tool and model: Claude Code 2.1.306, `claude-fable-5-2`.
 
@@ -23,7 +23,8 @@ Run the whole training loop once on the real engine: Rust tables, encoding, Pyth
 - `src/train/tarok_train/evaluate.py`: a trained checkpoint against random legal play on seeded deals, with a 95% interval.
 - A fault switch for the control run: rewards handed to the next seat. Test-only; the config key is refused unless the run name starts with `control-`.
 - The two runs and the control run on this PC with the GPU free. A run log in `docs/progress.md` (D79). Checkpoints stay in `src/train/runs/`, untracked: nothing is released.
-- If the user picks B11-6 a: the entropy controller, with its own tests (criteria 16 and 17).
+- The entropy controller, with its own tests (criteria 16 and 17; D127).
+- The stale-module check (D130, B12-15): the module carries a hash of the engine's sources from build time, and `EngineEnv` refuses to start when the files on disk differ. One test.
 
 ## Out of scope
 
@@ -37,7 +38,7 @@ Any claim about playing strength. Flows B and C. The rule bot and the arena (spe
 | Seat-deals per update | 2,048 (one deal of every table) | open point B; the mock wasted 61% of the play with this ratio, real deals are measured in criterion 9 |
 | Updates per run | 200 | open point A; about 5 to 6 million trained decisions, **estimated** from 56.8 actions per deal (spec 005) |
 | Time limit per run | 90 minutes | a run that hits it is reported as not finished |
-| Value-head weight, policy first scale, entropy controller | the answers to B11-4, B11-5, B11-6; until answered: 0.5, 1.0, none | Batch 11 |
+| Value-head weight, policy first scale, entropy controller | 0.1, 0.3, on | D127 |
 | Everything else | as `configs/mock.toml` | spec 007, D119 |
 
 ## Acceptance criteria
@@ -57,7 +58,7 @@ The user approves these before tests are written (D73).
 8. **The control fails.** A run of 200 updates with the MLP and the rewards handed to the next seat does not pass criterion 7: its interval is not wholly above zero. If it passes, criterion 7 proves nothing and the spec is not done.
 
 **Measurements** (reported in `docs/progress.md`; no thresholds except where said)
-9. End to end, per network, over the whole run: decisions played per second, decisions trained per second, share of played decisions that were trained on. Compared with G3 (10,000). GPU state before and after from `nvidia-smi`.
+9. End to end, per network, over the whole run: decisions played per second, decisions trained per second, share of played decisions that were trained on. Compared with the old G3 (10,000); the new figure of G3 is proposed from these numbers (D128, C13). GPU state before and after from `nvidia-smi`.
 10. Time split per network: environment, acting, bookkeeping, update. The four shares add up to between 95% and 100% of the wall time.
 11. Peak GPU memory per run. No out-of-memory error with 512 tables.
 12. Decisions and tokens per seat-deal: mean and largest. The largest token count is at most 128.
@@ -67,7 +68,7 @@ The user approves these before tests are written (D73).
 **Record**
 15. 100 of the evaluation deals of each run are exported as game records (spec 006) and replay to the same entries.
 
-**Entropy controller** (only if B11-6 a)
+**Entropy controller** (D127)
 16. With the controller on, the entropy of each phase stays within a band around its target on the mock task in `tokens` mode over 200 updates; with it off, the same run falls under the band (the collapse of spec 007). The band and targets are in the config.
 17. The controller changes only the entropy weight. A unit test fixes its update rule on hand-computed numbers.
 
@@ -97,6 +98,12 @@ One session (`train-env`), after spec 006 is committed. The three runs need the 
 - **C. Which networks.** (a) both, recommended: the MLP is the control (D18) and the pair gives the G3 comparison of B11-7. (b) the MLP only, the transformer later.
 - **D. The control run (criterion 8).** (a) keep it, recommended: the review of spec 007 showed a learning test that ten planted bugs passed. It costs one more MLP run. (b) drop it.
 - **E. The opponent in criterion 7.** (a) random legal play in three seats, recommended: no bot exists before spec 011. (b) also the untrained network as an opponent.
+
+## Answers to the open points (D124, 2026-11-12)
+
+A: 200 updates per run. B: 2,048 seat-deals per update with 512 tables. C: both networks. D: the control run stays. E: random legal play in three seats.
+
+Added with the approval: the settings of D127 (value-head weight 0.1, policy scale 0.3, the entropy controller) and the stale-module check of D130. The engine's rules change under spec 013 while this spec is built; the three long runs start only after spec 013 is verified, and the run log names the commit and any uncommitted diff the tree carried.
 
 ## Results
 
