@@ -12,6 +12,19 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 **Next:** the next step.
 ```
 
+## 2026-11-12 — spec 013, three rulings and D133 in the engine (session `engine-core`, claude-fable-5-2; verified by the main session, ai-log rows 6 and 6d)
+
+**Done:** the trick winner and the score follow the user's table: the pagat wins a trula trick only when played after the škis and the mond (D131, D132); pagat ultimo is signed by the side that takes the last trick (D126); a valat keeps a mondfang lost in a trick (D125); in the declarer's valat the packets not taken are the declarer's, so a mond in them costs nothing (D133, ruled during the review). Crate version 0.2.0. The shared random-case helper of the tests has fixed seeds now. A review subagent found no defect in the code; it found two wrong rules that the suite let through, a clock-seeded test that almost never drew a trula trick, and two statements in Results that held only in some runs. All fixed. Not committed: waiting for the user's read of the diff.
+**Measurements:**
+- Re-run by the main session on the final tree: `cargo fmt --check` and clippy clean; `cargo test --locked` 182 tests, twice with the same result; 171 with `--no-default-features`; no `pyo3` in the engine's tree.
+- Planted wrong rules: 4 old rules by the author (all caught), 24 by the reviewer (2 not caught before the fixes, 2 that cannot change behaviour), 9 by the author after the fixes (all caught). The main session planted three in its own scratch copy: the declarer's valat does not win the talon rest; every valat wins it, also the valat against; no pagat ultimo in a trula trick. Each fails at least one test.
+- `winner_matches_the_reference_on_random_tricks` now builds a quarter of its 10,000 tricks with the whole trula: 2,519 trula tricks (session's count), before about two.
+**Broken or open:**
+- The module in `.venv` is still built from engine 0.1.0; the `train-env` session builds it again when its jobs end. The Python parity tests passed only against a wheel in a scratch folder (26 of 26, session's run).
+- Replay does not look at the engine version: a 0.1.0 record can replay to other entries under 0.2.0. A question for the user in the spec.
+- CI is unverified for this code until the push.
+**Next:** the user's read of the diff of spec 013; commit; push. Then verify and review the code of spec 008 before its three long runs.
+
 ## 2026-11-12 — spec 006 committed, the user's answers recorded, specs 008 and 013 started (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 6)
 
 **Done:** the user answered everything open ("Specs accepted, continue"; D123–D131). Spec 006 is committed in two commits (`8f24dbb` engine, `8cb2bb0` bindings) and pushed. Batch 11, Batch 12 and C11 are recorded. `docs/encoding.md` has section 4a with the fifteen readings; the version stays 1. Spec 008 is approved and carries the settings of D127 and the stale-module check. Spec 013 is new: three rulings that change the engine (a valat keeps the mondfang; pagat ultimo by side; the pagat wins a trula trick only if it falls last). The local compiler pin file is deleted (D129). Spec 013 went to the `engine-core` session and spec 008 to the `train-env` session.
