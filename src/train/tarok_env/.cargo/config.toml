@@ -1,0 +1,9 @@
+# Read by cargo when maturin (or cargo) is run from this folder.
+#
+# PyO3 0.30 links python312.dll through rustc's "raw-dylib" by default. On the
+# x86_64-pc-windows-gnu toolchain that needs dlltool.exe and an assembler (as.exe).
+# rustup ships dlltool but no assembler, so the build fails (spec 003, Results).
+# With raw-dylib off, PyO3 links the import library python312.lib from the Python
+# install, which the toolchain's own linker handles. On Linux the setting does nothing.
+[env]
+PYO3_USE_RAW_DYLIB = "0"

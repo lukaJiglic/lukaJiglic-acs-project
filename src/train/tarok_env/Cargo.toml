@@ -1,0 +1,29 @@
+# The Python bindings of the tarok engine (spec 006): a thin PyO3 layer over
+# `tarok_engine::vecenv`. All rules and all encoding live in src/engine; this
+# crate only moves NumPy arrays in and out and releases the GIL.
+#
+# Build it into the active virtual environment from this folder:
+#   maturin develop --release
+# The folder's .cargo/config.toml sets PYO3_USE_RAW_DYLIB=0, which the GNU Rust
+# toolchain on Windows needs (spec 003).
+
+[package]
+name = "tarok-env"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94"
+description = "Python bindings of the tarok engine: the vectorised environment as NumPy arrays."
+license = "MIT"
+publish = false
+
+[lib]
+name = "tarok_env"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = "=0.30.1"
+numpy = "=0.30.0"
+tarok-engine = { path = "../../engine" }
+
+# Stands alone: never a member of a workspace that may appear at the repo root.
+[workspace]

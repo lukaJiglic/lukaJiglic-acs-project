@@ -1,0 +1,15 @@
+[build-system]
+requires = ["maturin==1.16.0"]
+build-backend = "maturin"
+
+[project]
+name = "tarok-env"
+version = "0.1.0"
+description = "Python bindings of the tarok engine: the vectorised environment as NumPy arrays (spec 006)"
+requires-python = ">=3.12"
+dependencies = ["numpy"]
+
+[tool.maturin]
+module-name = "tarok_env"
+# Build with the lock file as it is: the versions are pinned.
+locked = true

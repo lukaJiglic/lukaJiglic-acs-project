@@ -2,7 +2,7 @@
 
 The Python training code: environment check, the model, the PPO learner, run configs in `configs/`, evaluation and weight export. It talks to the engine through a PyO3 module.
 
-Built so far: the pinned environment, the GPU check, a PyO3 probe and a throughput benchmark (spec 003); the networks, the PPO learner and the training loop on a mock environment (spec 007). The Rust engine replaces the mock with spec 006.
+Built so far: the pinned environment, the GPU check, a PyO3 probe and a throughput benchmark (spec 003); the networks, the PPO learner and the training loop on a mock environment (spec 007); the engine as a Python module and the real environment behind the mock's interface (spec 006). The trainer still starts the mock: `train.py` is switched to `env.make` with the smoke run (spec 008).
 
 ## Files
 
@@ -18,12 +18,14 @@ Built so far: the pinned environment, the GPU check, a PyO3 probe and a throughp
 | `tarok_train/rollout.py` | Storage by table, seat and deal. One seat's deal is one sequence. |
 | `tarok_train/opponents.py` | Past checkpoints as opponents: which seats they play, the pool of snapshots. |
 | `tarok_train/mock_env.py` | Mock environment with the contract's arrays: a learnable task and a random one. |
+| `tarok_train/env.py` | The real environment: the Rust engine behind the mock's interface (`EngineEnv`, `make`), and the environment-only benchmark. |
+| `tarok_env/` | Rust crate with the PyO3 bindings of the engine (`src/engine`). Built with maturin into the venv as the module `tarok_env`. |
 | `tarok_train/train.py` | The loop, config check, checkpoints, TensorBoard logs. |
 | `configs/` | One TOML file per run (D79). Every hyperparameter is in the file; the code has no defaults. |
 | `runs/` | Checkpoints and TensorBoard files of local runs. Not tracked by git. |
 | `pyo3_probe/` | Throwaway Rust crate: fills an array on 12 threads with the GIL released, returns NumPy arrays. |
 | `bench_results/` | Raw rows of each benchmark run, JSON. Numbers only: no process names, no paths. |
-| `tests/` | pytest. Tests marked `gpu` are skipped without CUDA. PyO3 tests are skipped when the probe is not built. |
+| `tests/` | pytest. Tests marked `gpu` are skipped without CUDA. PyO3 tests are skipped when the probe is not built. `test_spec006.py` is skipped when `tarok_env` is not built (in CI it must be built). |
 
 ## Set up (cmd, from the repo root)
 
@@ -45,6 +47,36 @@ cd ..\..\..
 ```
 
 Run maturin from `src\train\pyo3_probe`: the folder's `.cargo\config.toml` sets `PYO3_USE_RAW_DYLIB=0`, which the GNU Rust toolchain needs here.
+
+## Build the engine module (cmd)
+
+```bat
+.venv\Scripts\activate
+cd src\train\tarok_env
+maturin develop --release
+cd ..\..\..
+```
+
+Run maturin from `src\train\tarok_env`, for the same reason as the probe: the folder's `.cargo\config.toml` sets `PYO3_USE_RAW_DYLIB=0`. Build again after every change in `src\engine` or `src\train\tarok_env`. The build takes about 15 seconds.
+
+```python
+from tarok_train.env import EngineEnv
+env = EngineEnv(n_tables=1024, seed=3, threads=12)
+obs = env.observe()                 # dict of NumPy arrays, one row per table
+done, reward, parts = env.step(actions)
+```
+
+The observation arrays are written in place by the engine; the next `step` overwrites them. The docstring of `tarok_train/env.py` lists every array.
+
+Threads: the engine releases the GIL while it observes, steps or runs random steps, and writes into the arrays during that time. No other thread may read, write or resize the arrays while a call is running. The methods of `EngineEnv` take a lock, so a second thread that calls a method waits. A thread that already holds the arrays from `observe()` is not protected. Use one thread per environment.
+
+The arrays must have exactly the documented shapes and be C-contiguous. `tarok_env.Tables` refuses anything else and names the array and both shapes.
+
+Speed of the environment alone, random policy (venv active, from `src\train`):
+
+```bat
+python -m tarok_train.env --tables 1024 --threads 1 12 --seconds 5
+```
 
 ## Run (cmd, venv active)
 
