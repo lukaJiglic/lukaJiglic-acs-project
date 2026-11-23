@@ -12,6 +12,17 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 **Next:** the next step.
 ```
 
+## 2026-11-24 — the longer run started; spec 009 drafted (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 8)
+
+**Done:** the GPU was free at 00:04 and the pipeline of spec 014 started the MLP run (`long-a-mlp-20261124-000454`, commit `9351c6b`, seed 14). Spec 009 (deal flow B: announcements and kontra) is drafted with 49 acceptance criteria. pagat.com was read again for it on this day; the spec lists what the page says and what it leaves open. Seven open points went to the user as Batch 13.
+**Measurements:**
+- GPU before the MLP run: 0% busy, 536 MiB in use (criterion 3 of spec 014: under 10% and under 700 MiB). The session waited 2 h 55 min for it.
+- The run's own log at update 200: 38,432 decisions played per second, 48% of them trained on.
+**Broken or open:**
+- The run and its evaluations were not finished when this entry was written. Its results go into the run log of spec 014.
+- Spec 009 is a draft. No test and no code of it exists.
+**Next:** the report of the `train-env` session; verification of the run; the user's answers to Batch 13 and the approval of spec 009.
+
 ## 2026-11-23 — spec 008 committed, CI green; the longer run of spec 014 handed out (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 7)
 
 **Done:** the user read the diff of spec 008 and gave the go-ahead (D137); committed as `124b2e9` and pushed; spec 008 is done. The user ordered a longer run (D138). Spec 014 holds it: both networks, 2,000 updates each on deal flow A, the MLP first, everything else as the smoke configs; every setting is a choice of Claude, written down for correction. The run went to the `train-env` session.

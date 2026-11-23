@@ -34,7 +34,8 @@
 - 2026-11-12, night: spec 008's code and short tests are built by `train-env` (138 tests pass here with the GPU tests). The user agreed with the open proposals (D135, D136). The review pass over spec 008 runs; the three long runs wait for it.
 - 2026-11-12, late: spec 008 is executed: review fixes in, the three smoke runs done. Both networks beat random play (+0.60 per deal), the control run does not (−0.21). Verified by the main session (159 tests; the checkpoints evaluated again on other deals). **Spec 008 waits for the user's read of the diff.**
 - 2026-11-23: the user read the diff of spec 008 and approved the commit (D137; `124b2e9`), and ordered a longer run on flow A (D138; spec 014, in the `train-env` session). C13 and C16 were asked in the same message and not answered; they stay open.
-- **Waiting on the user, to decide:** C13 (the new figure of G3), C16 (which entropy mean the controller steers on), the settings of spec 014 if other than Claude's choices.
+- 2026-11-24: the GPU was free at 00:04 and the longer run of spec 014 started (MLP first). Spec 009 (deal flow B: announcements and kontra) is drafted from a new read of pagat.com; its seven open points are Batch 13 below.
+- **Waiting on the user, to decide:** Batch 13 and the acceptance criteria of spec 009; C13 (the new figure of G3); C16 (which entropy mean the controller steers on); the open points A–D of spec 014.
 - **Dates:** the repo must be public or shared with the instructor on Mon 23 Nov (R5); it is private on 2026-11-23. The proposal, wireframe and pitch slide were due Wed 18 Nov; the files hold no record that they were handed in.
 - **Waiting on the user:** corrections to the wireframe and `pitch.md`; the proposal format. Later: C13 (the new figure of G3, after the smoke run), C14 (tier of the trula toggle).
 - Next: spec 013 in the `engine-core` session and spec 008 in the `train-env` session; verification, review pass, the user's read of each diff, commit.
@@ -53,6 +54,22 @@ Open:
 - **C13. The new figure of G3** (D128). Measured in spec 008, end to end on this PC with 512 tables and two epochs: transformer 6,506 decisions played per second and 3,194 trained; MLP 34,743 and 17,050. (a) at least 5,000 decisions played per second with the transformer; (b) at least 6,000 played; (c) at least 3,000 trained. Recommended: (a); it is met with a margin of 30%, which flow B's longer sequences will use up in part. Asked 2026-11-12.
 - **C16. Which entropy mean the controller steers on.** Now: the mean over all decisions of a phase, forced ones included. In the smoke runs the share of forced decisions in the bidding went from 28% to 0%, so the mean moved without the policy getting firmer or looser. (a) the mean over decisions with two or more legal actions, with the targets set again as a quarter of random play under that mean; (b) keep the mean over all decisions. Recommended: (a). Asked 2026-11-12.
 - **C14. Tier of S40's other option** ("in any order"). Recommended: like S14 and S18 in D98: selectable in T0 with the note "agent ni učen s tem pravilom". Asked when the engine gets its toggles.
+
+## Batch 13 — announcements and kontra (asked 2026-11-24; open)
+
+The open points of `docs/specs/009-deal-flow-b.md`. Source: pagat.com, Slovenian Tarok, read again on 2026-11-24. Each point is a place where the page is silent or where the user's table decides. The first option is the recommendation.
+
+| # | Question | Options | Recommended, and why |
+|---|---|---|---|
+| B13-1 | May both sides announce the same bonus? | (a) each bonus once in a deal; the other side answers with kontra. (b) each side may announce it | a: the page has one kontra ladder per bonus and so has the encoding; b makes the encoding version 2 |
+| B13-2 | Kontra on a bonus when the announcer's side is hidden | (a) only a seat that knows the announcer's side may say it. (b) every announcement shows the announcer's side | a: the page's rule ("knows for certain"); the legal actions then leak nothing |
+| B13-3 | The duty to keep an announced ultimo card | (a) the engine enforces it: not a legal play before the last trick while another card is legal. (b) free play | a: the page's rule; an agent cannot break it by mistake |
+| B13-4 | Announced pagat ultimo, the pagat's side takes the last trick with another card | (a) won, like the silent one (D126). (b) the pagat itself must take the trick | a: one rule for silent and announced |
+| B13-5 | An announced valat that fails | (a) −500 and nothing else is scored. (b) −500 and the game is scored as usual | a: the page says a valat removes all other scores |
+| B13-6 | Order of the round | (a) the declarer first, then in order of play; several things per turn; ends after three passes in a row. (b) another order | a: the page's rule with a fixed order added |
+| B13-7 | Kralj ultimo by a declarer who holds the called king | (a) may announce it. (b) only a partner may | a: the silent one is already scored in this case (spec 005, answer C) |
+
+Four readings about the machine side are in the spec under "Readings chosen by Claude" ("done" writes no token; an announcement of unknown side; when the partner is shown as public; the size of the reward under kontra). They are not table rules. They stand unless the user objects.
 
 ## Batch 12 — readings of the encoding contract (asked 2026-11-11, answered 2026-11-12: a for all fifteen; see D130 and `docs/encoding.md` section 4a)
 
