@@ -12,6 +12,17 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 **Next:** the next step.
 ```
 
+## 2026-11-23 — spec 008 committed, CI green; the longer run of spec 014 handed out (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 7)
+
+**Done:** the user read the diff of spec 008 and gave the go-ahead (D137); committed as `124b2e9` and pushed; spec 008 is done. The user ordered a longer run (D138). Spec 014 holds it: both networks, 2,000 updates each on deal flow A, the MLP first, everything else as the smoke configs; every setting is a choice of Claude, written down for correction. The run went to the `train-env` session.
+**Measurements:**
+- CI on `124b2e9`: `ci` success; `engine` success; `train` success in 6 min 43 s with 150 passed, 9 skipped (GPU), 6 deselected (slow). This closes criterion 18 of spec 008.
+**Broken or open:**
+- The longer run has not started: a game was running on the GPU when it was handed out (79 to 96% busy, about 1,300 MiB). The session waits for a free GPU and gives up after six hours.
+- C13 (the new figure of G3) and C16 (the entropy mean of the controller) were asked with the commit question and not answered. The longer run uses the controller as built.
+- The repo was private on the day it had to be public or shared with the instructor (R5). The files hold no record that the proposal, the wireframe and the pitch slide of 18 Nov were handed in.
+**Next:** the two runs of spec 014 and their evaluations; verification by the main session; the user's read of the two configs; commit. Then specs 009 to 011.
+
 ## 2026-11-12 — spec 008, pipeline smoke run on the real engine: run log (session `train-env`, claude-fable-5-2; verified by the main session, ai-log rows 6 and 6e)
 
 **This is a test of the pipeline, not a result about playing strength.** The opponent in the evaluation is random legal play.

@@ -1,6 +1,6 @@
 # 008 — Pipeline smoke run on deal flow A
 
-Status: **approved** (2026-11-12, D124; open points A–E answered as recommended; D136: entropy targets and readings 2 and 3). Spec 006 is committed (D123). **Executed on 2026-11-12 in the `train-env` session: code, tests, review fixes and the three long runs. Not committed. Waiting for the user's read of the diff and for CI after a push.** See Results.
+Status: **done** (2026-11-23). Approved 2026-11-12 (D124; D136 for the entropy targets and readings 2 and 3), executed 2026-11-12 in the `train-env` session, committed on the user's go-ahead (D137) as `124b2e9`. The three workflows are green on it; the `train` workflow passed 150 tests on the CPU (criterion 18).
 
 Build-plan row 008. Tool and model: Claude Code 2.1.306, `claude-fable-5-2`.
 
