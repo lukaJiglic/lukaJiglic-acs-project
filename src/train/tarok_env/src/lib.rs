@@ -487,5 +487,12 @@ fn tarok_env(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("DEALS_PER_RUN", vecenv::DEALS_PER_RUN)?;
     m.add("MAX_ACTIONS", MAX_ACTIONS)?;
     m.add("ENGINE_VERSION", tarok_engine::VERSION)?;
+    // The fingerprint of the sources this module was built from, written by
+    // build.rs (D130). `tarok_train/env.py` compares it with the files on disk.
+    m.add("SOURCE_HASH", env!("TAROK_SOURCE_HASH"))?;
+    m.add(
+        "SOURCE_MANIFEST",
+        include_str!(concat!(env!("OUT_DIR"), "/source_manifest.txt")),
+    )?;
     Ok(())
 }

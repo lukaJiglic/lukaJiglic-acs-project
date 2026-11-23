@@ -12,6 +12,8 @@ updates = 200             # spec 007, criterion 22
 device = "auto"           # "auto": the GPU when CUDA is usable, else the CPU
 checkpoint_every = 100    # updates between checkpoints; one more at the end
 out_dir = "runs"          # under src/train; not tracked by git
+time_limit_minutes = 0    # spec 008: the run stops after this many minutes and is reported as not finished; 0 = no limit
+fault = "none"            # spec 008: a planted fault for control runs; refused unless the name starts with "control-"
 
 [env]
 kind = "mock"
@@ -30,7 +32,7 @@ heads = 4                 # D18
 feed_forward = 1024       # D18
 mlp_hidden = [512, 512, 256]      # D18, the MLP control
 critic_hidden = [512, 512, 256]   # Claude's proposal: the critic is an MLP (D119 B) of the control's size
-policy_init_scale = 1.0   # PyTorch default. Measured in the review of spec 007: with 0.01 the policy loss sends almost no gradient into the trunk
+policy_init_scale = 1.0   # PyTorch default; what spec 007 was measured with. D127 sets 0.3 for the first real runs (configs/smoke-a-*.toml)
 cache_initial_tokens = 32 # speed only: first size of the acting cache per seat; it grows when needed
 act_bucket_tokens = 8     # speed only: seats with more new tokens than this are computed in a second pass
 
@@ -47,7 +49,7 @@ adam_eps = 1e-8           # PyTorch default
 update_batch = 256        # spec 003: fastest L2 batch, in seat-deals
 entropy_weight = 0.01     # spec 007 table (proposal); research/05 e7
 critic_weight = 0.5       # spec 007 table (proposal)
-value_head_weight = 0.5   # NOT APPROVED: Claude's proposal, a question to the user. The actor's own value head.
+value_head_weight = 0.5   # what spec 007 was measured with. D127 sets 0.1 for the first real runs (configs/smoke-a-*.toml)
 q_weight = 0.5            # spec 007 table (proposal)
 partner_weight = 0.1      # research/05 C2 (0.1 or lower)
 card_location_weight = 0.1   # research/05 C2 (0.1 or lower)
@@ -61,3 +63,26 @@ past_share = 0.2          # D14: share of deals with one or more seats played by
 max_frozen_seats = 3      # Claude's proposal: such a deal has 1 to 3 frozen seats
 pool_size = 10            # Claude's proposal: the last N snapshots (research/05 C5)
 snapshot_every = 20       # Claude's proposal: updates between snapshots
+
+[entropy_control]
+# The entropy controller of D127 (spec 008, criteria 16 and 17). After every update, for each phase:
+#   error    = (target - entropy) / target, cut to [-1, 1]
+#   integral <- integral * exp(gain * error),         kept inside [min_weight, max_weight]
+#   weight    = integral * exp(proportional * error), kept inside [min_weight, max_weight]
+# Every weight starts at [ppo] entropy_weight. Off here: spec 007 was measured without it.
+enabled = false           # spec 007 has no controller; the test of criterion 16 turns it on
+gain = 0.2                # Claude's proposal, tuned on the mock's token task (spec 008, Results)
+proportional = 1.0        # Claude's proposal, tuned on the mock's token task (spec 008, Results)
+min_weight = 0.01         # Claude's proposal: [ppo] entropy_weight, so the controller never lowers the weight under it
+max_weight = 1.0          # Claude's proposal: a hundred times the start weight
+band = 0.75               # Claude's proposal, from the spread measured on the mock: "in the band" means within 75% of the target
+
+[entropy_control.targets]
+# Target policy entropy per phase, in nats. The mock has 4 legal slots at every decision: a uniform policy has 1.386.
+bidding = 0.4             # Claude's proposal for the mock: about 90% on one of four slots
+"contract choice" = 0.4   # the mock has no such decisions; a target is needed for every phase
+"king call" = 0.4         # as bidding
+"talon pick" = 0.4        # as bidding
+discard = 0.4             # as bidding
+announcements = 0.4       # as bidding
+play = 0.4                # as bidding

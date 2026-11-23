@@ -74,6 +74,7 @@ class SeatDeals:
     deal: np.ndarray  # (G,)
     reward: np.ndarray  # (G,) the seat's reward for the deal
     parts: np.ndarray  # (G, parts) the same reward by score part
+    true_parts: np.ndarray  # (G, parts) what the environment paid the seat; differs from `parts` only under a planted fault
     valid: np.ndarray  # (G, S)
     points: np.ndarray  # (G, S)
     tokens: np.ndarray  # (G, P, 5) the seat's token sequence at its last decision
@@ -129,11 +130,13 @@ class SeatDeals:
 
 
 class Rollout:
-    def __init__(self):
+    def __init__(self, zero_sum: bool = False):
+        """zero_sum: the four rewards of a deal must add up to zero (the real game, not the mock)."""
+        self.zero_sum = zero_sum
         self._chunks = {name: [] for name in ROW_FIELDS}
         self._order = []  # the order in which rows arrived
         self._next = 0
-        self._results = {}  # (table, deal) -> (reward (4,), parts (4, parts), tokens (4, 128, 5))
+        self._results = {}  # (table, deal) -> (reward (4,), parts (4, parts), tokens (4, 128, 5), true parts)
         self._live = np.zeros((0, 4, C.MAX_TOKENS, len(C.TOKEN_FIELDS)), dtype=np.int16)
         self.pending_rows = 0
 
@@ -150,11 +153,15 @@ class Rollout:
         n = len(tables)
         if n == 0:
             return
+        for name in ROW_FIELDS:
+            if len(rows[name]) != n:
+                raise ValueError(f"field {name} has {len(rows[name])} rows, expected {n}")
+        # Spec 008, criterion 2: the chosen slot of every stored decision is legal in its mask.
+        legal = np.asarray(rows["mask"])[np.arange(n), np.asarray(rows["action"])]
+        if not legal.all():
+            raise ValueError(f"{int((~legal).sum())} stored decisions took an illegal action (a slot the mask forbids)")
         for name, kind in ROW_FIELDS.items():
-            array = np.asarray(rows[name])
-            if len(array) != n:
-                raise ValueError(f"field {name} has {len(array)} rows, expected {n}")
-            self._chunks[name].append(array.astype(kind))  # a copy: the caller may reuse its buffers
+            self._chunks[name].append(np.asarray(rows[name]).astype(kind))  # a copy: the caller may reuse its buffers
         self._order.append(np.arange(self._next, self._next + n))
         self._next += n
         self.pending_rows += n
@@ -166,11 +173,15 @@ class Rollout:
             self._live = grown
         self._live[tables, np.asarray(rows["seat"])] = tokens
 
-    def finish(self, tables, deals, reward, parts) -> None:
+    def finish(self, tables, deals, reward, parts, true_parts=None) -> None:
         """The deals `deals` of the tables `tables` ended. reward (m, 4), parts (m, 4, parts), by seat.
 
+        true_parts: what the environment paid, where `reward` and `parts` carry a planted fault
+        (the control run of spec 008). The monitors read it; the learner never does.
+
         The parts of a seat must add up to its reward: the advantages are computed
-        from the parts, the logs from the reward.
+        from the parts, the logs from the reward. With `zero_sum` the four rewards of
+        a deal must add up to zero as well (spec 008, criterion 4).
         """
         reward = np.asarray(reward, dtype=np.float32)
         parts = np.asarray(parts, dtype=np.float32)
@@ -179,10 +190,15 @@ class Rollout:
         gap = np.abs(parts.sum(axis=-1) - reward).max(initial=0.0)
         if gap > 1e-5:
             raise ValueError(f"the score parts of a seat do not add up to its reward (largest gap {gap:.2e})")
+        if self.zero_sum:
+            gap = np.abs(reward.sum(axis=1, dtype=np.float64)).max(initial=0.0)
+            if gap > 1e-5:
+                raise ValueError(f"the four rewards of a deal do not add up to zero (largest sum {gap:.2e})")
+        true_parts = parts if true_parts is None else np.asarray(true_parts, dtype=np.float32)
         for i, (table, deal) in enumerate(zip(tables, deals)):
             table = int(table)
             tokens = self._live[table].copy() if table < len(self._live) else None
-            self._results[(table, int(deal))] = (reward[i].copy(), parts[i].copy(), tokens)
+            self._results[(table, int(deal))] = (reward[i].copy(), parts[i].copy(), tokens, true_parts[i].copy())
 
     def discard(self) -> None:
         """Drop every stored row and result: the rows of running deals, and results nobody took."""
@@ -235,11 +251,13 @@ class Rollout:
         width = max(int(points.max()), 1)
         reward = np.empty(g, dtype=np.float32)
         parts = np.empty((g, C.N_SCORE_PARTS), dtype=np.float32)
+        true_parts = np.empty((g, C.N_SCORE_PARTS), dtype=np.float32)
         tokens = np.zeros((g, width, len(C.TOKEN_FIELDS)), dtype=np.int16)
         for i, at in enumerate(starts):
-            seat_reward, seat_parts, seat_tokens = self._results[(int(t[at]), int(d[at]))]
+            seat_reward, seat_parts, seat_tokens, seat_true_parts = self._results[(int(t[at]), int(d[at]))]
             reward[i] = seat_reward[s[at]]
             parts[i] = seat_parts[s[at]]
+            true_parts[i] = seat_true_parts[s[at]]
             tokens[i] = seat_tokens[s[at], :width]
         # Every result of a finished deal is used up, also of deals with no stored rows.
         for key in [key for key in self._results if key not in {(int(a), int(b)) for a, b in pairs[~finished]}]:
@@ -251,6 +269,7 @@ class Rollout:
             deal=d[starts],
             reward=reward,
             parts=parts,
+            true_parts=true_parts,
             valid=valid,
             points=points,
             tokens=tokens,

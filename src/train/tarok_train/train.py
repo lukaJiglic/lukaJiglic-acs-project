@@ -1,8 +1,13 @@
-"""The training loop of spec 007.
+"""The training loop (spec 007), on the mock environment or on the real engine (spec 008).
 
 Run (cmd, from the repo root, venv active):
 
     python -m tarok_train.train --config src\\train\\configs\\mock.toml
+    python -m tarok_train.train --config src\\train\\configs\\smoke-a-mlp.toml
+
+The [env] table of the config names the environment: kind "mock" (tarok_train/mock_env.py)
+or kind "engine" (the Rust engine through tarok_train/env.py; the module tarok_env must be
+built).
 
 One update:
 1. Collect. The tables play until `seat_deals_per_update` seat-deals have
@@ -24,6 +29,10 @@ checkpoints.
 
 Every hyperparameter comes from the config file. `validate_config` refuses a
 config with a missing or an unknown key, so nothing falls back to a default.
+
+A run started from the command line writes two files next to its checkpoints:
+`run-info.json` at the start (the commit, `git status --short`, the config as it
+ran) and `summary.json` at the end (speed, time split, what failed).
 """
 
 from __future__ import annotations
@@ -31,7 +40,9 @@ from __future__ import annotations
 import argparse
 import copy
 import datetime
-import statistics
+import json
+import math
+import subprocess
 import sys
 import time
 import tomllib
@@ -59,17 +70,10 @@ SCHEMA = {
         "device": str,
         "checkpoint_every": int,
         "out_dir": str,
+        "time_limit_minutes": float,
+        "fault": str,
     },
-    "env": {
-        "kind": str,
-        "mode": str,
-        "tables": int,
-        "min_rounds": int,
-        "max_rounds": int,
-        "legal_per_decision": int,
-        "extra_token_probability": float,
-        "feature_density": float,
-    },
+    "env": None,  # depends on the kind: see ENV_KEYS
     "model": {
         "width": int,
         "layers": int,
@@ -109,7 +113,39 @@ SCHEMA = {
         "pool_size": int,
         "snapshot_every": int,
     },
+    "entropy_control": {
+        "enabled": bool,
+        "gain": float,
+        "proportional": float,
+        "min_weight": float,
+        "max_weight": float,
+        "band": float,
+        "targets": dict,
+    },
 }
+
+# The keys of [env] for each kind of environment.
+ENV_KEYS = {
+    "mock": {
+        "kind": str,
+        "mode": str,
+        "tables": int,
+        "min_rounds": int,
+        "max_rounds": int,
+        "legal_per_decision": int,
+        "extra_token_probability": float,
+        "feature_density": float,
+    },
+    "engine": {"kind": str, "tables": int, "threads": int},
+}
+
+# [run] fault: a planted wiring bug for the control run of spec 008 (criterion 8).
+# "rewards_to_next_seat": every seat's reward is handed to the next seat.
+FAULTS = ("none", "rewards_to_next_seat")
+CONTROL_PREFIX = "control-"
+
+# What the wall time of an update is split into (spec 008, criterion 10).
+CLOCKS = ("environment", "acting", "bookkeeping", "update")
 
 
 class ConfigError(ValueError):
@@ -124,6 +160,13 @@ def validate_config(cfg: dict) -> None:
     for section, keys in SCHEMA.items():
         if section not in cfg:
             raise ConfigError(f"the config has no [{section}] table")
+        if section == "env":
+            kind = cfg["env"].get("kind")
+            if kind is None:
+                raise ConfigError("the config has no value for kind in [env]; the code has no default")
+            if kind not in ENV_KEYS:
+                raise ConfigError(f"unknown environment kind {kind!r} in [env]: use 'mock' or 'engine'")
+            keys = ENV_KEYS[kind]
         for key, kind in keys.items():
             if key not in cfg[section]:
                 raise ConfigError(f"the config has no value for {key} in [{section}]; the code has no default")
@@ -143,6 +186,30 @@ def validate_config(cfg: dict) -> None:
         raise ConfigError("value_loss in [ppo] must be 'huber' or 'mse'")
     if cfg["ppo"]["seat_deals_per_update"] < 1:
         raise ConfigError("seat_deals_per_update in [ppo] must be at least 1")
+    run = cfg["run"]
+    if run["time_limit_minutes"] < 0:
+        raise ConfigError("time_limit_minutes in [run] must be 0 (no limit) or more")
+    if run["fault"] not in FAULTS:
+        raise ConfigError(f"fault in [run] must be one of {FAULTS}, got {run['fault']!r}")
+    if run["fault"] != "none" and not run["name"].startswith(CONTROL_PREFIX):
+        raise ConfigError(
+            f"fault = {run['fault']!r} in [run] is refused: a planted fault is for control runs only, "
+            f"and the name of such a run starts with '{CONTROL_PREFIX}'"
+        )
+    control = cfg["entropy_control"]
+    phases = C.PHASES[:-1]  # every phase in which a seat decides
+    for name in phases:
+        if name not in control["targets"]:
+            raise ConfigError(f"[entropy_control.targets] has no target for the phase '{name}'")
+    for name, target in control["targets"].items():
+        if name not in phases:
+            raise ConfigError(f"unknown phase '{name}' in [entropy_control.targets]")
+        if isinstance(target, bool) or not isinstance(target, (int, float)) or target <= 0:
+            raise ConfigError(f"the target entropy of '{name}' in [entropy_control.targets] must be above 0")
+    if not 0 < control["min_weight"] < control["max_weight"]:
+        raise ConfigError("[entropy_control] needs 0 < min_weight < max_weight")
+    if control["gain"] <= 0 or control["proportional"] < 0 or not 0 < control["band"] < 1:
+        raise ConfigError("[entropy_control] needs gain above 0, proportional 0 or more and band between 0 and 1")
 
 
 def load_config(path) -> dict:
@@ -150,6 +217,15 @@ def load_config(path) -> dict:
         cfg = tomllib.load(handle)
     validate_config(cfg)
     return cfg
+
+
+def make_env(cfg_env: dict, seed: int):
+    """The environment a config asks for. The engine's module is imported only when it is needed."""
+    if cfg_env["kind"] == "mock":
+        return mock_env.make(cfg_env, seed)
+    from . import env as engine_env  # needs the built tarok_env module
+
+    return engine_env.make(cfg_env, seed)
 
 
 class Trainer:
@@ -176,7 +252,9 @@ class Trainer:
             eps=cfg_ppo["adam_eps"],
         )
 
-        self.env = mock_env.make(self.cfg["env"], seed)
+        self.env = make_env(self.cfg["env"], seed)
+        self.fault = run["fault"]
+        self.entropy = ppo.EntropyController(self.cfg["entropy_control"], cfg_ppo["entropy_weight"])
         self.n = self.cfg["env"]["tables"]
         self.actor = Actor(self.net, self.frozen_net, self.n, self.device, cfg_model)
         self.pool = opponents.OpponentPool(cfg_opp["pool_size"])
@@ -186,13 +264,19 @@ class Trainer:
         # A table is fresh when its current deal began under the current weights. Only fresh
         # tables are stored. After an update every table that is inside a deal is stale.
         self.fresh = np.ones(self.n, dtype=bool)
-        self.rollout = Rollout()
+        # On the real game the storage also checks that a deal's four rewards add up to zero.
+        self.rollout = Rollout(zero_sum=getattr(self.env, "zero_sum", False))
+        self.clock = dict.fromkeys(CLOCKS, 0.0)  # seconds since the last update, by kind of work
+        self.clock_total = dict.fromkeys(CLOCKS, 0.0)  # the same over all updates of this object
+        self.stopped_by_time_limit = False
 
         self.updates = 0
         self.decisions = 0  # decisions of trained seats (stored or not)
         self.frozen_decisions = 0  # decisions of seats played by the past checkpoint
         self.collected = 0  # finished seat-deals stored since the last update
-        self.acted = 0  # decisions of trained seats since the last update
+        # The number of updates done when each table's current deal began. A stored decision carries
+        # it as its version: a deal that began under older weights shows as an age above 0.
+        self.deal_version = np.zeros(self.n, dtype=np.int64)
         self.history = []
         self.parameter_counts = {self.kind: count_parameters(self.net), "critic": count_parameters(self.critic)}
         print(
@@ -225,9 +309,17 @@ class Trainer:
             self.rng, len(tables), cfg_opp["past_share"], cfg_opp["max_frozen_seats"]
         )
 
+    def _lap(self, name: str, since: float) -> float:
+        """Add the time since `since` to the clock `name`. Returns the time now."""
+        now = time.perf_counter()
+        self.clock[name] += now - since
+        return now
+
     def step(self) -> None:
         """One environment step: one decision per table."""
+        lap = time.perf_counter()
         obs = self.env.observe()
+        lap = self._lap("environment", lap)
         # Copies of what is needed after env.step: an environment may reuse its buffers.
         seat = obs["seat"].copy()
         deal = obs["deal"].copy()
@@ -252,6 +344,8 @@ class Trainer:
         if keep.any():
             with torch.inference_mode():
                 value = self.critic(torch.from_numpy(obs["critic"][keep]).to(device)).cpu().numpy()
+            logp = logp.cpu().numpy()
+            lap = self._lap("acting", lap)
             self.rollout.add(
                 tokens=obs["tokens"][keep],
                 tables=rows[keep],
@@ -264,31 +358,36 @@ class Trainer:
                 partner_target=obs["partner_target"][keep],
                 card_target=obs["card_target"][keep],
                 action=action[keep],
-                logp=logp.cpu().numpy()[keep],
+                logp=logp[keep],
                 value=value,
-                version=np.full(int(keep.sum()), self.updates),
+                version=self.deal_version[keep],
             )
-        trained = int((~frozen_rows).sum())
-        self.decisions += trained
-        self.acted += trained
+        self.decisions += int((~frozen_rows).sum())
         self.frozen_decisions += int(frozen_rows.sum())
+        # Without stored rows this lap is acting time; with them it is the storing.
+        lap = self._lap("bookkeeping" if keep.any() else "acting", lap)
 
         done, reward, parts = self.env.step(action)
+        lap = self._lap("environment", lap)
+        true_parts = parts  # what the environment paid: the monitors read these
+        if self.fault == "rewards_to_next_seat":  # the control run: seat s gets what seat s - 1 earned
+            reward, parts = np.roll(reward, 1, axis=1), np.roll(parts, 1, axis=1)
         ended = np.flatnonzero(done)
         if len(ended):
             stored = ended[self.fresh[ended]]
             if len(stored):
-                self.rollout.finish(stored, deal[stored], reward[stored], parts[stored])
+                self.rollout.finish(stored, deal[stored], reward[stored], parts[stored], true_parts[stored])
                 self.collected += int((~self.frozen[stored]).sum())
             self.frozen[ended] = False
             self.fresh[ended] = True  # the next deal of these tables begins under the current weights
+            self.deal_version[ended] = self.updates
             self._assign_frozen(ended)
         self.deal_started = done.copy()
+        self._lap("bookkeeping", lap)
 
     def collect(self) -> None:
         """Play until enough stored seat-deals have finished."""
         self.collected = 0
-        self.acted = 0
         while self.collected < self.cfg["ppo"]["seat_deals_per_update"]:
             self.step()
 
@@ -296,51 +395,98 @@ class Trainer:
 
     def update(self) -> dict | None:
         """PPO on the stored deals that finished. None if there is none."""
+        lap = time.perf_counter()
         deals = self.rollout.take()
         self.rollout.discard()  # rows of deals still running would be stale after this update
         self.fresh = self.deal_started.copy()  # only tables that stand at a deal's first decision
         if deals is None:
+            self._lap("bookkeeping", lap)
             return None
         cfg_ppo = self.cfg["ppo"]
         ppo.prepare(deals, cfg_ppo)
         stats = ppo.rollout_stats(deals, self.updates)
-        stats["rollout/trained_share"] = deals.decisions / max(self.acted, 1)
+        stats["env/illegal_actions"] = float(self.env.illegal_actions)
         if getattr(self.env, "reward_is_score", False):
             stats["task/score"] = float(deals.reward.mean())
-        stats.update(ppo.update(self.net, self.critic, self.optimizer, deals, cfg_ppo, self.device, self.rng))
+        if getattr(self.env, "real_deals", False):
+            stats.update(ppo.deal_stats(deals))
+        lap = self._lap("bookkeeping", lap)
+        stats.update(
+            ppo.update(
+                self.net, self.critic, self.optimizer, deals, cfg_ppo, self.device, self.rng,
+                self.entropy.tensor(self.device),
+            )
+        )
+        self._synchronise()
+        lap = self._lap("update", lap)
         self.net.eval()
         self.critic.eval()
         self.actor.reset()  # the weights changed: the cached keys and values are stale
         self.updates += 1
+        self.deal_version[self.deal_started] = self.updates  # these deals begin under the new weights
         if self.updates % self.cfg["opponents"]["snapshot_every"] == 0:
             self.pool.add(self.net)
         if len(self.pool):
             self.use_frozen_seats()
+        # The entropy controller: the next update's weights, from this update's entropy per phase.
+        entropies = {name: stats[f"entropy/{name}"] for name in C.PHASES if f"entropy/{name}" in stats}
+        self.entropy.step(entropies)
+        if self.entropy.enabled:
+            stats["entropy/phases_outside_band"] = float(sum(not ok for ok in self.entropy.in_band(entropies).values()))
+        for name, weight in zip(C.PHASES[:-1], self.entropy.weights):
+            stats[f"entropy_weight/{name}"] = float(weight)
+        self._lap("bookkeeping", lap)
         return stats
 
-    def run(self, updates: int, checkpoint_dir=None, report_every: int = 0) -> list:
-        """Run `updates` updates. Returns their statistics; they are also appended to `history`."""
+    def run(self, updates: int, checkpoint_dir=None, report_every: int = 0, time_limit_seconds: float = 0.0) -> list:
+        """Run `updates` updates. Returns their statistics; they are also appended to `history`.
+
+        time_limit_seconds: 0 for none. When the run has taken longer, it stops after the
+        update in hand and `stopped_by_time_limit` is True.
+        A logged number that is not finite stops the run with a FloatingPointError.
+        """
         self.net.eval()
         self.critic.eval()
+        self.stopped_by_time_limit = False
+        begun = time.perf_counter()
         done = []
-        for _ in range(updates):
+        for index in range(updates):
             started = time.perf_counter()
-            before = self.decisions + self.frozen_decisions
+            before_own, before_frozen = self.decisions, self.frozen_decisions
+            self.clock = dict.fromkeys(CLOCKS, 0.0)
             stats = None
-            acting = 0.0
             while stats is None:
-                clock = time.perf_counter()
                 self.collect()
-                self._synchronise()
-                acting += time.perf_counter() - clock
                 stats = self.update()
-            self._synchronise()
             seconds = time.perf_counter() - started
-            stats["speed/steps_per_second"] = (self.decisions + self.frozen_decisions - before) / seconds
-            stats["speed/acting_share"] = acting / seconds  # the rest is the update
+            stats["time/seconds"] = seconds
+            # Decisions played since the last update: by the seats of the current network, and by all
+            # seats (those of a past checkpoint too). "rollout/decisions" are the ones trained on.
+            own = self.decisions - before_own
+            played = own + self.frozen_decisions - before_frozen
+            stats["rollout/played"] = float(played)
+            stats["rollout/played_own_seats"] = float(own)
+            stats["rollout/trained_share"] = stats["rollout/decisions"] / max(played, 1)
+            stats["rollout/trained_share_own_seats"] = stats["rollout/decisions"] / max(own, 1)
+            stats["speed/steps_per_second"] = played / seconds
+            stats["speed/trained_per_second"] = stats["rollout/decisions"] / seconds
+            for name in CLOCKS:  # the four shares add up to the wall time of the update, but for loop overhead
+                stats[f"time/{name}_share"] = self.clock[name] / seconds
+                self.clock_total[name] += self.clock[name]
+            stats["speed/acting_share"] = 1.0 - stats["time/update_share"]  # all but the update (spec 007's tag)
             stats["opponents/frozen_share"] = self.frozen_decisions / max(self.decisions + self.frozen_decisions, 1)
+            if self.device.type == "cuda":
+                # Allocated: the tensors. Reserved: what PyTorch's allocator holds from the card.
+                stats["gpu/peak_memory_mib"] = float(torch.cuda.max_memory_allocated() // 2**20)
+                stats["gpu/peak_memory_reserved_mib"] = float(torch.cuda.max_memory_reserved() // 2**20)
+            for name, value in stats.items():
+                if not math.isfinite(value):
+                    raise FloatingPointError(
+                        f"{name} is {value} at update {self.updates}: a logged number is not finite, the run stops"
+                    )
             self.history.append(stats)
             done.append(stats)
+            lap = time.perf_counter()
             if self.writer is not None:
                 for name, value in stats.items():
                     self.writer.add_scalar(name, value, self.updates)
@@ -356,6 +502,11 @@ class Trainer:
             every = self.cfg["run"]["checkpoint_every"]
             if checkpoint_dir is not None and self.updates % every == 0:
                 self.save(Path(checkpoint_dir) / f"checkpoint-{self.updates:06d}.pt")
+            # Logging and checkpoints are bookkeeping of the run; they are not part of an update's shares.
+            self.clock_total["bookkeeping"] += time.perf_counter() - lap
+            if time_limit_seconds and index + 1 < updates and time.perf_counter() - begun > time_limit_seconds:
+                self.stopped_by_time_limit = True  # updates are left: the run is not finished
+                break
         return done
 
     def _synchronise(self) -> None:
@@ -386,9 +537,11 @@ class Trainer:
                 # What a resumed run needs to go on exactly as an unbroken one would.
                 "pool": self.pool.snapshots,
                 "frozen_net": self.frozen_net.state_dict(),
+                "entropy_control": self.entropy.state(),
                 "frozen_active": self.frozen_active,
                 "frozen": torch.from_numpy(self.frozen),
                 "deal_started": torch.from_numpy(self.deal_started),
+                "deal_version": torch.from_numpy(self.deal_version),
                 "fresh": torch.from_numpy(self.fresh),
                 "rng": _plain(self.rng.bit_generator.state),
                 "generator": self.generator.get_state(),
@@ -416,9 +569,11 @@ class Trainer:
         trainer.frozen_decisions = data["frozen_decisions"]
         trainer.pool.snapshots = [{k: v.cpu() for k, v in snapshot.items()} for snapshot in data["pool"]]
         trainer.frozen_net.load_state_dict(data["frozen_net"])
+        trainer.entropy.load_state(data["entropy_control"])
         trainer.frozen_active = data["frozen_active"]
         trainer.frozen = data["frozen"].cpu().numpy().copy()
         trainer.deal_started = data["deal_started"].cpu().numpy().copy()
+        trainer.deal_version = data["deal_version"].cpu().numpy().copy()
         trainer.fresh = data["fresh"].cpu().numpy().copy()
         trainer.rng.bit_generator.state = _unplain(data["rng"])
         trainer.generator.set_state(data["generator"].cpu())
@@ -456,8 +611,44 @@ def _unplain(value):
     return value
 
 
+def run_summary(history: list, seconds: float) -> dict:
+    """Counts and rates of a run from the statistics of its updates and its wall time.
+
+    played: decisions of all seats, those of a past checkpoint too. trained: the decisions the
+    updates trained on. trained_share: trained / played (spec 008, criterion 9).
+    trained_share_own_seats: trained / the decisions of the current network's seats.
+    Only logged updates count: an update that failed is in neither number.
+    """
+    played = sum(stats["rollout/played"] for stats in history)
+    own = sum(stats["rollout/played_own_seats"] for stats in history)
+    trained = sum(stats["rollout/decisions"] for stats in history)
+    return {
+        "played": int(played),
+        "played_own_seats": int(own),
+        "trained": int(trained),
+        "played_per_second": played / seconds if seconds > 0 else 0.0,
+        "trained_per_second": trained / seconds if seconds > 0 else 0.0,
+        "trained_share": trained / played if played else 0.0,
+        "trained_share_own_seats": trained / own if own else 0.0,
+    }
+
+
+def _git(*args) -> str:
+    """The output of a git command run in the repo, or "unknown"."""
+    try:
+        done = subprocess.run(["git", *args], cwd=TRAIN_DIR, capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
+    return done.stdout.strip() if done.returncode == 0 else "unknown"
+
+
+def _write_json(path: Path, data: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=1), encoding="utf-8")
+
+
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="Train on the environment named in a run config (spec 007).")
+    parser = argparse.ArgumentParser(description="Train on the environment named in a run config (specs 007, 008).")
     parser.add_argument("--config", default=str(DEFAULT_CONFIG), help="run config (TOML)")
     parser.add_argument("--resume", default=None, help="a checkpoint to go on from; its config is used")
     parser.add_argument("--network", default=None, help="transformer or mlp; overrides [run] network")
@@ -467,11 +658,14 @@ def main(argv=None) -> int:
     parser.add_argument("--seat-deals", type=int, default=None, help="overrides [ppo] seat_deals_per_update")
     parser.add_argument("--device", default=None, help="cuda or cpu; overrides [run] device")
     parser.add_argument("--out-dir", default=None, help="folder for checkpoints and logs; overrides [run] out_dir")
+    parser.add_argument("--name", default=None, help="overrides [run] name")
+    parser.add_argument("--fault", default=None, help="control runs only: overrides [run] fault")
+    parser.add_argument("--time-limit-minutes", type=float, default=None, help="overrides [run] time_limit_minutes")
     args = parser.parse_args(argv)
 
     resume = None
     if args.resume is not None:
-        for name in ("network", "tables", "mode", "seat_deals"):
+        for name in ("network", "tables", "mode", "seat_deals", "name", "fault"):
             if getattr(args, name) is not None:
                 parser.error(f"--{name.replace('_', '-')} cannot change on --resume: the checkpoint's config is used")
         resume = Path(args.resume)
@@ -481,13 +675,19 @@ def main(argv=None) -> int:
     # Overrides go into the config, so the checkpoint records what really ran.
     for section, key, value in (
         ("run", "network", args.network),
+        ("run", "name", args.name),
+        ("run", "fault", args.fault),
+        ("run", "time_limit_minutes", args.time_limit_minutes),
         ("env", "tables", args.tables),
         ("env", "mode", args.mode),
         ("ppo", "seat_deals_per_update", args.seat_deals),
         ("run", "device", args.device),
     ):
         if value is not None:
+            if key not in cfg[section]:
+                parser.error(f"--{key.replace('_', '-')} does not apply: [{section}] of this config has no {key}")
             cfg[section][key] = value
+    validate_config(cfg)
     total = args.updates if args.updates is not None else cfg["run"]["updates"]
     device = cfg["run"]["device"]
     if device == "auto":
@@ -502,20 +702,87 @@ def main(argv=None) -> int:
         stamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         out = TRAIN_DIR / cfg["run"]["out_dir"] / f"{name}-{stamp}"
 
-    print(f"run {name}: {total} updates on {device}, {cfg['env']['tables']} tables, mode {cfg['env']['mode']}")
+    kind = cfg["env"]["kind"]
+    what = f"mode {cfg['env']['mode']}" if kind == "mock" else f"{cfg['env']['threads']} threads"
+    print(f"run {name}: {total} updates on {device}, environment {kind}, {cfg['env']['tables']} tables, {what}")
+    gpu_before = gpu_snapshot() if device == "cuda" else None
     if device == "cuda":
-        print(f"gpu: {torch.cuda.get_device_name(0)}; load before the run: {gpu_snapshot()}")
+        print(f"gpu: {torch.cuda.get_device_name(0)}; load before the run: {gpu_before}")
     if resume is not None:
         trainer = Trainer.load(resume, device, log_dir=out)
         print(f"resumed from {resume.name} at update {trainer.updates}")
     else:
         cfg["run"]["updates"] = total
         trainer = Trainer(cfg, device, log_dir=out)
+
+    # The run log needs the commit and the state of the tree: a run may start on uncommitted work.
+    info = {
+        "started": datetime.datetime.now().isoformat(timespec="seconds"),
+        "run": name,
+        "commit": _git("rev-parse", "HEAD"),
+        "git_status_short": _git("status", "--short"),
+        "config_file": Path(args.config).name if resume is None else None,
+        "resumed_from": resume.name if resume is not None else None,
+        "config": trainer.cfg,
+        "device": device,
+        "gpu_before": gpu_before,
+        "engine_sources": getattr(trainer.env, "source_hash", None),
+        "parameters": trainer.parameter_counts,
+    }
+    print(f"commit {info['commit']}; uncommitted changes: {'yes' if info['git_status_short'] else 'no'}")
+    _write_json(out / ("run-info.json" if resume is None else f"run-info-from-{trainer.updates:06d}.json"), info)
+
     remaining = max(total - trainer.updates, 0)
+    limit = cfg["run"]["time_limit_minutes"] * 60.0
     started = time.perf_counter()
-    first = trainer.decisions + trainer.frozen_decisions
-    history = trainer.run(remaining, checkpoint_dir=out, report_every=max(1, total // 20))
-    seconds = time.perf_counter() - started
+    updates_before = trainer.updates
+    failed = None
+    try:
+        trainer.run(remaining, checkpoint_dir=out, report_every=max(1, total // 20), time_limit_seconds=limit)
+    except Exception as error:  # the summary names what failed; the error still ends the run
+        failed = f"{type(error).__name__}: {error}"
+        raise
+    finally:
+        seconds = time.perf_counter() - started
+        history = trainer.history  # the updates of this call only: a checkpoint does not hold the history
+        counts = run_summary(history, seconds)
+        played = counts["played"]
+        finished = failed is None and not trainer.stopped_by_time_limit and trainer.updates >= total
+        gpu_after = gpu_snapshot() if device == "cuda" else None
+        peak = int(torch.cuda.max_memory_allocated() // 2**20) if device == "cuda" else None
+        reserved = int(torch.cuda.max_memory_reserved() // 2**20) if device == "cuda" else None
+        shares = {name: trainer.clock_total[name] / seconds for name in CLOCKS} if seconds > 0 else {}
+        summary = {
+            "run": name,
+            "environment": kind,
+            "network": cfg["run"]["network"],
+            "device": device,
+            # Updates done and logged. An update that failed its check of the logged numbers is not counted.
+            "updates": updates_before + len(history),
+            "updates_wanted": total,
+            "finished": finished,
+            "failed": failed,
+            "stopped_by_time_limit": trainer.stopped_by_time_limit,
+            "seconds": seconds,
+            **counts,
+            "time_shares": shares,
+            "time_shares_sum": sum(shares.values()),
+            "illegal_actions": int(trainer.env.illegal_actions),
+            "decision_age_max": max((h["rollout/decision_age_max"] for h in history), default=0.0),
+            # Three different numbers. peak_gpu_memory_mib: the largest sum of this run's tensors.
+            # peak_gpu_memory_reserved_mib: the most PyTorch's allocator held from the card for them.
+            # gpu_before / gpu_after "memory_used_mib": what nvidia-smi shows for the whole card,
+            # every program on it, at that moment (the run still holds its memory at "after").
+            "peak_gpu_memory_mib": peak,
+            "peak_gpu_memory_reserved_mib": reserved,
+            "gpu_before": gpu_before,
+            "gpu_after": gpu_after,
+            "first_update": history[0] if history else None,
+            "last_update": history[-1] if history else None,
+        }
+        if resume is None or history:
+            _write_json(out / "summary.json", summary)
+
     final = out / f"checkpoint-{trainer.updates:06d}.pt"
     if not final.exists():
         trainer.save(final)
@@ -524,22 +791,29 @@ def main(argv=None) -> int:
         print("nothing to do: the checkpoint already has that many updates")
         return 0
 
-    speeds = [h["speed/steps_per_second"] for h in history]
-    acting = statistics.median(h["speed/acting_share"] for h in history)
-    trained = statistics.median(h["rollout/trained_share"] for h in history)
-    age = max(h["rollout/decision_age_max"] for h in history)
-    played = trainer.decisions + trainer.frozen_decisions - first
-    print(f"time per update: acting {acting:.0%}, update {1 - acting:.0%} (median)")
-    print(f"decisions trained on: {trained:.0%} of those played (median); oldest decision in an update: age {age:.0f}")
+    split = ", ".join(f"{name} {share:.0%}" for name, share in shares.items())
+    print(f"time: {split}; together {summary['time_shares_sum']:.1%} of the wall time")
+    print(
+        f"decisions trained on: {summary['trained_share']:.0%} of those played "
+        f"({summary['trained_share_own_seats']:.0%} of those of the current network's seats); "
+        f"oldest decision in an update: age {summary['decision_age_max']:.0f}; "
+        f"illegal actions refused by the environment: {summary['illegal_actions']}"
+    )
     print(
         f"done: {len(history)} updates, {played:,} decisions in {seconds:.1f} s; "
-        f"median {statistics.median(speeds):,.0f} steps/s per update, {played / seconds:,.0f} steps/s overall"
+        f"{summary['played_per_second']:,.0f} played per second, {summary['trained_per_second']:,.0f} trained per second"
     )
     if "task/score" in history[0]:
         print(f"task score: first {history[0]['task/score']:.3f}, last {history[-1]['task/score']:.3f}")
     if device == "cuda":
-        print(f"gpu load after the run: {gpu_snapshot()}; peak memory {torch.cuda.max_memory_allocated() // 2**20} MiB")
+        print(f"gpu load after the run: {gpu_after}; peak memory of the tensors {peak} MiB, reserved by PyTorch {reserved} MiB")
     print(f"checkpoints and TensorBoard files: {out.name} in {out.parent.name}")
+    if not finished:
+        print(
+            f"not finished: the time limit of {cfg['run']['time_limit_minutes']:g} minutes was reached "
+            f"at update {trainer.updates} of {total}"
+        )
+        return 3
     return 0
 
 

@@ -35,6 +35,13 @@ different steps. One thread should drive one environment.
 Each table plays runs of 24 deals with the dealer moving one seat per deal. The
 cards of a deal depend only on (seed, table, run, deal number).
 
+Stale module (D130). The installed module `tarok_env` carries a fingerprint of the
+Rust sources it was built from: `SOURCE_MANIFEST` (one line per file: path, size,
+CRC-32) and `SOURCE_HASH` (a hash of that text). An EngineEnv compares them with
+the files on disk and refuses to start if they differ, so Python never runs old
+rules without a sign. Build again with `maturin develop --release` in
+src/train/tarok_env. Where the sources are not on disk there is nothing to compare.
+
 Benchmark of the environment alone (criterion 23), from src/train with the venv active:
 
     python -m tarok_train.env --tables 1024 --threads 1 12 --seconds 5
@@ -46,6 +53,8 @@ import argparse
 import json
 import threading
 import time
+import zlib
+from pathlib import Path
 
 import numpy as np
 
@@ -77,6 +86,81 @@ RESULT_ARRAYS = {
 STATE_ARRAYS = ("run", "deal_in_run", "deals_done", "n_actions", "actions")
 
 
+# ---- the stale-module check (D130) ----
+
+# The repo's `src` folder. The fingerprint covers the engine crate and the binding crate under it.
+SOURCE_ROOT = Path(__file__).resolve().parents[2]
+# crate folder under SOURCE_ROOT -> its files outside `src` that count. Every .rs file under `src` counts.
+# The same list is in src/train/tarok_env/build.rs.
+SOURCE_CRATES = {
+    "engine": ("Cargo.toml",),
+    "train/tarok_env": ("Cargo.toml", "Cargo.lock", "build.rs"),
+}
+
+
+class StaleModuleError(RuntimeError):
+    """The installed `tarok_env` module was built from other sources than those on disk."""
+
+
+def source_manifest(root) -> str | None:
+    """The fingerprint of the Rust sources under `root`, as the build script writes it.
+
+    One line per file, sorted by path: path relative to `root` with forward slashes,
+    a tab, the size in bytes, a tab, the CRC-32 of the bytes as eight hex digits.
+    None if the engine's sources are not there.
+    """
+    root = Path(root)
+    if not (root / "engine" / "src").is_dir():
+        return None
+    files = {}
+    for crate, names in SOURCE_CRATES.items():
+        base = root / crate
+        for name in names:
+            if (base / name).is_file():
+                files[f"{crate}/{name}"] = base / name
+        for path in (base / "src").rglob("*.rs"):
+            files[f"{crate}/{path.relative_to(base).as_posix()}"] = path
+    lines = []
+    for name in sorted(files):
+        data = files[name].read_bytes()
+        lines.append(f"{name}\t{len(data)}\t{zlib.crc32(data):08x}\n")
+    return "".join(lines)
+
+
+def manifest_hash(manifest: str) -> str:
+    """FNV-1a, 64 bits, of the manifest text, as sixteen hex digits (the module's SOURCE_HASH)."""
+    value = 0xCBF29CE484222325
+    for byte in manifest.encode("utf-8"):
+        value = ((value ^ byte) * 0x100000001B3) & 0xFFFFFFFFFFFFFFFF
+    return f"{value:016x}"
+
+
+def check_module_is_current() -> None:
+    """Raise StaleModuleError if the installed module was built from other sources than those on disk."""
+    on_disk = source_manifest(SOURCE_ROOT)
+    if on_disk is None:  # an installed wheel without the repo: nothing to compare
+        return
+    if not hasattr(tarok_env, "SOURCE_HASH"):  # a module built before the fingerprint existed
+        raise StaleModuleError(
+            "the installed tarok_env module carries no fingerprint of its sources: it was built before the "
+            "stale-module check existed. Build it again: maturin develop --release in src/train/tarok_env"
+        )
+    if manifest_hash(on_disk) == tarok_env.SOURCE_HASH:
+        return
+    built = dict(line.split("\t", 1) for line in tarok_env.SOURCE_MANIFEST.splitlines())
+    now = dict(line.split("\t", 1) for line in on_disk.splitlines())
+    lists = {
+        "changed": sorted(name for name in now if name in built and now[name] != built[name]),
+        "new": sorted(name for name in now if name not in built),
+        "no longer there": sorted(name for name in built if name not in now),
+    }
+    parts = [f"{label}: {', '.join(names)}" for label, names in lists.items() if names]
+    raise StaleModuleError(
+        "the installed tarok_env module was built from other sources than those on disk "
+        f"({'; '.join(parts)}). Build it again: maturin develop --release in src/train/tarok_env"
+    )
+
+
 def new_buffers(n_tables: int) -> dict:
     """Zeroed arrays of the documented shapes and types for `n_tables` tables."""
     return {
@@ -106,8 +190,14 @@ def _check_contract() -> None:
 
 
 class EngineEnv:
+    zero_sum = True  # the four rewards of a deal add up to zero; the learner's storage checks it
+    real_deals = True  # the state features are those of real deals: the deal monitors apply
+    reward_is_score = False  # the mean reward is zero by construction, not a score to log
+
     def __init__(self, n_tables: int, seed: int, threads: int):
         _check_contract()
+        check_module_is_current()
+        self.source_hash = tarok_env.SOURCE_HASH  # the fingerprint of the sources the module was built from
         self.n = n_tables
         self.seed = seed
         self.threads = threads

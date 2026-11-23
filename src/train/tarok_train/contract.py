@@ -86,6 +86,32 @@ PHASES = ("bidding", "contract choice", "king call", "talon pick", "discard", "a
 REVEALED_PARTNER_BLOCK = STATE_BLOCKS["B6"]
 UNSEEN_BLOCK = STATE_BLOCKS["F4"]  # card is unseen: the card-location loss counts these cards only
 
+# What the monitors of spec 008 read. The thirteen values of a bid or a contract, in the
+# contract's order (sections 3 and 5), without the caron so they can be part of a log tag.
+BIDS = (
+    "naprej",
+    "klop",
+    "tri",
+    "dve",
+    "ena",
+    "solo tri",
+    "solo dve",
+    "solo ena",
+    "berac",
+    "solo brez",
+    "odprti berac",
+    "barvni valat",
+    "valat",
+)
+NORMAL_CONTRACTS = ("tri", "dve", "ena", "solo tri", "solo dve", "solo ena")  # deal flow A
+CONTRACT_BLOCK = STATE_BLOCKS["B2"]
+DECLARER_BLOCK = STATE_BLOCKS["B3"]
+ROLE_BLOCK = STATE_BLOCKS["B4"]
+ROLES = ("declarer", "called partner", "opponent", "no teams")  # the entries of B4
+CANNOT_HOLD_BLOCK = STATE_BLOCKS["F2"]  # 3 other seats x 54 cards
+N_TAROKS = 22  # card indexes 0 to 21 (section 1)
+KINGS = (29, 37, 45, 53)  # the last card of each suit
+
 # --- Section 5: actions ------------------------------------------------------
 
 N_ACTIONS = 160
