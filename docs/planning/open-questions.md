@@ -33,7 +33,9 @@
 - 2026-11-12, evening: the user read the diff of spec 013 and approved the commit (D134; `ce175f6`).
 - 2026-11-12, night: spec 008's code and short tests are built by `train-env` (138 tests pass here with the GPU tests). The user agreed with the open proposals (D135, D136). The review pass over spec 008 runs; the three long runs wait for it.
 - 2026-11-12, late: spec 008 is executed: review fixes in, the three smoke runs done. Both networks beat random play (+0.60 per deal), the control run does not (−0.21). Verified by the main session (159 tests; the checkpoints evaluated again on other deals). **Spec 008 waits for the user's read of the diff.**
-- **Waiting on the user, to approve:** the diff of spec 008 (D72 step 3). To decide: C13 (the new figure of G3), C16 (which entropy mean the controller steers on).
+- 2026-11-23: the user read the diff of spec 008 and approved the commit (D137; `124b2e9`), and ordered a longer run on flow A (D138; spec 014, in the `train-env` session). C13 and C16 were asked in the same message and not answered; they stay open.
+- **Waiting on the user, to decide:** C13 (the new figure of G3), C16 (which entropy mean the controller steers on), the settings of spec 014 if other than Claude's choices.
+- **Dates:** the repo must be public or shared with the instructor on Mon 23 Nov (R5); it is private on 2026-11-23. The proposal, wireframe and pitch slide were due Wed 18 Nov; the files hold no record that they were handed in.
 - **Waiting on the user:** corrections to the wireframe and `pitch.md`; the proposal format. Later: C13 (the new figure of G3, after the smoke run), C14 (tier of the trula toggle).
 - Next: spec 013 in the `engine-core` session and spec 008 in the `train-env` session; verification, review pass, the user's read of each diff, commit.
 - The proposal, Figma wireframe and pitch slide are due Wed 18 Nov. The product batch must follow soon after the bots batch.
