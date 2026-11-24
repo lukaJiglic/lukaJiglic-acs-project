@@ -131,8 +131,10 @@ fn c15_same_seed_and_actions_give_identical_arrays_with_1_and_12_threads() {
         assert_eq!(&result, again.step(&actions).unwrap(), "step {step}");
         deals += result.done.iter().filter(|&&done| done).count();
     }
-    // The comparison ran across the ends of deals.
-    assert!(deals >= 900, "{deals} deals finished");
+    // The comparison ran across the ends of deals. With the round of
+    // announcements (spec 009) a random deal has about 94 decisions, not
+    // about 60: 600 steps at 96 tables finish about 600 deals.
+    assert!(deals >= 500, "{deals} deals finished");
 
     // Another base seed gives other deals.
     let other = VecEnv::new(96, 2027, 1).unwrap();
@@ -212,8 +214,10 @@ fn c17_a_finished_deal_is_followed_by_the_next_with_the_dealer_one_seat_on() {
     let mut deals_done = [0u64; TABLES];
     let mut runs_started = [0u64; TABLES];
 
-    // Enough steps for more than two runs of 24 deals at every table.
-    for _ in 0..(2 * DEALS_PER_RUN + 4) * 68 {
+    // Enough steps for more than two runs of 24 deals at every table. A
+    // random deal with the round of announcements (spec 009) has about 94
+    // decisions.
+    for _ in 0..(2 * DEALS_PER_RUN + 4) * 130 {
         let before = env.observe().clone();
         let dealers: Vec<usize> = (0..TABLES).map(|table| dealer_of(&before, table)).collect();
         let actions = random_actions(&before, &mut choices);
@@ -346,7 +350,9 @@ fn c18_rewards_and_parts_are_delivered_once_per_deal() {
             taken[table].clear();
         }
     }
-    assert!(finished >= 400, "{finished} deals finished");
+    // About 94 decisions per random deal since spec 009: 2,000 steps at
+    // 16 tables finish about 350 deals.
+    assert!(finished >= 300, "{finished} deals finished");
 }
 
 #[test]
@@ -568,7 +574,8 @@ fn random_runs_do_not_depend_on_the_thread_count() {
     let first = one.run_random(700, 5).unwrap();
     assert_eq!(first, many.run_random(700, 5).unwrap());
     assert_eq!(first.decisions, 700 * 40);
-    assert!(first.deals >= 400, "{} deals", first.deals);
+    // About 94 decisions per random deal since spec 009.
+    assert!(first.deals >= 250, "{} deals", first.deals);
     assert_eq!(one.observe(), many.observe());
     assert_eq!(one.state(), many.state());
     // Another seed plays other cards.

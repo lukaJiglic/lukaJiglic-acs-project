@@ -1,5 +1,6 @@
 //! Plays one deal with the lowest legal action at every decision and prints
-//! its JSON record, laid out for reading.
+//! its JSON record, laid out for reading. In the round of announcements
+//! every seat passes.
 //!
 //! ```text
 //! cargo run --example record_deal -- 42 3
@@ -11,7 +12,7 @@
 #![forbid(unsafe_code)]
 
 use tarok_engine::record::Record;
-use tarok_engine::{Game, Phase, Seat};
+use tarok_engine::{Action, Game, Phase, Seat};
 
 fn main() {
     let mut arguments = std::env::args().skip(1);
@@ -27,9 +28,12 @@ fn main() {
 
     let mut game = Game::from_seed(seed, dealer);
     while game.phase() != Phase::Over {
-        let Some(action) = game.legal_actions().iter().next() else {
+        let Some(mut action) = game.legal_actions().iter().next() else {
             break;
         };
+        if game.phase() == Phase::Announcements {
+            action = Action::Done;
+        }
         if game.apply(action).is_err() {
             break;
         }

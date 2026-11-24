@@ -155,6 +155,8 @@ fn hidden_discards_and_the_unshown_talon_do_not_show_in_the_public_view() {
         for card in [pip(Suit::Karo, 4), tarok(10), third] {
             act(&mut game, A, Action::Discard(card));
         }
+        assert_eq!(game.phase(), Phase::Announcements);
+        common::flow::pass_round(&mut game);
         assert_eq!(game.phase(), Phase::Play);
         game
     };

@@ -360,7 +360,8 @@ fn block_b_through_the_phases() {
         Phase::KingCall => 2,
         Phase::TalonPick => 3,
         Phase::Discard => 4,
-        // 5 is the announcements, not built.
+        // The round of announcements (spec 009).
+        Phase::Announcements => 5,
         Phase::Play => 6,
         Phase::Over => 7,
     };
@@ -403,12 +404,13 @@ fn block_b_through_the_phases() {
             break;
         }
         // The lowest legal action; in the contract choice the lowest is the
-        // winning bid.
-        let action = game.legal_actions().iter().next().unwrap();
+        // winning bid, and in the round of announcements every seat passes.
+        let action = common::flow::lowest_action(&game);
         game.apply(action).unwrap();
     }
-    // Seed 3 with the lowest actions: three passes, tri, a king call.
-    assert_eq!(seen, [true, true, true, true, true, false, true, true]);
+    // Seed 3 with the lowest actions: three passes, tri, a king call. All
+    // eight phases, the round of announcements (spec 009) included.
+    assert_eq!(seen, [true; 8]);
 }
 
 #[test]

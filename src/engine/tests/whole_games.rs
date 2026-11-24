@@ -29,8 +29,9 @@ fn order(phase: Phase) -> u8 {
         Phase::KingCall => 2,
         Phase::TalonPick => 3,
         Phase::Discard => 4,
-        Phase::Play => 5,
-        Phase::Over => 6,
+        Phase::Announcements => 5,
+        Phase::Play => 6,
+        Phase::Over => 7,
     }
 }
 
@@ -54,8 +55,13 @@ fn c46_every_deal_reaches_over_and_the_legal_set_is_never_empty_before() {
         prop_assert_eq!(game.to_act(), None);
         prop_assert!(game.score().is_some());
         // At most 13 bids and passes, one contract, one king, one packet,
-        // three discards and 48 cards.
-        prop_assert!(actions <= 13 + 1 + 1 + 1 + 3 + 48, "{} actions", actions);
+        // three discards, the four passes of the round of announcements
+        // (spec 009) and 48 cards.
+        prop_assert!(
+            actions <= 13 + 1 + 1 + 1 + 3 + 4 + 48,
+            "{} actions",
+            actions
+        );
         prop_assert!(game.public().bids().len() <= 13);
         Ok(())
     });
@@ -179,6 +185,8 @@ fn c50_every_legal_action_maps_to_a_slot_of_the_current_phase() {
                 Phase::KingCall => 13..17,
                 Phase::TalonPick => 17..23,
                 Phase::Discard => 23..77,
+                // Announcements 77-81, kontras 82-87, "done" 88 (spec 009).
+                Phase::Announcements => 77..89,
                 Phase::Play => 90..144,
                 Phase::Over => unreachable!("no action after the end"),
             };
@@ -188,6 +196,7 @@ fn c50_every_legal_action_maps_to_a_slot_of_the_current_phase() {
                     slots::KINGS,
                     slots::PACKETS,
                     slots::DISCARDS,
+                    slots::ANNOUNCEMENTS.start..slots::DONE + 1,
                     slots::PLAYS
                 ]
                 .contains(&range)

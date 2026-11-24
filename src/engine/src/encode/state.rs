@@ -70,7 +70,7 @@ const fn phase_index(phase: Phase) -> usize {
         Phase::KingCall => 2,
         Phase::TalonPick => 3,
         Phase::Discard => 4,
-        // 5: the announcements, built with spec 009.
+        Phase::Announcements => 5,
         Phase::Play => 6,
         Phase::Over => 7,
     }

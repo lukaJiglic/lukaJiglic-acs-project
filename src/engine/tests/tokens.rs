@@ -179,6 +179,9 @@ fn tokens_name_the_actions_that_were_taken() {
                 (Phase::Discard, Action::Discard(card)) => card
                     .is_tarok()
                     .then(|| DISCARD_SHOWN + i16::from(card.index())),
+                // The four passes of the round of announcements (spec
+                // 009): "done" writes no token.
+                (Phase::Announcements, Action::Done) => None,
                 (Phase::Play, Action::Play(card)) => Some(PLAY + i16::from(card.index())),
                 (phase, action) => panic!("seed {seed}: {action:?} in {phase:?}"),
             };
@@ -451,7 +454,9 @@ fn longest_possible_sequence_of_this_slice() {
         game.public().events().len(),
         1 + calls + 1 + 6 + 1 + shown + 48
     );
-    assert_eq!(game.full().action_slots().len(), calls + 1 + 1 + 1 + 48);
+    // The actions: with the four passes of the round of announcements
+    // (spec 009).
+    assert_eq!(game.full().action_slots().len(), calls + 1 + 1 + 1 + 4 + 48);
     assert_eq!(observe(&game, A).tokens.len(), game.public().events().len());
     let _ = (B, Seat::ALL, act as fn(&mut Game, Seat, Action));
 }
