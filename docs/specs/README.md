@@ -48,4 +48,4 @@ Tool and model: ...
 | 015 | [Findings of the longer run](015-findings-of-the-longer-run.md) | approved 2026-11-24 (D140); in execution (session `train-env`) |
 | 016 | [Aligned updates: every played deal is trained on](016-aligned-updates.md) | approved 2026-11-24 (D146); waits for the merge of spec 009 |
 | 017 | [Trial: the entropy controller's lower limit at 0.001](017-entropy-floor-trial.md) | approved 2026-11-24 (D146); runs after spec 015, before the binding is rebuilt |
-| 018 | [First runs on deal flow B](018-first-runs-on-flow-b.md) | draft 2026-11-24; waits for approval (Batch 18) and for the merge of spec 009; runs before the measurement of spec 016 |
+| 018 | [First runs on deal flow B](018-first-runs-on-flow-b.md) | approved 2026-11-24 (D149); waits for the merge of spec 009; runs before the measurement of spec 016 |

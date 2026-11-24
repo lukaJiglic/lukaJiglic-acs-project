@@ -43,7 +43,8 @@
 - 2026-11-24, 13:25: Batches 15 and 16 answered, a for every item (D146, D147). Specs 016 and 017 are approved. Order of the GPU work: spec 015, then spec 017 on the engine 0.2.0, then the rebuild of the binding for spec 009 and its merge, then spec 016.
 - 2026-11-24, 13:40: the review pass over spec 009 is back: no rule defect; weak tests and two points for the user. Batch 17 below.
 - 2026-11-24, 13:50: Batch 17 answered, a for every item (D148). Spec 018 (first runs on flow B) is drafted; Batch 18 below. The timed 200-update run of spec 015 is going since about 13:40.
-- **Waiting on the user, to decide:** Batch 18 (the criteria of spec 018 and its three open points); C13 (the new figure of G3; better after spec 015); C16 (which entropy mean the controller steers on); the open points A, B and D of spec 014; later C14.
+- 2026-11-24, 13:55: Batch 18 answered, a for every item (D149). Spec 018 is approved. Order of the GPU work: spec 015, spec 017, the rebuild and merge of spec 009, spec 018, spec 016.
+- **Waiting on the user, to decide:** C13 (the new figure of G3; better after spec 015); C16 (which entropy mean the controller steers on); the open points A, B and D of spec 014; later C14.
 - **Dates:** the repo must be public or shared with the instructor on Mon 23 Nov (R5); it is private on 2026-11-23. The proposal, wireframe and pitch slide were due Wed 18 Nov; the files hold no record that they were handed in.
 - **Waiting on the user:** corrections to the wireframe and `pitch.md`; the proposal format. Later: C13 (the new figure of G3, after the smoke run), C14 (tier of the trula toggle).
 - Next: spec 013 in the `engine-core` session and spec 008 in the `train-env` session; verification, review pass, the user's read of each diff, commit.
@@ -63,7 +64,7 @@ Open:
 - **C16. Which entropy mean the controller steers on.** Now: the mean over all decisions of a phase, forced ones included. In the smoke runs the share of forced decisions in the bidding went from 28% to 0%, so the mean moved without the policy getting firmer or looser. (a) the mean over decisions with two or more legal actions, with the targets set again as a quarter of random play under that mean; (b) keep the mean over all decisions. Recommended: (a). Asked 2026-11-12.
 - **C14. Tier of S40's other option** ("in any order"). Recommended: like S14 and S18 in D98: selectable in T0 with the note "agent ni učen s tem pravilom". Asked when the engine gets its toggles.
 
-## Batch 18 — spec 018, first runs on flow B (asked 2026-11-24; open)
+## Batch 18 — spec 018, first runs on flow B (asked 2026-11-24, answered 2026-11-24: a for all four; see D149)
 
 Spec 018 follows from D148 (B17-3 a). The first option is the recommendation.
 

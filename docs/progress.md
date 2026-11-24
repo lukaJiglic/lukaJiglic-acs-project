@@ -12,6 +12,12 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 **Next:** the next step.
 ```
 
+## 2026-11-24 — Batches 17 and 18 answered; spec 018 approved (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 8)
+
+**Done:** the user answered Batch 17 (D148) and Batch 18 (D149) with a for every item. Spec 018 (first runs on flow B: monitors of the round, a silent random opponent, two runs of 200 updates, a rule fixed beforehand for when the flood of announced valats counts as ended) is drafted and approved. The three more cases of the public partner and the guard by engine version (criterion 53) went to the `engine-core` session for spec 009.
+**Broken or open:** nothing of specs 009 and 015 is verified or merged yet. The timed 200-update run of spec 015 started at about 13:40.
+**Next, in the order of the GPU work:** spec 015 (report, verification, review pass, commits), spec 017, the rebuild of the binding and the merge of spec 009, spec 018, spec 016.
+
 ## 2026-11-24 — review pass over spec 009 (separate agent; ordered and read by the main session; ai-log row 8)
 
 **Done:** a separate agent reviewed `719a968..5f198bc` of the branch `spec-009` in an export of its own. Result: no rule defect against the spec in criteria 1 to 44, 50 and 51. It ran `cargo test` (231 passed), `fmt` and `clippy`; computed the examples of criteria 30 and 31 by hand; ran seven scoring cases of its own with hand-computed results (all match); planted 16 wrong rules. The findings went to the `engine-core` session.

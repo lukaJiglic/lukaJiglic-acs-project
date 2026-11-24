@@ -1,6 +1,6 @@
 # 018 — First runs on deal flow B
 
-Status: **draft** (2026-11-24). Waits for the user's approval of the acceptance criteria (D73) and for the merge of spec 009.
+Status: **approved** (2026-11-24, D149). Waits for the merge of spec 009.
 
 Tool and model: Claude Code, claude-fable-5-2. Drafted by the main session; executed in the `train-env` session.
 
@@ -104,6 +104,12 @@ Random legal play as the fixed opponent of the evaluation does the same in every
   - (b) 0.25 stays.
 - **B. The thresholds of criterion 19.** (a) Under 5% of deals with an announced valat and a mean reward size under 2. Recommended: a good player announces a valat in far fewer than one deal in twenty, and a mean reward size of 2 is twice that of flow A. (b) Other numbers.
 - **C. The length.** (a) 200 updates per network, as the smoke run of spec 008. Recommended: about ten minutes for the MLP and under an hour for the transformer, estimated from the longer deals. (b) 500 updates.
+
+## Answers to the open points (D149)
+
+- A. (a) The target is a quarter of the measured entropy of random legal play in the round.
+- B. (a) Under 5% of deals with an announced valat and a mean reward size under 2, over the updates 151 to 200.
+- C. (a) 200 updates per network.
 
 ## Results
 
