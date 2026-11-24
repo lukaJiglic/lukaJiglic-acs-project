@@ -230,6 +230,200 @@ fn all_twelve_and_a_caught_mond() -> (Game, Score) {
     (game, score)
 }
 
+/// Review point 2. A plays tri, calls srce and holds the srce kralj itself.
+/// The king is played to trick 11, before the last trick, and the
+/// declarer takes the last trick all the same.
+///
+/// A leads eight taroks, then the karo 4, which B takes with the karo 3.
+/// B leads the pik fant; A trumps it with the XIV, leads the srce kralj
+/// (trick 11, over B's srce dama) and then the XIII (trick 12).
+fn own_king_early_and_the_last_trick_to_a() -> (Game, Score) {
+    let game = a_declares(&ultimo_deal(true), Tri, Some(Suit::Srce));
+    let mut a_script = top_taroks(15);
+    a_script.extend([karo(4), tarok(14), kralj(Suit::Srce), tarok(13)]);
+    let mut b_script = taroks(2..=5);
+    b_script.extend([
+        pik(7),
+        pik(8),
+        pik(9),
+        pik(10),
+        karo(3),
+        fant(Suit::Pik),
+        dama(Suit::Srce),
+        kaval(Suit::Pik),
+    ]);
+    let (game, score) = finished(game, [&a_script, &b_script, &[], &[]]);
+    assert_eq!(tricks_won(&game), [11, 1, 0, 0]);
+    assert_eq!(trick_of(&game, kralj(Suit::Srce)), 11);
+    assert_eq!(game.public().tricks()[10].winner, A);
+    assert_eq!(game.public().tricks()[11].winner, A);
+    (game, score)
+}
+
+/// Review point 2. A plays solo ena. Its pagat is played to trick 11,
+/// before the last trick, and A takes the last trick all the same.
+///
+/// A: škis, mond, XX-XIV, XIII, the pagat, the srce 4. B: II-VI and the
+/// seven other srce. A leads nine taroks and the srce 4, which B takes. B
+/// leads a srce; A trumps it with the pagat (trick 11) and leads the XIII.
+fn pagat_early_and_the_last_trick_to_a() -> (Game, Score) {
+    let mut a = top_taroks(14);
+    a.extend([PAGAT, tarok(13), srce(4)]);
+    let mut b = taroks(2..=6);
+    b.extend([
+        srce(3),
+        srce(2),
+        srce(1),
+        fant(Suit::Srce),
+        kaval(Suit::Srce),
+        dama(Suit::Srce),
+        kralj(Suit::Srce),
+    ]);
+    let talon = [
+        karo(4),
+        karo(3),
+        karo(2),
+        karo(1),
+        fant(Suit::Karo),
+        kaval(Suit::Karo),
+    ];
+    let deal = deal_with([&a, &b, &[], &[]], &talon);
+    let game = a_declares(&deal, SoloEna, None);
+    let mut script = top_taroks(14);
+    script.extend([srce(4), PAGAT, tarok(13)]);
+    let (game, score) = finished(game, [&script, &[], &[], &[]]);
+    assert_eq!(tricks_won(&game), [11, 1, 0, 0]);
+    assert_eq!(trick_of(&game, PAGAT), 11);
+    assert_eq!(game.public().tricks()[10].winner, A);
+    assert_eq!(game.public().tricks()[11].winner, A);
+    (game, score)
+}
+
+/// Review point 3. A plays solo ena and loses. B has the škis and the
+/// mond and takes eleven tricks. The pagat lies in the talon, in a packet
+/// A does not take: it counts for the opponents, who so have all three.
+fn opponents_trula_with_the_pagat_in_the_talon() -> (Game, Score) {
+    let a = [
+        kralj(Suit::Srce),
+        fant(Suit::Karo),
+        kaval(Suit::Karo),
+        dama(Suit::Karo),
+        kralj(Suit::Karo),
+        pik(7),
+        pik(8),
+        pik(9),
+        pik(10),
+        fant(Suit::Pik),
+        kaval(Suit::Pik),
+        dama(Suit::Pik),
+    ];
+    let mut b = top_taroks(12);
+    b.push(srce(4));
+    let c = [srce(3), srce(2)];
+    let d = [srce(1), fant(Suit::Srce)];
+    let talon = [
+        karo(4),
+        PAGAT,
+        kaval(Suit::Srce),
+        dama(Suit::Srce),
+        karo(3),
+        karo(2),
+    ];
+    let deal = deal_with([&a, &b, &c, &d], &talon);
+    // A takes the first packet, the karo 4, and puts it down again.
+    let game = a_declares(&deal, SoloEna, None);
+    let mut b_script = vec![srce(4)];
+    b_script.extend(top_taroks(12));
+    let (game, score) = finished(game, [&[kralj(Suit::Srce)], &b_script, &[], &[]]);
+    assert_eq!(tricks_won(&game), [1, 11, 0, 0]);
+    // The pagat was in no trick: it lies with the opponents.
+    assert!(
+        game.public()
+            .tricks()
+            .iter()
+            .all(|trick| !trick.cards.contains(&PAGAT))
+    );
+    assert!(game.full().opponents_pile().contains(PAGAT));
+    assert!(game.public().tricks_won(B).contains(S));
+    assert!(game.public().tricks_won(B).contains(MOND));
+    (game, score)
+}
+
+/// Review point 3. A plays solo ena, has the škis and the mond and takes
+/// eleven tricks. The pagat lies in a packet A does not take: it counts
+/// for the opponents, so neither side has all three.
+fn declarers_trula_but_the_pagat_in_the_talon() -> (Game, Score) {
+    let mut a = top_taroks(12);
+    a.push(srce(4));
+    let mut b = taroks(2..=6);
+    b.extend([
+        srce(3),
+        srce(2),
+        srce(1),
+        fant(Suit::Srce),
+        kaval(Suit::Srce),
+        dama(Suit::Srce),
+        kralj(Suit::Srce),
+    ]);
+    let talon = [karo(4), PAGAT, karo(3), karo(2), karo(1), fant(Suit::Karo)];
+    let deal = deal_with([&a, &b, &[], &[]], &talon);
+    let game = a_declares(&deal, SoloEna, None);
+    let mut script = top_taroks(12);
+    script.push(srce(4));
+    let (game, score) = finished(game, [&script, &[], &[], &[]]);
+    assert_eq!(tricks_won(&game), [11, 1, 0, 0]);
+    assert!(game.full().opponents_pile().contains(PAGAT));
+    assert!(game.full().declarer_pile().contains(S));
+    assert!(game.full().declarer_pile().contains(MOND));
+    (game, score)
+}
+
+/// Review point 3. A plays solo ena, has the kings of karo, pik and križ
+/// and takes eleven tricks. The srce kralj lies in a packet A does not
+/// take: it counts for the opponents, so neither side has all four.
+fn three_kings_and_one_in_the_talon() -> (Game, Score) {
+    let mut a = top_taroks(15);
+    a.extend([
+        kralj(Suit::Karo),
+        kralj(Suit::Pik),
+        kralj(Suit::Kriz),
+        srce(4),
+    ]);
+    let mut b = taroks(2..=7);
+    b.extend([
+        srce(3),
+        srce(2),
+        srce(1),
+        fant(Suit::Srce),
+        kaval(Suit::Srce),
+        dama(Suit::Srce),
+    ]);
+    let talon = [
+        karo(4),
+        kralj(Suit::Srce),
+        karo(3),
+        karo(2),
+        karo(1),
+        fant(Suit::Karo),
+    ];
+    let deal = deal_with([&a, &b, &[], &[]], &talon);
+    let game = a_declares(&deal, SoloEna, None);
+    let mut script = top_taroks(15);
+    script.extend([
+        kralj(Suit::Karo),
+        kralj(Suit::Pik),
+        kralj(Suit::Kriz),
+        srce(4),
+    ]);
+    let (game, score) = finished(game, [&script, &[], &[], &[]]);
+    assert_eq!(tricks_won(&game), [11, 1, 0, 0]);
+    assert!(game.full().opponents_pile().contains(kralj(Suit::Srce)));
+    for suit in [Suit::Karo, Suit::Pik, Suit::Kriz] {
+        assert!(game.full().declarer_pile().contains(kralj(suit)));
+    }
+    (game, score)
+}
+
 // ---------------------------------------------------------------------
 // Criteria
 // ---------------------------------------------------------------------
@@ -284,6 +478,38 @@ fn c18_announced_trula_scores_20_for_or_against_its_owner() {
             "{opponent:?} announces"
         );
     }
+
+    // A trula card in the packet the declarer did not take counts for the
+    // opponents (review point 3). B has škis and mond in its tricks and
+    // the pagat lies in the talon: the opponents have all three.
+    let deal = opponents_trula_with_the_pagat_in_the_talon;
+    let base = declarer_parts(&[], deal);
+    assert_eq!(base[TRULA], -10, "silent: the opponents' trula");
+    // An opponent announces and makes it: -20 for the declarer.
+    assert_eq!(
+        declarer_parts(&[(B, &[ann(Bonus::Trula)])], deal),
+        but(base, &[(TRULA, -20)])
+    );
+    // The declarer announces and fails: -20.
+    assert_eq!(
+        declarer_parts(&[(A, &[ann(Bonus::Trula)])], deal),
+        but(base, &[(TRULA, -20)])
+    );
+    // The declarer has škis and mond in its tricks, the pagat lies in the
+    // talon: it is the opponents', so nobody has all three.
+    let deal = declarers_trula_but_the_pagat_in_the_talon;
+    let base = declarer_parts(&[], deal);
+    assert_eq!(base[TRULA], 0, "silent: nothing");
+    // The declarer announces: -20. The packet is not the declarer's.
+    assert_eq!(
+        declarer_parts(&[(A, &[ann(Bonus::Trula)])], deal),
+        but(base, &[(TRULA, -20)])
+    );
+    // An opponent announces: its side has one of the three. +20 for A.
+    assert_eq!(
+        declarer_parts(&[(C, &[ann(Bonus::Trula)])], deal),
+        but(base, &[(TRULA, 20)])
+    );
 }
 
 #[test]
@@ -334,6 +560,40 @@ fn c19_announced_kralji_scores_20_for_or_against_its_owner() {
     let score = game.score().unwrap();
     assert_eq!(parts(&score, A), but(parts(&silent, A), &[(KRALJI, 20)]));
     assert_eq!(parts(&score, C), parts(&score, A));
+
+    // A king in the packet the declarer did not take counts for the
+    // opponents (review point 3). B has three kings in its tricks and the
+    // srce kralj lies in the talon: the opponents have all four.
+    let in_the_talon = || kings_for_the_opponents(true);
+    let base = declarer_parts(&[], in_the_talon);
+    assert_eq!(base[KRALJI], -10, "silent: the opponents' kings");
+    // An opponent announces and makes it: -20 for the declarer.
+    assert_eq!(
+        declarer_parts(&[(B, &[ann(Bonus::Kralji)])], in_the_talon),
+        but(base, &[(KRALJI, -20)])
+    );
+    assert_eq!(
+        declarer_parts(&[(A, &[ann(Bonus::Kralji)])], in_the_talon),
+        but(base, &[(KRALJI, -20)])
+    );
+    // The declarer has three kings in its tricks and the fourth lies in
+    // the talon: it is the opponents', so nobody has all four.
+    let base = declarer_parts(&[], three_kings_and_one_in_the_talon);
+    assert_eq!(base[KRALJI], 0, "silent: nothing");
+    assert_eq!(
+        declarer_parts(
+            &[(A, &[ann(Bonus::Kralji)])],
+            three_kings_and_one_in_the_talon
+        ),
+        but(base, &[(KRALJI, -20)])
+    );
+    assert_eq!(
+        declarer_parts(
+            &[(D, &[ann(Bonus::Kralji)])],
+            three_kings_and_one_in_the_talon
+        ),
+        but(base, &[(KRALJI, 20)])
+    );
 }
 
 #[test]
@@ -430,6 +690,28 @@ fn c21_announced_kralj_ultimo() {
     assert_eq!(trick_of(&game, king), 5);
     assert_eq!(parts(&score, A), but(base, &[(KRALJ_ULTIMO, -20)]));
     assert_eq!(parts(&score, C), parts(&score, A));
+
+    // The same when the announcer's side takes the last trick (review
+    // point 2): the king was played to trick 11, so the bonus is lost,
+    // whoever takes the last trick. Here the declarer takes it.
+    let base = declarer_parts(&[], own_king_early_and_the_last_trick_to_a);
+    assert_eq!(base[KRALJ_ULTIMO], 0);
+    let (game, score) = said(
+        &[(A, &[ann(Bonus::KraljUltimo)])],
+        own_king_early_and_the_last_trick_to_a,
+    );
+    assert_eq!(trick_of(&game, king), 11);
+    assert_eq!(game.public().tricks()[11].winner, A);
+    assert_eq!(parts(&score, A), but(base, &[(KRALJ_ULTIMO, -20)]));
+    // Under kontra: -40.
+    let kontra: &[(Seat, &[Action])] = &[
+        (A, &[ann(Bonus::KraljUltimo)]),
+        (B, &[k(Target::KraljUltimo)]),
+    ];
+    assert_eq!(
+        declarer_parts(kontra, own_king_early_and_the_last_trick_to_a),
+        but(base, &[(KRALJ_ULTIMO, -40)])
+    );
 }
 
 #[test]
@@ -504,6 +786,63 @@ fn c22_announced_pagat_ultimo_follows_the_side_that_takes_the_last_trick() {
     assert_eq!(trick_of(&game, PAGAT), 11);
     assert_eq!(game.public().tricks()[10].winner, A);
     assert_eq!(parts(&score, A), but(base, &[(PAGAT_ULTIMO, -50)]));
+
+    // The same when the announcer's side takes the last trick too (review
+    // point 2): the pagat was played to trick 11, so the bonus is lost.
+    let base = declarer_parts(&[], pagat_early_and_the_last_trick_to_a);
+    assert_eq!(base[PAGAT_ULTIMO], 0);
+    let (game, score) = said(&[(A, &[pagat_ultimo])], pagat_early_and_the_last_trick_to_a);
+    assert_eq!(trick_of(&game, PAGAT), 11);
+    assert_eq!(last(&game).winner, A);
+    assert_eq!(parts(&score, A), but(base, &[(PAGAT_ULTIMO, -50)]));
+    // An opponent's announced pagat, played early, while its side takes
+    // the last trick: 50 against the owner, +50 for the declarer. The
+    // hands are those of `trula_for_the_opponents`. B plays the pagat to
+    // the second trick and takes the last trick with the XIII.
+    let early = || {
+        let a = [
+            kralj(Suit::Srce),
+            fant(Suit::Karo),
+            kaval(Suit::Karo),
+            dama(Suit::Karo),
+            kralj(Suit::Karo),
+            pik(7),
+            pik(8),
+            pik(9),
+            pik(10),
+            fant(Suit::Pik),
+            kaval(Suit::Pik),
+            dama(Suit::Pik),
+        ];
+        let mut b = top_taroks(13);
+        b.extend([PAGAT, srce(4)]);
+        let talon = [
+            kaval(Suit::Srce),
+            dama(Suit::Srce),
+            karo(4),
+            karo(3),
+            karo(2),
+            karo(1),
+        ];
+        let deal = deal_with(
+            [&a, &b, &[srce(3), srce(2)], &[srce(1), fant(Suit::Srce)]],
+            &talon,
+        );
+        let game = a_declares(&deal, SoloEna, None);
+        // B follows the srce kralj and plays the pagat on A's second lead.
+        // C or D may take that trick with a higher tarok. B takes the
+        // third trick with the škis and leads its taroks from the top.
+        let mut b_script = vec![srce(4), PAGAT];
+        b_script.extend(top_taroks(13));
+        finished(game, [&[kralj(Suit::Srce)], &b_script, &[], &[]])
+    };
+    let base = declarer_parts(&[], early);
+    assert_eq!(base[PAGAT_ULTIMO], 0);
+    let (game, score) = said(&[(B, &[pagat_ultimo])], early);
+    assert_eq!(tricks_won(&game)[0], 1);
+    assert_eq!(trick_of(&game, PAGAT), 2);
+    assert_eq!(last(&game).winner, B);
+    assert_eq!(parts(&score, A), but(base, &[(PAGAT_ULTIMO, 50)]));
 }
 
 #[test]

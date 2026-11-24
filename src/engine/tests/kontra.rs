@@ -632,3 +632,119 @@ fn c16_legal_actions_depend_only_on_what_the_seat_knows() {
     assert!(decisions > 4_000, "{decisions} decisions in the round");
     assert!(with_a_kontra > 1_000, "{with_a_kontra} with a legal kontra");
 }
+
+/// Review point 1, with D147 and D148: what is said in the round and shows
+/// no partner. Written out by hand, in two worlds that differ in who the
+/// partner is. A rule that shows more than `c10`, `c14` and `c15` say
+/// fails here: the public partner would no longer be "not known".
+#[test]
+fn c14_what_is_said_and_shows_no_partner() {
+    let start = |deal: &Deal| {
+        let mut game = common::flow::game(deal);
+        common::flow::declare(&mut game, A, Tri);
+        act(&mut game, A, Action::CallKing(Suit::Srce));
+        common::flow::exchange_back_open(&mut game, 0);
+        game
+    };
+    // C holds the called king in the first world, B in the second. D is
+    // an opponent in both.
+    let mut views = Vec::new();
+    for (deal, partner) in [(round_deal(C), C), (round_deal(B), B)] {
+        let mut game = start(&deal);
+        assert_eq!(game.full().partner(), Some(partner));
+        // One action, and the partner is still hidden after it.
+        let hidden = |game: &mut Game, seat: Seat, action: Action| {
+            act(game, seat, action);
+            assert_eq!(
+                game.public().partner(),
+                PublicPartner::NotKnown,
+                "after {action:?} by {seat:?}, the partner being {partner:?}"
+            );
+        };
+        // Every announcement but kralj ultimo: by the declarer...
+        hidden(&mut game, A, announce(Bonus::Trula));
+        hidden(&mut game, A, Action::Done);
+        // ...by B and by C, of whom one is the partner and one an opponent.
+        hidden(&mut game, B, announce(Bonus::Kralji));
+        hidden(&mut game, B, announce(Bonus::PagatUltimo));
+        hidden(&mut game, B, Action::Done);
+        hidden(&mut game, C, announce(Bonus::Valat));
+        hidden(&mut game, C, Action::Done);
+        // Neither the declarer nor the opponent D knows the side of B or
+        // of C: they may not raise the kralji, the pagat ultimo or the
+        // valat. Such a raise would show the sides (D148).
+        let not_the_bonuses_of_b_and_c = |game: &Game| {
+            for target in [Target::Kralji, Target::PagatUltimo, Target::Valat] {
+                assert!(!may(game, kontra(target)), "{target:?}");
+            }
+        };
+        // Kontra by an opponent, on the game and on a bonus of the
+        // declarer.
+        not_the_bonuses_of_b_and_c(&game);
+        hidden(&mut game, D, kontra(Target::Game));
+        hidden(&mut game, D, kontra(Target::Trula));
+        hidden(&mut game, D, Action::Done);
+        // Re by the declarer itself, on both.
+        not_the_bonuses_of_b_and_c(&game);
+        hidden(&mut game, A, kontra(Target::Game));
+        hidden(&mut game, A, kontra(Target::Trula));
+        hidden(&mut game, A, Action::Done);
+        // Passes.
+        hidden(&mut game, B, Action::Done);
+        hidden(&mut game, C, Action::Done);
+        // Sub by the opponent, mort by the declarer.
+        not_the_bonuses_of_b_and_c(&game);
+        hidden(&mut game, D, kontra(Target::Game));
+        hidden(&mut game, D, kontra(Target::Trula));
+        hidden(&mut game, D, Action::Done);
+        not_the_bonuses_of_b_and_c(&game);
+        hidden(&mut game, A, kontra(Target::Game));
+        hidden(&mut game, A, kontra(Target::Trula));
+        hidden(&mut game, A, Action::Done);
+        // The round ends on three passes.
+        hidden(&mut game, B, Action::Done);
+        hidden(&mut game, C, Action::Done);
+        hidden(&mut game, D, Action::Done);
+        assert_eq!(game.phase(), Phase::Play);
+        assert_eq!(levels(&game), [4, 4, 0, 0, 0, 0]);
+        views.push(format!("{:?}", game.public()));
+    }
+    // What all see is the same in both worlds.
+    assert_eq!(views[0], views[1]);
+
+    // The other side of it: what does show the sides. The same things are
+    // said in both worlds up to C's second turn: A announces trula, B
+    // announces kralji, D says kontra on the game and on the trula. Then
+    // C takes one action: kralj ultimo; re on the game; re on the
+    // declarer's trula; kontra on B's kralji. Each is legal only for the
+    // holder of the called king, so it shows C as the partner. In the
+    // world in which B is the partner, C may take none of them.
+    let up_to_c = |deal: &Deal| {
+        let mut game = start(deal);
+        say(&mut game, A, &[announce(Bonus::Trula)]);
+        say(&mut game, B, &[announce(Bonus::Kralji)]);
+        say(&mut game, C, &[]);
+        say(&mut game, D, &[kontra(Target::Game), kontra(Target::Trula)]);
+        say(&mut game, A, &[]);
+        say(&mut game, B, &[]);
+        assert_eq!(game.to_act(), Some(C));
+        assert_eq!(game.public().partner(), PublicPartner::NotKnown);
+        game
+    };
+    for action in [
+        announce(Bonus::KraljUltimo),
+        kontra(Target::Game),
+        kontra(Target::Trula),
+        kontra(Target::Kralji),
+    ] {
+        let mut game = up_to_c(&round_deal(C));
+        act(&mut game, C, action);
+        assert_eq!(
+            game.public().partner(),
+            PublicPartner::With(C),
+            "after {action:?} by C"
+        );
+        let other = up_to_c(&round_deal(B));
+        assert!(!may(&other, action), "{action:?} by an opponent");
+    }
+}

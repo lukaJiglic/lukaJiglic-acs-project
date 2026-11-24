@@ -375,6 +375,113 @@ fn c41_every_deal_of_flow_b_reaches_over_and_the_round_is_bounded() {
     });
 }
 
+/// Review point 5: the longest round in turns, built by hand. The bound
+/// of criterion 41 is 3 x 29 + 4 = 91 turns. It is reached: three passes,
+/// then each of the 29 things in a turn of its own with two passes before
+/// the next one, then three passes.
+#[test]
+fn c41_the_longest_round_has_91_turns() {
+    use common::flow::{A, B, C, D, finish, round_game, say};
+    let ann = Action::Announce;
+    let k = Action::Kontra;
+
+    // A plays tri and calls srce. C holds the called king, B the pagat. B
+    // and D are the opponents.
+    let mut game = round_game(C, Contract::Tri);
+    let before = game.full().actions().count();
+    // The 29 things in the order they are said. The speakers go D, C, B,
+    // A and round again: each is the third seat after the one before.
+    let things = [
+        k(Target::Game),         // D: kontra
+        ann(Bonus::KraljUltimo), // C: the partner is public from here on
+        ann(Bonus::PagatUltimo), // B
+        ann(Bonus::Trula),       // A
+        k(Target::KraljUltimo),  // D: kontra
+        k(Target::Game),         // C: re
+        k(Target::Game),         // B: sub
+        k(Target::Game),         // A: mort
+        k(Target::Trula),        // D: kontra
+        k(Target::KraljUltimo),  // C: re
+        k(Target::KraljUltimo),  // B: sub
+        k(Target::KraljUltimo),  // A: mort
+        ann(Bonus::Kralji),      // D
+        k(Target::Trula),        // C: re
+        k(Target::Trula),        // B: sub
+        k(Target::Trula),        // A: mort
+        ann(Bonus::Valat),       // D
+        k(Target::PagatUltimo),  // C: kontra
+        k(Target::PagatUltimo),  // B: re
+        k(Target::PagatUltimo),  // A: sub
+        k(Target::PagatUltimo),  // D: mort
+        k(Target::Kralji),       // C: kontra
+        k(Target::Kralji),       // B: re
+        k(Target::Kralji),       // A: sub
+        k(Target::Kralji),       // D: mort
+        k(Target::Valat),        // C: kontra
+        k(Target::Valat),        // B: re
+        k(Target::Valat),        // A: sub
+        k(Target::Valat),        // D: mort
+    ];
+    assert_eq!(things.len(), tarok_engine::announce::MAX_SAID);
+    let speakers = [D, C, B, A];
+    let pass = |game: &mut Game| {
+        let seat = game.to_act().expect("a seat speaks");
+        say(game, seat, &[]);
+    };
+
+    // Three passes: the round goes on, since D has not spoken.
+    for _ in 0..3 {
+        pass(&mut game);
+    }
+    for (index, &thing) in things.iter().enumerate() {
+        say(&mut game, speakers[index % 4], &[thing]);
+        if index + 1 < things.len() {
+            pass(&mut game);
+            pass(&mut game);
+        }
+    }
+    // Nothing is left to say but "done".
+    for _ in 0..3 {
+        assert_eq!(game.phase(), Phase::Announcements);
+        assert_eq!(game.legal_actions().len(), 1);
+        pass(&mut game);
+    }
+    assert_eq!(game.phase(), Phase::Play);
+
+    let all: Vec<Action> = game.full().actions().collect();
+    let round = &all[before..];
+    let turns = round.iter().filter(|&&a| a == Action::Done).count();
+    assert_eq!(turns, 91, "the bound of criterion 41");
+    assert_eq!(round.len(), 91 + 29);
+    for bonus in Bonus::ALL {
+        assert!(game.public().announced(bonus).is_some(), "{bonus:?}");
+    }
+    for target in Target::ALL {
+        assert_eq!(game.public().kontra_level(target), 4, "{target:?}");
+    }
+    // One event per thing said, none for "done". Every seat can be shown
+    // the state.
+    let events = game.public().events().len();
+    assert!(events <= tarok_engine::game::MAX_EVENTS);
+    for seat in Seat::ALL {
+        let _ = tarok_engine::encode::observe(&game, seat);
+    }
+
+    // The deal is played out: 48 cards more. It fits the action log.
+    finish(&mut game);
+    assert_eq!(game.phase(), Phase::Over);
+    let total = game.full().actions().count();
+    assert_eq!(total, before + 91 + 29 + 48);
+    assert!(total <= tarok_engine::game::MAX_ACTIONS);
+    assert!(game.public().events().len() <= tarok_engine::game::MAX_EVENTS);
+    println!(
+        "the longest round: {total} actions in the deal ({before} before the round), {events} \
+         events before the first card, {} at the end",
+        game.public().events().len()
+    );
+    assert_scores_agree(&game);
+}
+
 #[test]
 fn c42_the_second_scorer_agrees_on_random_deals_of_flow_b() {
     run_cases(CASES, case_b(), |(seed, dealer, choices)| {
@@ -424,7 +531,7 @@ fn c44_fixed_seeds_cover_the_rules_of_flow_b() {
     let mut bonus_levels = [0u32; 5];
     let (mut valat_won, mut valat_lost) = (0u32, 0u32);
     let (mut pagat_early, mut king_early) = (0u32, 0u32);
-    let (mut pagat_made, mut king_made) = (0u32, 0u32);
+    let (mut pagat_made, mut pagat_lost, mut king_made) = (0u32, 0u32, 0u32);
     let mut partner_shown = 0u32;
 
     for seed in 0..10_000u64 {
@@ -469,9 +576,13 @@ fn c44_fixed_seeds_cover_the_rules_of_flow_b() {
         };
         // Without an announced valat the ultimo bonuses are scored.
         let no_valat = score.parts(declarer).valat == 0;
-        if public.announced(Bonus::PagatUltimo).is_some() {
+        if let Some(seat) = public.announced(Bonus::PagatUltimo) {
             pagat_early += u32::from(trick_of(Card::PAGAT) != Some(11));
-            pagat_made += u32::from(no_valat && score.parts(declarer).pagat_ultimo.abs() >= 50);
+            // Won: the announcer's side wrote plus.
+            let owner_sign = if full.on_declarer_side(seat) { 1 } else { -1 };
+            let part = score.parts(declarer).pagat_ultimo * owner_sign;
+            pagat_made += u32::from(no_valat && part > 0);
+            pagat_lost += u32::from(no_valat && part < 0);
         }
         if public.announced(Bonus::KraljUltimo).is_some() {
             let king = public.called_king().unwrap();
@@ -491,9 +602,9 @@ fn c44_fixed_seeds_cover_the_rules_of_flow_b() {
          {:?}, kralji {:?}, kralj ultimo {:?}, pagat ultimo {:?}, valat {:?}. Game at level 0 \
          to 4: {game_levels:?}. Announced bonuses at level 0 to 4: {bonus_levels:?}. Announced \
          valat won {valat_won}, lost {valat_lost}. Announced pagat played before the last \
-         trick {pagat_early}, announced king {king_early}; announced pagat ultimo scored \
-         {pagat_made}, kralj ultimo won {king_made}. Partner shown by kralj ultimo \
-         {partner_shown}.",
+         trick {pagat_early}, announced king {king_early}; announced pagat ultimo won \
+         {pagat_made}, lost {pagat_lost}; kralj ultimo won {king_made}. Partner shown by kralj \
+         ultimo {partner_shown}.",
         announced[0], announced[1], announced[2], announced[3], announced[4]
     );
 
@@ -523,6 +634,6 @@ fn c44_fixed_seeds_cover_the_rules_of_flow_b() {
     assert!(valat_lost >= 100);
     // An announced ultimo card played before the last trick.
     assert!(pagat_early >= 100 && king_early >= 100);
-    assert!(pagat_made >= 20 && king_made >= 3);
+    assert!(pagat_made >= 3 && pagat_lost >= 20 && king_made >= 3);
     assert!(partner_shown >= 20);
 }

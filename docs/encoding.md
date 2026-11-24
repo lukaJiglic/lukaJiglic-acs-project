@@ -58,7 +58,7 @@ Event vocabulary (288 ids):
 | 92–145 | 54 | `DISCARD_SHOWN_card` | a discarded tarok, shown to all (S14) |
 | 146–150 | 5 | `ANNOUNCE_x` | trula, kralji, kralj ultimo, pagat ultimo, valat |
 | 151–156 | 6 | `KONTRA_target` | raises the kontra level by one on: game, trula, kralji, kralj ultimo, pagat ultimo, valat |
-| 157 | 1 | `ANNOUNCE_DONE` | never written: "done" is an action, not an event (section 4a, spec 009) |
+| 157 | 1 | `ANNOUNCE_DONE` | never written: "done" is an action, not an event (section 4b, spec 009) |
 | 158 | 1 | `ANNOUNCE_BARVNI_VALAT`* | reserved (S7 a) |
 | 159–212 | 54 | `PLAY_card` | a card played to a trick |
 | 213–266 | 54 | `KLOP_TALON_card` | a talon card added to a trick in klop |
