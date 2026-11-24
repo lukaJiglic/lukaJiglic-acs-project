@@ -1,6 +1,6 @@
 # 009 — Deal flow B: announcements and kontra
 
-Status: **approved** (2026-11-24, D143), with the answers to Batch 13 (D141) and the wait of D142 written in. Executed on 2026-11-24 in the `engine-core` session on the branch `spec-009` as far as Rust goes: stages (a), (b), (c), (e) and the property tests of (d) are committed there, and so are the answers of D147 and D148 and the points of the review pass. Criteria 45, 46 and 53 and the Python side of 52 wait for the binding module; see "Results". Not merged. Needs specs 005, 006 and 013 (done).
+Status: **approved** (2026-11-24, D143), with the answers to Batch 13 (D141) and the wait of D142 written in. Executed on 2026-11-24 in the `engine-core` session on the branch `spec-009` as far as Rust goes: stages (a), (b), (c), (e) and the property tests of (d) are committed there, and so are the answers of D147, D148 and D150 and the points of the review pass. Criteria 45, 46 and 53 and the Python side of 52 wait for the binding module; see "Results". Not merged. Needs specs 005, 006 and 013 (done).
 
 Build-plan row 009. Tool and model: Claude Code 2.1.306, `claude-fable-5-2`.
 
@@ -205,7 +205,7 @@ The Results asked three questions. The user answered on 2026-11-24.
 
 Executed on 2026-11-24 by the session `engine-core` (Claude Code 2.1.306, `claude-fable-5-2`) on the branch `spec-009`, in the worktree `.worktrees/spec-009`. Nothing is on `main`.
 
-**State: stages (a), (b), (c) and (e) are built and committed; of stage (d) the property tests are. The answers of D147 and D148 and the points of the review pass are built and committed. Open: criteria 45, 46 and 53 and the Python side of 52. They need the binding module built again, which waits for the main session's word that the runs of spec 017 have ended (D146).**
+**State: stages (a), (b), (c) and (e) are built and committed; of stage (d) the property tests are. The answers of D147, D148 and D150 and the points of the review pass are built and committed. Open: criteria 45, 46 and 53 and the Python side of 52. They need the binding module built again, which waits for the main session's word that the runs of spec 017 have ended (D146).**
 
 | Commit | Stage | Holds |
 |---|---|---|
@@ -219,7 +219,9 @@ Executed on 2026-11-24 by the session `engine-core` (Claude Code 2.1.306, `claud
 | `dd012d9` | | this section, first version |
 | `938c154` | | D147 and D148: the sides that follow from what was said (criteria 10, 14, 15); criterion 53 added to the spec |
 | `c651848` | | the review pass: tests only, no engine code |
-| the commit after it | | this section, second version, with the wrong rules run again |
+| `6bce5d8` | | this section, second version, with the wrong rules run again |
+| `5c77360` | | D150: a seat shown as an opponent by its own kontra (criteria 15, 16, 36) |
+| the commit after it | | this section, third version |
 
 Tests were written from the criteria before the code of each stage. Where the old code could compile them they were run against it first: 14 of the 15 tests of `scoring_b.rs` failed before the scoring change (the fifteenth, `c24`, tests a silent valat, which ignores what is said before and after).
 
@@ -252,8 +254,8 @@ Tests were written from the criteria before the code of each stage. Where the ol
 | 12 | Who says which level | met | `c12_kontra_and_sub_by_the_other_side_re_and_mort_by_the_owner` |
 | 13 | Not announced: no kontra; mort is the top | met | `c13_a_bonus_not_announced_cannot_be_kontrad_and_mort_cannot_be_raised` |
 | 14 | The game's ladder; a partner shown by re or mort (D148: also on a bonus of the declarer) | met | `c14_the_game_ladder_and_a_partner_shown_by_re_or_mort`; what shows nothing: `c14_what_is_said_and_shows_no_partner` |
-| 15 | A bonus is raised only by a seat that knows the side (D148: such a raise can show the sides) | met | `c15_a_bonus_is_raised_only_by_a_seat_that_knows_the_announcers_side` |
-| 16 | The legal set depends only on what the seat knows | met | `c16_legal_actions_depend_only_on_what_the_seat_knows`: the two deals of the criterion, and 400 random deals against a second legal set written from the public and the private view |
+| 15 | A bonus is raised only by a seat that knows the side (D148: such a raise can show the sides) | met | `c15_a_bonus_is_raised_only_by_a_seat_that_knows_the_announcers_side`; a seat shown as an opponent (D150): `c15_a_seat_shown_as_an_opponent_by_its_own_kontra` |
+| 16 | The legal set depends only on what the seat knows | met | `c16_legal_actions_depend_only_on_what_the_seat_knows`: the two deals of the criterion, and 400 random deals against a second legal set written from the public and the private view. D150: `c16_what_all_know_about_the_sides_follows_from_what_was_said`, 2,000 random deals against a second reading of the public events and against the truth of the deal |
 | 17 | No duty to keep an announced card | met | `c17_an_announced_ultimo_card_may_be_played_when_the_rules_of_play_allow` |
 | 18 | Announced trula | met | `c18_announced_trula_scores_20_for_or_against_its_owner` |
 | 19 | Announced kralji | met | `c19_announced_kralji_scores_20_for_or_against_its_owner` |
@@ -273,7 +275,7 @@ Tests were written from the criteria before the code of each stage. Where the ol
 | 33 | Three written deals | met | `c33_three_written_deals_with_announcements_and_kontra` |
 | 34 | The slots 77 to 88 | met | `c34_the_round_uses_the_slots_77_to_88` |
 | 35 | One token per announcement and kontra, none for "done" | met | `c35_every_announcement_and_kontra_writes_one_token_with_the_acting_seat` |
-| 36 | State block D | met | `c36_state_block_d_holds_the_announcements_by_side_and_the_kontra_levels` |
+| 36 | State block D | met | `c36_state_block_d_holds_the_announcements_by_side_and_the_kontra_levels`, with a seat shown as an opponent (D150) |
 | 37 | At most 128 tokens | met | `c37_no_legal_deal_has_more_than_128_tokens` |
 | 38 | Hidden sides stay hidden | met | `c38_hidden_sides_stay_hidden_in_the_observation` (the built pair) and `c38_no_leak_with_announcements_and_kontra` (120,000 random cases, half of them with the called king in another hand) |
 | 39 | The record with the round | met | `c39_a_record_with_announcements_and_kontras_replays_to_the_same_entries` |
@@ -284,15 +286,15 @@ Tests were written from the criteria before the code of each stage. Where the ol
 | 44 | Coverage with fixed seeds | met | `c44_fixed_seeds_cover_the_rules_of_flow_b` |
 | 45 | The module builds, pytest, the smoke config | **not done** | waits for the module build |
 | 46 | Reported numbers | part | the counts are measured (below); the deals per second were measured next to other jobs and are to be measured again |
-| 47 | fmt, clippy, no `unsafe`, workflows green | part | local: met for the engine and the binding crate. `engine` on the branch: green on `5f198bc` (run 45368097231) and on `42a2001` before it. `train` runs on `main` and on pull requests only |
+| 47 | fmt, clippy, no `unsafe`, workflows green | part | local: met for the engine and the binding crate. `engine` on the branch: green on `6bce5d8` (run 45403601333), on `5f198bc` (run 45368097231) and on `42a2001` before it. The run on the D150 commits is reported by the session after the push. `train` runs on `main` and on pull requests only |
 | 48 | Every earlier test passes; changes listed | met | list below |
-| 49 | At least 30 wrong rules | met | 64 planted, 64 caught; tables below |
+| 49 | At least 30 wrong rules | met | 71 planted, 71 caught; tables below |
 | 50 | A held table does not move | met | `c50_a_held_table_does_not_move` |
 | 51 | Holding never changes what a table plays | met | `c51_holding_never_changes_what_a_table_plays` |
 | 52 | The binding passes the flag through | part | the binding's Rust takes `hold` and compiles (`cargo clippy`, `cargo test` of the crate). `EngineEnv.step(actions, hold)` in `env.py` and its test are not written: they cannot be run before the module is built |
 | 53 | A guard by engine version for checkpoints (D148) | **not done** | stage (d): Python tests first, then the trainer and the evaluation; waits for the module build |
 
-The tests are in `src/engine/tests/`: `announcements.rs` (c01 to c10, c17), `kontra.rs` (c11 to c16), `scoring_b.rs` (c18 to c32), `written_deals.rs` (c33), `encode.rs` (c34 to c38), `no_leak.rs` (c38), `record.rs` (c39, c40), `whole_games.rs` (c41 to c44), `vecenv.rs` (c50, c51). 49 named tests: the 47 of the first execution, and `c14_what_is_said_and_shows_no_partner` and `c41_the_longest_round_has_91_turns` from the review pass. The engine has 233 tests (182 before this spec).
+The tests are in `src/engine/tests/`: `announcements.rs` (c01 to c10, c17), `kontra.rs` (c11 to c16), `scoring_b.rs` (c18 to c32), `written_deals.rs` (c33), `encode.rs` (c34 to c38), `no_leak.rs` (c38), `record.rs` (c39, c40), `whole_games.rs` (c41 to c44), `vecenv.rs` (c50, c51). 51 named tests: the 47 of the first execution, `c14_what_is_said_and_shows_no_partner` and `c41_the_longest_round_has_91_turns` from the review pass, and `c15_a_seat_shown_as_an_opponent_by_its_own_kontra` and `c16_what_all_know_about_the_sides_follows_from_what_was_said` from D150. `tests/common/sides.rs` is the second reading of what all know. The engine has 235 tests (182 before this spec).
 
 ### Earlier tests that had to change (criterion 48)
 
@@ -332,12 +334,13 @@ Every test of specs 002, 005, 006 and 013 passes. These had to change, each for 
 
 - D147 and D148 changed what four tests expect: `c10`, `c14`, `c15` and `c36`. What changed in each is listed under "The sides that follow from what was said" below.
 - The review pass: `c18`, `c19`, `c21` and `c22` have more built deals and none of their earlier cases changed. `c38` in `tests/no_leak.rs` runs 120,000 cases with a fifth kind of change and has higher lower bounds; `c06` (flow A) runs the kinds it ran. `c44` counts announced pagat ultimos won and lost apart (it had counted both as "made").
+- D150 changed `c16`, `c36` and `c38`. What changed in each is listed under "A seat shown as an opponent" below.
 
 ### Wrong rules (criterion 49)
 
 52 wrong rules, each put into the code alone, in a copy of `src/engine` outside the repo (with `docs/encoding.md` next to it and its own target folder). One text replacement per rule; the whole suite ran each time; the file was restored after. Two copies ran side by side. Both clean copies pass all 231 tests before the first and after the last rule.
 
-**First run: 52 planted, 52 caught. None was missed. With the second run below: 64 planted, 64 caught.** Every rule fails the test of the criterion it breaks; the column names every test of this spec that failed, by its number. The last column counts the failing tests of earlier specs and the unit tests.
+**First run: 52 planted, 52 caught. None was missed. With the second and the third run below: 71 planted, 71 caught.** Every rule fails the test of the criterion it breaks; the column names every test of this spec that failed, by its number. The last column counts the failing tests of earlier specs and the unit tests.
 
 | # | Criterion | Wrong rule | Tests of this spec that failed | Other tests that failed |
 |---|---|---|---|---|
@@ -426,19 +429,51 @@ What the table shows about the tests: rules 18, 44, 48, 49, 50 and 52 are caught
 
 The script and its output are in the session's scratch folder (`mutate009_final.py`, `mutations009_final.txt`).
 
+**Third run, on the code after D150: 19 rules, 19 caught.** The clean copy passes all 235 tests before the first and after the last rule.
+
+- D150 rewrote the function that says what an action shows, and `side_known_to`. Rules 12, 13, 18, 19 and 53 to 60 were planted there, so these twelve are planted again in the new code. Their rows above are those of the code before D150.
+- Rules 65 to 71 are for D150. 65 switches it off. 66 keeps the fact from the other seats. 67 and 68 are the two wrong readings of "all three". 69 is the rule the check of D150 found: case (iii) of D148 not held back on a bonus of a seat shown as an opponent. 70 and 71 show a wrong side.
+- Rules 61 to 64 are in `score.rs`, which D150 did not touch. They were not run again.
+- "Re or mort on a bonus of a seat shown as an opponent shows an opponent" is not in the list: it is not wrong, it is not built (question 5).
+
+| # | Criterion | Wrong rule | Tests of this spec that failed | Other tests that failed |
+|---|---|---|---|---|
+| 12 | 10 | Kralj ultimo by another seat does not show the partner | `c10`, `c14` (no partner), `c15`, `c16`, `c16` (what all know), `c27`, `c36`, `c41` (91 turns) | 0 |
+| 13 | 10 | Every announcement by the partner shows the partner | `c10`, `c14` (no partner), `c16`, `c16` (what all know), `c36`, `c38` | 1 |
+| 18 | 14 | Only mort shows the partner, re does not | `c14`, `c14` (no partner), `c16`, `c16` (what all know) | 0 |
+| 19 | 14 | Every kontra on the game or on a bonus of the declarer by another seat shows a partner | `c14`, `c14` (no partner), `c15`, `c15` (D150), `c16`, `c16` (what all know), `c36`, `c38` | 2 |
+| 53 | 10 | A declarer's kralj ultimo shows nothing (the rule before D147) | `c10`, `c15`, `c16`, `c16` (what all know), `c36` | 0 |
+| 54 | 10 | Every announcement of the declarer shows the sides | `c10`, `c14`, `c14` (no partner), `c15` (D150), `c16`, `c16` (what all know), `c36`, `c38` | 2 |
+| 55 | 15 | A declarer who is publicly alone does not make the sides known | `c12`, `c15`, `c15` (D150), `c16`, `c16` (what all know), `c36` | 0 |
+| 56 | 14 | Re or mort on a bonus of the declarer does not show the partner (D148 ii off) | `c14`, `c14` (no partner), `c16` (what all know) | 0 |
+| 57 | 15 | A raise of a bonus of a seat of unknown side by another seat than the declarer shows nothing (D148 i off) | `c14` (no partner), `c15`, `c16` (what all know), `c36` | 0 |
+| 58 | 15 | The declarer's raise of a bonus of a seat of unknown side shows nothing (D148 iii off) | `c15`, `c16` (what all know) | 0 |
+| 59 | 14 | The declarer's own re or mort shows the sides | `c14`, `c14` (no partner), `c15` (D150), `c16`, `c16` (what all know), `c36`, `c38` | 2 |
+| 60 | 14 | A raise of a bonus of the declarer is taken as a raise of a bonus of unknown side | `c14`, `c14` (no partner), `c15` (D150), `c16`, `c16` (what all know), `c36`, `c38` | 2 |
+| 65 | 15 | Kontra or sub on the game or on a bonus of the declarer shows nothing (D150 off) | `c15` (D150), `c16`, `c16` (what all know), `c36`, `c38` | 0 |
+| 66 | 15 | A seat shown as an opponent is not known to the other seats | `c15` (D150), `c16`, `c16` (what all know), `c36`, `c38` | 0 |
+| 67 | 15 | Two seats shown as opponents make the sides public | `c15` (D150), `c16`, `c16` (what all know), `c36`, `c38` | 0 |
+| 68 | 15 | All three other seats shown as opponents: the partner stays not known | `c15` (D150), `c16` (what all know), `c36` | 0 |
+| 69 | 15 | The declarer's kontra on a bonus of a seat shown as an opponent shows that it holds the called king | `c15` (D150), `c16` (what all know), `c38` | 1 |
+| 70 | 15 | Re or mort on a bonus of a seat shown as an opponent shows the seat as the partner | `c15` (D150), `c16` (what all know), `c38` | 1 |
+| 71 | 14 | Every raise of the game or of a bonus of the declarer by another seat shows an opponent, re and mort too | `c14`, `c14` (no partner), `c16`, `c16` (what all know), `c36` | 0 |
+
+The script and its output: `mutate009_d150.py`, `mutations009_d150.txt`.
+
 ### Measured
 
 - **Tokens.** The longest of 10,000 random deals of flow B has 94 tokens (seed 66). The built round with everything said (5 announcements, 24 kontras) gives a deal of 91, in the fewest turns (`c37`) and in the most (`c41_the_longest_round_has_91_turns`: 43 events before the first card). No deal can have more than 26 + 29 + 48 = 103. The limit is 128.
 - **Actions.** The longest of those random deals has 130 actions. The built round of 91 turns gives a deal of 178: 10 before the round, 120 in it, 48 cards. The bound is 187; `MAX_ACTIONS` is 192.
-- **Counts of `bench_game`** (200,000 deals, every action drawn uniformly from the legal ones), on the final code: 87.6 decisions per deal (largest 123), 21.9 per seat and deal (largest 41), 79.2 tokens per deal (largest 94), 35.1 % of the decisions in the round. Before D147 and D148: 87.5 (largest 125), 79.1 tokens, 35.0 %. In flow A a random deal had 56.8.
-- **Deals per second:** 140,695 on one thread on the final code, measured while the wrong-rule run and the test suites of the training session used the machine. The first execution measured 192,231, also next to other jobs. Neither is a clean number: to be measured again on a quiet machine (criterion 46). Spec 005 measured about 350,000 for flow A, with 56.8 actions per deal.
-- **No leak.** 120,000 cases of flow B; 20,415 pairs of worlds compared: two hands 13,734, a hand and the hidden discards 2,586, a hand and the unshown talon 448, which card the declarer hid 1,880, the called king in another hand 1,767. 16,046 of them after something was said, 2,630 with the partner still hidden. In 1,847 the partner is another seat in the other world (or there is none there): the 1,767 of the fifth kind, 1,024 of them after something was said, and 80 by chance. 4,027 changes of the fifth kind were not a legal deal: what was said is not legal with the king in the other hand. No difference in tokens, state or mask. The first execution compared 9,352 pairs, 50 of them with another partner.
-- **Coverage of the 10,000 seeded deals (`c44`), on the final code.** Announced by the declarer, the partner, an opponent: trula 3,606 / 546 / 4,562; kralji 3,655 / 511 / 4,534; kralj ultimo 757 / 1,923 / 0; pagat ultimo 1,529 / 370 / 3,599; valat 1,187 / 312 / 2,556. The game at kontra, re, sub, mort: 3,570 / 730 / 1,333 / 2,053. Announced valats won 95, lost 3,960. An announced pagat played before the last trick 5,353 times, an announced king 2,338 times. Announced pagat ultimos won 49, lost 2,171; announced kralj ultimos won 68. The numbers moved a little against the first execution: D147 and D148 make more kontras legal, so the same choices give other deals.
+- **Counts of `bench_game`** (200,000 deals, every action drawn uniformly from the legal ones), on the final code: 87.6 decisions per deal (largest 123), 21.9 per seat and deal (largest 41), 79.2 tokens per deal (largest 94), 35.1 % of the decisions in the round. The means did not move with D150. Before D147 and D148: 87.5 (largest 125), 79.1 tokens, 35.0 %. In flow A a random deal had 56.8.
+- **Deals per second:** 148,895 on one thread on the final code, measured while the wrong-rule run and the training session used the machine. Earlier: 140,695 after D148 and 192,231 in the first execution, both also next to other jobs. None is a clean number: to be measured again on a quiet machine (criterion 46). Spec 005 measured about 350,000 for flow A, with 56.8 actions per deal.
+- **No leak.** 120,000 cases of flow B; 20,438 pairs of worlds compared: two hands 13,750, a hand and the hidden discards 2,613, a hand and the unshown talon 415, which card the declarer hid 1,838, the called king in another hand 1,822. 16,051 of them after something was said, 2,778 with the partner still hidden. In 1,902 the partner is another seat in the other world (or there is none there): the 1,822 of the fifth kind, 1,087 of them after something was said, and 80 by chance. 4,006 changes of the fifth kind were not a legal deal: what was said is not legal with the king in the other hand. 1,526 pairs have a seat shown as an opponent while the partner is hidden (D150), 515 of them of the fifth kind. No difference in tokens, state or mask, in the public partner or in the public side of a seat. The first execution compared 9,352 pairs, 50 of them with another partner.
+- **Coverage of the 10,000 seeded deals (`c44`), on the final code.** Announced by the declarer, the partner, an opponent: trula 3,608 / 547 / 4,562; kralji 3,652 / 517 / 4,531; kralj ultimo 757 / 1,947 / 0; pagat ultimo 1,526 / 376 / 3,601; valat 1,195 / 326 / 2,547. The game at kontra, re, sub, mort: 3,560 / 737 / 1,340 / 2,053. Announced valats won 97, lost 3,971. An announced pagat played before the last trick 5,354 times, an announced king 2,365 times. Announced pagat ultimos won 48, lost 2,160; announced kralj ultimos won 70. The numbers move a little with each of D147, D148 and D150: more kontras are legal, so the same choices give other deals.
+- **What all know, on 2,000 random deals (`c16`, D150).** 42,467 decisions in the round: 3,484 with a seat shown as an opponent and the partner hidden, 672 of them with two such seats, 547 with a raised bonus of such a seat; 1,190 with the declarer alone because all three other seats are shown.
 - **Seeds used in `c30` and `c31`,** found by trying seeds, with what they must give written by hand: 167 (tri, 43 points), 367 (tri, 21 points), 476 (dve, 35 points, the declarer plays its pagat to trick 7), 3185 (solo tri, 51 points, the trula with the declarer). The third example of the source is built by hand (`source_example_ena`): 43 points.
 
 ### Command output (trimmed)
 
-Engine, run from `src\engine` in the worktree, on the code of the review commit:
+Engine, run from `src\engine` in the worktree, on the code of the D150 commit:
 
 ```
 > cargo --version
@@ -461,7 +496,7 @@ cargo 1.94.1 (29ea6fb6a 2026-03-24)
      Running tests\game_play.rs              test result: ok. 3 passed; 0 failed
      Running tests\inference.rs              test result: ok. 8 passed; 0 failed
      Running tests\king_call.rs              test result: ok. 5 passed; 0 failed
-     Running tests\kontra.rs                 test result: ok. 7 passed; 0 failed
+     Running tests\kontra.rs                 test result: ok. 9 passed; 0 failed
      Running tests\legal_cards.rs            test result: ok. 7 passed; 0 failed
      Running tests\no_leak.rs                test result: ok. 2 passed; 0 failed
      Running tests\record.rs                 test result: ok. 6 passed; 0 failed
@@ -477,15 +512,15 @@ cargo 1.94.1 (29ea6fb6a 2026-03-24)
      Running tests\whole_games.rs            test result: ok. 12 passed; 0 failed
      Running tests\written_deals.rs          test result: ok. 4 passed; 0 failed
    Doc-tests tarok_engine                    test result: ok. 3 passed; 0 failed
-(233 tests, 0 failed; 182 before this spec)
+(235 tests, 0 failed; 182 before this spec)
 > cargo test --locked --no-default-features
-(220 tests, 0 failed; tests\vecenv.rs is left out)
+(222 tests, 0 failed; tests\vecenv.rs is left out)
 > cargo run --release --bin bench_game -- 200000
 deals:              200000
 actions:            17510286
-seconds:            1.422
-deals per second:   140695
-actions per second: 12318069
+seconds:            1.343
+deals per second:   148895
+actions per second: 13035940
 
 counted on 200000 deals, not timed:
 decisions per deal:      mean 87.6, largest 123
@@ -516,12 +551,13 @@ test result: ok. 0 passed; 0 failed
 7. **Block F is unchanged.** An announced pagat ultimo tells every seat who holds the pagat, and kralj ultimo who holds the called king. Block F3 ("certainly holds") does not use that. It stays sound; it knows less than it could. Question 3.
 8. **Stage (d) is split.** Its property tests are Rust only and are committed. Criterion 49 needs them.
 9. **The built deals moved** to `tests/common/built.rs`, and the helpers can speak a script in the round of a built or seeded deal (`with_round`). So the scoring tests of flow B are the forced deals of flow A with something said, and the play is the same card for card.
+10. **Case (i) of D148 is kept on a bonus of a seat shown as an opponent (D150).** D150 does not say what a kontra on such a bonus shows. A seat other than the declarer that says kontra or sub on it acts for the declarer's side, so it is the partner: the sentence of D148 (i) is still true there, and the engine shows the partner. The declarer's own kontra there shows nothing, because case (iii) is no longer true there. Both are in criterion 15 as reworded, and in `c15_a_seat_shown_as_an_opponent_by_its_own_kontra`.
 
 ### The sides that follow from what was said (D147, D148)
 
 Built after the first execution, on the user's answers of 2026-11-24. Order of work: the criterion text and reading 3 first, then the tests, then the code. Against the code of D147 alone, `c14` and `c15` fail; against the code before D147, `c10`, `c15` and `c36` fail too.
 
-The engine now shows the sides as public in eight cases (reading 3). The four new ones are in one function, `shows_the_king_holder` in `src/game.rs`. It is asked before each announcement and kontra is applied, so it reads the state the action was legal in.
+The engine now shows the sides as public in eight cases (reading 3). The four new ones are in one function, `shows_the_king_holder` in `src/game.rs`. It is asked before each announcement and kontra is applied, so it reads the state the action was legal in. D150 later rewrote that function (it is `Game::shows` now) and reworded cases (i) and (iii); see "A seat shown as an opponent" below.
 
 **The three cases of D148, each checked against who may say what** (criteria 12, 14 and 15, `round_actions` and `side_known_to`). The condition of D148 was: build a case only if it follows strictly from the public history.
 
@@ -545,7 +581,7 @@ Two things came out of the check.
 - `c15`: part 2 had "D is on B's side but does not know it: no re". After C's kontra on B's bonus C is public (case i), so D may say re. Part 4 had the same for C after the declarer's kontra (case iii). A fifth part has the declarer's kralj ultimo (D147) and what the other seats may do after it.
 - `c36`: a block for D147 in the state: D1, B6 and B7 after a declarer's kralj ultimo. One lower bound goes from 5,000 to 3,000: fewer observations have an announcement of unknown side.
 
-**A further case of the same kind, not built (question 4).** A seat that says kontra or sub on the game, or on a bonus the declarer announced, is an opponent: those levels belong to the other side than the declarer's (criterion 12). Every seat can see that. The engine does not use it: the public state has "the partner is this seat", "the declarer is alone" and "not known", and nothing for "this seat is an opponent, the partner is still hidden". Two things would follow from it. A seat could raise a bonus that such a seat announced (criterion 15 lets it only when it knows the announcer's side). And when all three other seats are shown as opponents in this way, the declarer plays alone, which the public state can say.
+**A further case of the same kind (question 4). Not built in that commit; built since, with D150.** A seat that says kontra or sub on the game, or on a bonus the declarer announced, is an opponent: those levels belong to the other side than the declarer's (criterion 12). Every seat can see that. The engine does not use it: the public state has "the partner is this seat", "the declarer is alone" and "not known", and nothing for "this seat is an opponent, the partner is still hidden". Two things would follow from it. A seat could raise a bonus that such a seat announced (criterion 15 lets it only when it knows the announcer's side). And when all three other seats are shown as opponents in this way, the declarer plays alone, which the public state can say.
 
 ### The review pass over `719a968..5f198bc`
 
@@ -566,6 +602,55 @@ The review found no rule defect and four weak places in the tests. Each point wa
 5. **Criterion 41, the longest round in turns.** Built: `c41_the_longest_round_has_91_turns` in `tests/whole_games.rs`. Three passes, then each of the 29 things in a turn of its own with two passes before the next, then three passes: 91 turns, the bound.
 6. **Small.** `docs/encoding.md` pointed to section 4a for "done"; it is 4b. `c44` counted an announced pagat ultimo as "made" when the part was 50 or more in either direction; it now counts won and lost apart.
 
+### A seat shown as an opponent (D150)
+
+Built after the user's answer to question 4 (D150, Batch 19, item 1), on the branch before the merge. Order of work: the spec text first (criteria 15, 16 and 36, reading 3), then the tests, then the code. On the code of `6bce5d8` five tests fail: `c15_a_seat_shown_as_an_opponent_by_its_own_kontra`, both `c16` tests, `c36` and `c38_no_leak_with_announcements_and_kontra`. (For that run the old code got the new accessor `PublicView::side_of` with what the old engine knew, so the tests compile.)
+
+**What is built**
+
+- The engine keeps, for each seat, "shown as an opponent". `PublicView::side_of(seat)` gives what all know about a seat's side: the declarer's, the opponents', or not known.
+- A seat is shown so when it says kontra or sub on the game or on a bonus the declarer announced.
+- `side_known_to` reads it. So a seat may raise a bonus of such a seat for its side, and block D1 shows that seat's announcements on the opponents' side for every observer.
+- When all three other seats are shown as opponents, the declarer is publicly alone ("declarer is publicly alone" in B7).
+- The encoding has no new feature. No reason was found to add one: see "The encoding" below.
+
+**The check of each consequence against who may say what** (criteria 12, 14 and 15)
+
+| What follows | Why it follows from the public history alone | Strict |
+|---|---|---|
+| A seat that says kontra or sub on the game is an opponent | The game is the declarer's side's. Kontra and sub are said by the other side (criterion 12), and every seat knows its own side. No knowledge of another seat is needed. | yes |
+| The same on a bonus the declarer announced | The bonus is the declarer's side's, and all know the declarer's side. | yes |
+| Every seat may raise a bonus of a seat shown as an opponent, for its side | Criterion 15 asks that the seat knows the announcer's side. It does: all do. | yes |
+| D1 shows such a seat's announcements on the opponents' side | Criterion 36 uses the rule of criterion 15. | yes |
+| All three other seats shown as opponents: the declarer plays alone | No seat is left to be the partner. | yes |
+| Two seats shown as opponents: the third is the partner | **No.** The declarer may hold the called king itself, and that is not public. Not built. `c15` (part 2) has the two worlds: the same things said, C the partner in one and the declarer alone in the other, and the public view prints the same. | no |
+
+**What D150 changes in the cases of D148.** The check showed that two of them were no longer true as written, so criterion 15 is reworded.
+
+- Case (iii), "the declarer raises a bonus of another seat while the partner is hidden: it holds the called king". False when the announcer is shown as an opponent: the declarer knows that side from what was said, not from its hand. With D150 added to the code of `6bce5d8` and nothing else, such a kontra would have made the true sides public: a leak. Now: on a bonus of a seat shown as an opponent the declarer's raise shows nothing. On a bonus of a seat whose side is not public, case (iii) stands.
+- Case (i), "another seat than the declarer raises a bonus of another seat while the partner is hidden: it is the partner". For kontra and sub it still holds, also on a bonus of a seat shown as an opponent, for another reason: the bonus is publicly the opponents', kontra and sub are said against the owner, so the seat acts for the declarer's side. Kept, and `c15` (part 1) has it. For re and mort it no longer holds: after the declarer's kontra on such a bonus, another opponent may say re. The engine shows nothing for that re.
+
+So the function that says what an action shows (`Game::shows` in `src/game.rs`) now reads: a raise of a target whose side all know shows the side of the seat that raises (for the declarer's side: the partner; against it: an opponent; the declarer's own raise: nothing). A raise of a bonus whose side is not public shows a holder of the called king.
+
+**What else follows, said and not built**
+
+1. **Re or mort on a bonus of a seat shown as an opponent, by another seat, shows that seat as an opponent too.** It acts for the opponents' side. D150 names kontra and sub on the game and on a bonus of the declarer only, so the engine does not record it. `c15` pins that it shows nothing, and above all no partner. Question 5.
+2. **The declarer's own knowledge.** A declarer who does not hold the called king and sees two seats shown as opponents knows that the third seat is its partner: the king is not in the talon (that would be public) and not with an opponent. That is private knowledge, not public: the other seats cannot tell whether the declarer holds the king. The engine does not use it, so such a declarer may not raise its partner's bonus. If it were built, case (iii) would need one more condition: the declarer's raise of that third seat's bonus would no longer prove that it holds the king. Question 5.
+3. **An opponent that is not shown learns nothing more** from another seat being shown: the third seat can be the partner or an opponent.
+
+**Can "shown as an opponent" contradict the nine cases?** No. Each rule shows a fact that is true of the deal: a seat is shown as an opponent only by an action the declarer's side may not take, and a seat is shown as holder of the called king only by an action that only the holder, or only the declarer's side, may take. Two true facts about one deal do not contradict. It is also tested: `c16_what_all_know_about_the_sides_follows_from_what_was_said` plays 2,000 random deals of flow B and checks at every decision before the called king is played that (a) the public partner and the public side of every seat are what a second reading of the public events gives (`tests/common/sides.rs`, which looks at no hand), and (b) both are true of the deal. 42,467 decisions in the round: 3,484 with a seat shown as an opponent and the partner hidden, 672 of them with two such seats, 547 with a raised bonus of such a seat, and 1,190 with the declarer alone because all three are shown.
+
+**No leak.** `tests/no_leak.rs` now also compares the public partner and the public side of every seat in the two worlds of each case. 1,526 compared pairs have a seat shown as an opponent while the partner is hidden, 515 of them with the called king in another hand. What a seat is shown as is the same in both worlds every time.
+
+**The encoding.** No feature holds "this seat is shown as an opponent" by itself. It reaches the network in three ways: D1 (that seat's announcements are on the opponents' side), the legal mask, and the tokens (a kontra token carries the seat and the target, so the fact can be read from the sequence). "Declarer is publicly alone" in B7 is set in the ninth case. A model that reads only the state vector cannot see a shown opponent that has announced nothing. That is the same as before D150 for everything else the tokens carry and the state does not, so no feature was added and `encoding_version` stays 1. `docs/encoding.md` section 4b says where it shows.
+
+**Tests of this spec that changed with D150**
+
+- `c16_legal_actions_depend_only_on_what_the_seat_knows`: in its pair of deals D now also announces the valat (C did). D is shown as an opponent in both deals, and the declarer may say kontra on D's valat in both. Its second legal set, written from the public and the private view, reads the shown opponents from the public events.
+- `c36`: a block for D150 (D1 before and after B's kontra; B7 with all three shown). Its own second reading of D1 (`d1_bits`) reads the shown opponents from the public events. The lower bound for "observations with an announcement of unknown side" goes from 3,000 to 1,200: 1,896 are left.
+- `c38` in `tests/no_leak.rs`: the comparison of the public partner and the public sides, and two counts.
+- New: `c15_a_seat_shown_as_an_opponent_by_its_own_kontra` (by hand, three parts) and `c16_what_all_know_about_the_sides_follows_from_what_was_said`.
+
 ### Open issues
 
 1. **Criteria 45, 46 and 53 and the Python side of 52 are not done.** They need the binding module built from these sources, which waits for the main session's word that the runs of spec 017 have ended (D146). What that stage has to do, as far as it can be seen from the Rust side:
@@ -584,9 +669,10 @@ The review found no rule defect and four weak places in the tests. Each point wa
 
 ### Questions for the user
 
-Questions 1 to 3 were answered on 2026-11-24 (D147): 1 (a); 2 (b), built; 3 not in this spec. They stay below as they were asked. **Question 4 is open.**
+Questions 1 to 3 were answered on 2026-11-24 (D147): 1 (a); 2 (b), built; 3 not in this spec. Question 4 was answered the same day (D150): (b) with (c), built. They stay below as they were asked. **Question 5 is open.**
 
 1. **Rewards as 32-bit numbers.** Spec 006 asked that the ten parts of a seat sum to its reward within 1e-6. With kontra that cannot hold for large rewards. Options: (a) the room grows with the reward: 1e-6 times the largest reward of the deal, as the engine's tests now have it; (b) the rewards become 64-bit numbers in the arrays, which changes the contract and the binding; (c) the reward scale grows with flow B so rewards stay small. Recommended: (a). The parts and the reward are exact as whole points in the record; only the divided numbers round.
 2. **A declarer who announces kralj ultimo with its own king.** Options: (a) as built: the engine shows nothing; the other seats may not kontra each other's announcements until the king falls; (b) the declarer is shown as alone from that announcement on, as a player at the table would conclude. Recommended: (b). It is a fifth case next to the four of reading 3, and one line in `PublicView::partner`.
 3. **Block F and the announcements.** Options: (a) as built: block F does not use them; (b) F3 holds the pagat for the seat that announced pagat ultimo and the called king for the seat that announced kralj ultimo, until the card is played, with a soundness test on deals of flow B. Recommended: (b), with the training spec for flow B. The network can also read it from the token, which carries the seat.
 4. **A seat shown as an opponent by its own kontra.** Found while checking the cases of D148; not built, as the condition of D148 asks. A seat that says kontra or sub on the game, or on a bonus the declarer announced, is an opponent: those levels belong to the other side than the declarer's. Every seat sees it. The engine does not use it. Example: D says kontra on the game and announces trula. The declarer does not hold the called king and the partner is hidden. At the table the declarer knows D's trula is the opponents' and may say kontra on it. In the engine it may not: it "does not know D's side". Options: (a) leave it: the engine shows only what reading 3 lists; (b) the engine keeps, for each seat, "shown as an opponent", and `side_known_to` uses it. A seat may then raise a bonus of such a seat, and block D1 shows that seat's announcements on the opponents' side. Criteria 15, 16 and 36 and reading 3 change; the encoding does not need a new feature; (c) with (b), or alone: when all three other seats are shown as opponents, the declarer is publicly alone. That is a ninth case of reading 3 and the public state can say it today. Recommended: (b) with (c), in a spec change of its own after stage (d), because it changes what is legal and so the second legal set of `c16`. Reason: it is the same kind of conclusion as D147 and D148, and without it the engine again forbids a kontra that a player at the table may say.
+5. **Two more things that follow, found while checking D150; neither is built.** (1) A seat other than the announcer that says re or mort on a bonus of a seat shown as an opponent is an opponent too: it acts for the opponents' side. The engine records "shown as an opponent" only for kontra and sub on the game or on a bonus of the declarer, as D150 says. (2) A declarer who does not hold the called king and sees two seats shown as opponents knows that the third seat is its partner. That is the declarer's own knowledge, not public. The engine does not use it, so that declarer may not raise its partner's bonus. Options: (a) leave both; (b) build (1): the rule becomes "on a target whose side all know, a raise by another seat than the declarer shows that seat's side", with no exception. Criterion 15 gets one sentence; the encoding does not change; (c) build (1) and (2). With (2), a declarer's raise of the third seat's bonus no longer proves that it holds the called king, so case (iii) of D148 gets one more condition, and what the declarer may do then depends on knowledge the other seats cannot check. Recommended: (b). Reason: (1) is the same conclusion as D150 from the other side and closes the last exception in the rule. (2) is rare, private, and makes case (iii) harder to state; a player at the table would use it, but the gain is one kontra in few deals.
