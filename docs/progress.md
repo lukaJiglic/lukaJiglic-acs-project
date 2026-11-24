@@ -12,6 +12,46 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 **Next:** the next step.
 ```
 
+## 2026-11-24 — spec 014, the longer run on flow A: run log (session `train-env`, claude-fable-5-2; verified by the main session, ai-log rows 8 and 8a)
+
+**This is a run on deal flow A only**: six normal contracts, no announcements, no kontra, no klop. The opponent in the evaluation is random legal play. It says nothing more about playing strength. No weights are released.
+
+**Done:** both networks trained for 2,000 updates, ten times the smoke run of spec 008, with the same settings and seed 14. Five checkpoints of each run were evaluated on the same deals. The numbers are in the Results of `docs/specs/014-longer-run-flow-a.md`.
+**Run log (D79).** Engine 0.2.0, source fingerprint `64a6157fb05f43c4`. 512 tables, 2,048 seat-deals per update, a checkpoint every 100 updates. Tree at both starts: three uncommitted paths (the two configs and `src/train/README.md`). Folders in `src/train/runs/`, untracked.
+
+| | MLP | Transformer |
+|---|---|---|
+| Config | `long-a-mlp.toml` | `long-a-transformer.toml` |
+| Run folder | `long-a-mlp-20261124-000454` | `long-a-transformer-20261124-011623` |
+| Commit | `9351c6b` | `67c425b` (docs only between the two) |
+| GPU before (whole card) | 0% busy, 536 MiB | 0% busy, 372 MiB |
+| Updates, exit code | 2,000 of 2,000, 0 | 2,000 of 2,000, 0 |
+| Duration | 3,643.6 s (60.7 min) | 24,883.5 s (414.7 min; estimate 312) |
+| Stops and resumes | none | none |
+| What failed | another program used the card at times | the allocator's peak is above the card's size; 24% slower than the smoke run |
+
+**Measurements** (from each run's `summary.json`, `evaluation-*.json` and the TensorBoard files; recomputed by the main session from the files):
+- Loop: 0 illegal actions, 0 of 188,002 logged numbers not finite, largest sum of a deal's four rewards 1.3e-07, oldest trained decision 0 updates, in both runs.
+- Against random legal play, 2,000 deals in four seatings, seed 2008, checkpoints 200, 500, 1,000, 1,500, 2,000. MLP: +0.595, +0.606, +0.613, +0.614, +0.619 (last interval +0.611 to +0.627). Transformer: +0.601, +0.604, +0.611, +0.622, +0.617 (last interval +0.609 to +0.625). Reward 1 is 50 points of the paper score. 100 of 100 exported records of each last checkpoint replay to the same entries.
+- Paired on the same deals, update 2,000 minus 200: MLP +0.024 (+0.016 to +0.031), transformer +0.016 (+0.006 to +0.026). Update 2,000 minus 1,000: +0.007 (−0.001 to +0.014) and +0.006 (−0.002 to +0.014). Transformer minus MLP at 2,000: −0.002 (−0.012 to +0.008). Ten times the training moved this number by about one point of the paper score per deal. Update 2,000 is not measurably above update 1,000 or 1,500 in either run. Two of the 25 pairs after update 1,000 exclude zero by a small margin (transformer 1,500 minus 1,000: +0.011, +0.001 to +0.021; transformer minus MLP at 1,500: +0.008, +0.001 to +0.016).
+- The same checkpoints evaluated again by the main session on other deals (seed 4141, copies in a scratch folder): MLP +0.587 at update 200 and +0.614 at 2,000; transformer +0.596 and +0.616.
+- Speed end to end: MLP 33,848 decisions played per second and 16,286 trained (smoke run 34,743); transformer 4,948 played and 2,381 trained (smoke run 6,506). 48.1% of the played decisions are trained on. Seconds per update: 1.82 and 12.44.
+- GPU memory, transformer: tensors' peak 4,364 MiB, allocator's peak 6,484 MiB against a card of 6,144 MiB, whole card 5,531 MiB (median of 413 samples). Both peaks are reached by update 32; no growth after that. MLP: 299 and 438 MiB.
+- Seat-deal length: 14.3 decisions on average, 20 at most; 66 tokens at most (limit 128).
+- Contracts at the last update: MLP ena 86.4%, dve 13.3%; transformer ena 52.9%, solo tri 46.3%. The declarer's side wins 60.6% and 64.2%. Two different mixes with the same result against random legal play.
+- Entropy: no phase is under its band at the last update. The bidding dipped under it in updates 16 to 27 (MLP) and 17 to 31 (transformer) and came back. The weight of the contract choice reached the upper limit 1.0 in both runs (MLP 5 updates, transformer 51). Play stayed above its band for the whole run with its weight at the lower limit (0.46 and 0.51 against a target of 0.25).
+- Heads at the last update: card location 39.1% and 40.0% (uniform guess 30.5% and 30.8%), the transformer's flat since update 1,000. Critic's explained variance 0.67 and 0.66.
+- Tests with the two configs in the folder: 153 passed, 6 skipped (GPU), 6 deselected (slow), run by the session before the runs.
+**Review pass (D72 step 4):** a separate subagent read the diff and recomputed the parts the main session had not. It found no fault in the runs. Two defects in the text: the README gave five to six hours for the transformer (measured 6.9), and the Results said that nothing is gained after update 1,000 although two pairs of checkpoints exclude zero. Twelve lesser points: counts and cuts in the GPU samples, statements read from single updates, two config comments, the name of the uniform-guess rows, the base commit of a diff. The `train-env` session fixed all of them and recomputed each number; the main session checked the fixes in the files. The list is in the spec under "Review fixes".
+**Broken or open:**
+- The transformer's allocator reserved more than the card holds. No error was raised. The run was 24% slower than the smoke run. The update step slows from update 21 on, where the allocator's peak passes the card's size (median 4.1 s before, 6.2 to 6.7 s from update 81 on; 4.4 to 4.5 s in the smoke run). The cause (the Windows driver moving the excess to shared system memory) is inferred, not measured. Flow B has longer sequences, so this gets worse before the full run.
+- `gpu_snapshot` in `bench_model.py` returns an empty reading when nvidia-smi prints the temperature with decimals. `run-info.json` and `summary.json` of both runs hold no GPU state. The GPU state in this log comes from the pipeline's own nvidia-smi calls. A small fix with a test, as its own change.
+- Another program used the card during the MLP run (11 of 60 one-minute samples at 3,118 to 5,634 MiB). At most 337 s of 3,602 s are affected. Criterion 3 ("nothing else running") did not hold for that run.
+- Against random legal play update 2,000 is not measurably above update 1,000 in either run. Whether the networks still improve needs one checkpoint against another (open point C of the spec).
+- Play and, for the MLP, talon pick sit above their bands with the weight at the lower limit. The controller cannot push an entropy down. Whether that is a finding belongs to C16.
+- The two run folders take 5.8 GB.
+**Next:** the user's read of the diff of spec 014; commit; push; CI. Then the answers to Batch 13 and spec 009.
+
 ## 2026-11-24 — the longer run started; spec 009 drafted (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 8)
 
 **Done:** the GPU was free at 00:04 and the pipeline of spec 014 started the MLP run (`long-a-mlp-20261124-000454`, commit `9351c6b`, seed 14). Spec 009 (deal flow B: announcements and kontra) is drafted with 49 acceptance criteria. pagat.com was read again for it on this day; the spec lists what the page says and what it leaves open. Seven open points went to the user as Batch 13.
