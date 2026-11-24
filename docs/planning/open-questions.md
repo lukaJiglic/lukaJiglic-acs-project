@@ -36,7 +36,8 @@
 - 2026-11-23: the user read the diff of spec 008 and approved the commit (D137; `124b2e9`), and ordered a longer run on flow A (D138; spec 014, in the `train-env` session). C13 and C16 were asked in the same message and not answered; they stay open.
 - 2026-11-24: the GPU was free at 00:04 and the longer run of spec 014 started (MLP first). Spec 009 (deal flow B: announcements and kontra) is drafted from a new read of pagat.com; its seven open points are Batch 13 below.
 - 2026-11-24, later: the longer run ended at 08:12 (both networks 2,000 updates; +0.619 and +0.617 against random legal play). Verified, reviewed, committed on the user's go-ahead (D139). The user ordered an analysis of the training, proposals for improvements, fixes of the problems found, and to go on with development (D140). The fixes are spec 015. The message does not answer Batch 13.
-- **Waiting on the user, to decide:** Batch 13 and the acceptance criteria of spec 009; C13 (the new figure of G3); C16 (which entropy mean the controller steers on); the open points A–D of spec 014.
+- 2026-11-24, later: the analysis of the run is in spec 015. One checkpoint against another shows what random play hid: both networks were still improving at update 2,000 and the transformer is ahead of the MLP. Spec 015 (the GPU reading, the transformer's memory, a checkpoint as opponent) is in the `train-env` session. Batch 14 below holds the improvements that are not fixes.
+- **Waiting on the user, to decide:** Batch 14; Batch 13 and the acceptance criteria of spec 009; C13 (the new figure of G3); C16 (which entropy mean the controller steers on); the open points A–D of spec 014.
 - **Dates:** the repo must be public or shared with the instructor on Mon 23 Nov (R5); it is private on 2026-11-23. The proposal, wireframe and pitch slide were due Wed 18 Nov; the files hold no record that they were handed in.
 - **Waiting on the user:** corrections to the wireframe and `pitch.md`; the proposal format. Later: C13 (the new figure of G3, after the smoke run), C14 (tier of the trula toggle).
 - Next: spec 013 in the `engine-core` session and spec 008 in the `train-env` session; verification, review pass, the user's read of each diff, commit.
@@ -55,6 +56,18 @@ Open:
 - **C13. The new figure of G3** (D128). Measured in spec 008, end to end on this PC with 512 tables and two epochs: transformer 6,506 decisions played per second and 3,194 trained; MLP 34,743 and 17,050. (a) at least 5,000 decisions played per second with the transformer; (b) at least 6,000 played; (c) at least 3,000 trained. Recommended: (a); it is met with a margin of 30%, which flow B's longer sequences will use up in part. Asked 2026-11-12.
 - **C16. Which entropy mean the controller steers on.** Now: the mean over all decisions of a phase, forced ones included. In the smoke runs the share of forced decisions in the bidding went from 28% to 0%, so the mean moved without the policy getting firmer or looser. (a) the mean over decisions with two or more legal actions, with the targets set again as a quarter of random play under that mean; (b) keep the mean over all decisions. Recommended: (a). Asked 2026-11-12.
 - **C14. Tier of S40's other option** ("in any order"). Recommended: like S14 and S18 in D98: selectable in T0 with the note "agent ni učen s tem pravilom". Asked when the engine gets its toggles.
+
+## Batch 14 — improvements after the longer run (asked 2026-11-24; open)
+
+From the analysis in `docs/specs/015-findings-of-the-longer-run.md`. None of these is a defect; each changes how the training works, so the user decides. The first option is the recommendation.
+
+| # | Question | Options | Recommended, and why |
+|---|---|---|---|
+| B14-1 | Half of the played decisions are not trained on. An update trains on one deal per table and plays about two, because a deal cut by an update is dropped. Acting is 47% of the transformer's time. | (a) align the tables with the updates: a table that has finished its deal waits until the update is over. Needs a "wait" in the engine's environment; built with the engine work of spec 009. (b) keep the cut deals and train on them in the next update; their first decisions are then one update old. Python only. (c) leave it | a: nothing is thrown away and every trained decision is still played under the current weights (criterion 5 of spec 008 holds). Estimate, not measured: about a quarter less time per update for the transformer |
+| B14-2 | The entropy of play stays at 0.46 to 0.51 against a target of 0.25; its weight sits at the controller's lower limit 0.01 for the whole run | (a) lower the lower limit to 0.001 and compare the result with a checkpoint as opponent after 500 updates. (b) keep the limit and raise the target of play to what is measured. (c) leave both | a: the controller can then let play firm up; the comparison shows whether that helps before the full run |
+| B14-3 | Length of the first full run (spec 012). The transformer gained +0.025 per deal over its last 500 updates against its own checkpoint | (a) decide when spec 012 is written, from the speed after spec 015 and B14-1. (b) fix a number now | a: the speed is about to change |
+
+Open from before and touched by the run: **C13** (the long run measured 4,948 decisions played per second for the transformer, under option a's 5,000; the smoke run 6,506; decide after spec 015) and **C16** (play has 29% forced decisions; over decisions with a choice its entropy is 0.64 and 0.71).
 
 ## Batch 13 — announcements and kontra (asked 2026-11-24; open)
 

@@ -12,6 +12,20 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 **Next:** the next step.
 ```
 
+## 2026-11-24 — spec 014 committed; analysis of the run; spec 015 handed out (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 8)
+
+**Done:** spec 014 committed on the user's go-ahead (D139) as `e1a325f`, notes as `bb917ce`, pushed. The user ordered an analysis of the training, proposals, fixes of the problems found and to go on (D140). Analysis by the main session: one checkpoint in one seat against another checkpoint in the three other seats, with a scratch script built on `evaluate.py`. Spec 015 written from it and handed to the `train-env` session: the GPU reading, the transformer's memory, a checkpoint as opponent. The improvements that are not fixes are Batch 14.
+**Measurements** (scratch script, 2,000 deals in four seatings, seeds 5151 and 5252, mean reward per deal of the single seat with the 95% interval; flow A):
+- Control, a checkpoint against itself: MLP +0.002 (−0.007 to +0.012); transformer −0.002 (−0.011 to +0.007).
+- Update 2,000 against its own update 200: MLP +0.059 (+0.048 to +0.071); transformer +0.118 (+0.102 to +0.135).
+- Update 2,000 against its own update 1,500: MLP +0.012 (+0.001 to +0.023); transformer +0.025 (+0.015 to +0.036). Both were still improving at the end. Against random legal play this was not visible.
+- MLP 2,000 among three transformer 2,000 seats: −0.063 (−0.074 to −0.052). Transformer 2,000 among three MLP 2,000 seats: +0.010 (−0.008 to +0.027).
+**Broken or open:**
+- These numbers come from a script that is not in the repo. Criterion 16 of spec 015 repeats them from committed code.
+- Batch 13 (announcements and kontra) and the criteria of spec 009 are not answered. Flow B cannot start before that.
+- Batch 14 is asked: the dropped half of the acting, the entropy of play, the length of the full run.
+**Next:** the report of the `train-env` session on spec 015; verification, review pass, the user's read of the diff. The user's answers to Batches 13 and 14.
+
 ## 2026-11-24 — spec 014, the longer run on flow A: run log (session `train-env`, claude-fable-5-2; verified by the main session, ai-log rows 8 and 8a)
 
 **This is a run on deal flow A only**: six normal contracts, no announcements, no kontra, no klop. The opponent in the evaluation is random legal play. It says nothing more about playing strength. No weights are released.
