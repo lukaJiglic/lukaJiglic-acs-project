@@ -46,7 +46,8 @@
 - 2026-11-24, 13:55: Batch 18 answered, a for every item (D149). Spec 018 is approved. Order of the GPU work: spec 015, spec 017, the rebuild and merge of spec 009, spec 018, spec 016.
 - 2026-11-24, evening: spec 015 is executed and verified from its run files; its review pass was cut by the usage limit and resumed. Spec 009 is at `6bce5d8` on its branch (D147, D148 and the review's tests built; 233 tests). Batch 19 below.
 - 2026-11-24, 19:10: spec 015 is committed as `65cc565` after the review fixes; CI green. Spec 017 is handed to the `train-env` session: the MLP runs first; the transformer run waits for Batch 19, item 2.
-- **Waiting on the user, to decide:** Batch 19 (two items); C13 (the new figure of G3; better after spec 015); C16 (which entropy mean the controller steers on); the open points A, B and D of spec 014; later C14.
+- 2026-11-24, evening: Batch 19 answered, a for both (D150). The `engine-core` session builds the seat shown as an opponent on the branch; the `train-env` session runs spec 017 (the MLP runs are queued, the transformer run follows with the limit of 5,000 MiB).
+- **Waiting on the user, to decide:** C13 (the new figure of G3; better after spec 015); C16 (which entropy mean the controller steers on); the open points A, B and D of spec 014; later C14.
 - **Dates:** the repo must be public or shared with the instructor on Mon 23 Nov (R5); it is private on 2026-11-23. The proposal, wireframe and pitch slide were due Wed 18 Nov; the files hold no record that they were handed in.
 - **Waiting on the user:** corrections to the wireframe and `pitch.md`; the proposal format. Later: C13 (the new figure of G3, after the smoke run), C14 (tier of the trula toggle).
 - Next: spec 013 in the `engine-core` session and spec 008 in the `train-env` session; verification, review pass, the user's read of each diff, commit.
@@ -66,7 +67,7 @@ Open:
 - **C16. Which entropy mean the controller steers on.** Now: the mean over all decisions of a phase, forced ones included. In the smoke runs the share of forced decisions in the bidding went from 28% to 0%, so the mean moved without the policy getting firmer or looser. (a) the mean over decisions with two or more legal actions, with the targets set again as a quarter of random play under that mean; (b) keep the mean over all decisions. Recommended: (a). Asked 2026-11-12.
 - **C14. Tier of S40's other option** ("in any order"). Recommended: like S14 and S18 in D98: selectable in T0 with the note "agent ni učen s tem pravilom". Asked when the engine gets its toggles.
 
-## Batch 19 — a seat shown as an opponent; the memory limit in the trial (asked 2026-11-24; open)
+## Batch 19 — a seat shown as an opponent; the memory limit in the trial (asked 2026-11-24, answered 2026-11-24: a for both; see D150)
 
 The first option is the recommendation.
 
