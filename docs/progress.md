@@ -12,6 +12,21 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 **Next:** the next step.
 ```
 
+## 2026-11-24 — spec 015 committed; spec 017 started (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log rows 8, 8b, 8d)
+
+**Done:** the `train-env` session fixed the eight points of the review, tests first (23 new tests failed on the code as it was). The defect: one generator per network for the whole evaluation; on the reviewer's recipe the correlation of deal values across chunks fell from +0.72 to −0.005, and `test_c15` now checks the control over 20 seeds. Checked by the main session: the not-slow suite with the GPU on the fixed code, 222 passed; the table of the twelve pairs rerun from the fixed code (all overlap the scratch intervals and those of the code before the fix; the largest correlation across chunks is 0.042). Committed as `65cc565` (code, tests, configs, README, Results) and pushed; `ci`, `engine` and `train` are green on it. Spec 015 is done.
+**Measurements of spec 015 (details in its Results):**
+- The transformer's excess memory sits in Windows shared GPU memory and starts at an allocator size of about 5,400 MiB.
+- With `gpu_memory_limit_mib = 5000`, 200 updates of `smoke-a-transformer.toml`: allocator's peak 4,910 MiB, median 8.35 s per update over the updates 101 to 200 (smoke run 9.82), update step 4.09 s (4.48). Against random legal play +0.5997 (+0.5914 to +0.6080) with the fixed evaluation; +0.6015 before the fix; smoke run +0.6049.
+- The twelve pairs from committed code, seed 5151: both controls include zero; transformer 2,000 against its update 200 +0.1205 (+0.1032 to +0.1378); MLP 2,000 among three transformer 2,000 seats −0.0596 (−0.0709 to −0.0483).
+**Broken or open:**
+- One commit holds all three parts; the spec planned three. The parts share `train.py` and one test file.
+- The commit's trailer names ai-log row 8a. That is wrong: the work is row 8b (the side sessions) and row 8 (verification).
+- `test_c20` of spec 006 is load-dependent on this PC: it failed in two of the main session's four runs today (both while a review agent ran its own tests) and, by its report, three of three for the `train-env` session on the idle PC. Not from this diff. Still open.
+- The intervals of the untrained network against random play in spec 008 are too narrow by a factor of about 1.3 (the old seeding). The numbers of spec 008 are not changed.
+- No config sets the limit of 5,000 MiB yet. Batch 19, item 2, asks for it in the trial of spec 017.
+**Next:** spec 017 in the `train-env` session (the MLP runs first). The user's answers to Batch 19. Then the rebuild of the binding and the merge of spec 009, spec 018, spec 016.
+
 ## 2026-11-24 — spec 015 verified; its review pass; spec 009 at `6bce5d8` (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 8)
 
 **Done:** the `train-env` session reported spec 015 executed. The main session read the numbers of criteria 7 and 8 from the run files (`src/train/runs/spec015/c7-smoke-limit5000-transformer`, not tracked): median 8.347 s per update over the updates 101 to 200 (smoke run of spec 008: 9.818), update step 4.086 s (4.477), allocator's peak 4,910 MiB (5,156), no illegal action, +0.6015 (+0.5931 to +0.6099) against random legal play (smoke run: +0.6049, +0.5968 to +0.6130). The not-slow suite with the GPU, run by the main session: 204 passed, 1 failed; the failure is `test_c20` of spec 006 under load from the review agent's own test run, and it passes alone. A separate agent reviewed the uncommitted diff; its CPU run of the not-slow suite: 194 passed, 11 skipped.

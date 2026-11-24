@@ -45,6 +45,7 @@
 - 2026-11-24, 13:50: Batch 17 answered, a for every item (D148). Spec 018 (first runs on flow B) is drafted; Batch 18 below. The timed 200-update run of spec 015 is going since about 13:40.
 - 2026-11-24, 13:55: Batch 18 answered, a for every item (D149). Spec 018 is approved. Order of the GPU work: spec 015, spec 017, the rebuild and merge of spec 009, spec 018, spec 016.
 - 2026-11-24, evening: spec 015 is executed and verified from its run files; its review pass was cut by the usage limit and resumed. Spec 009 is at `6bce5d8` on its branch (D147, D148 and the review's tests built; 233 tests). Batch 19 below.
+- 2026-11-24, 19:10: spec 015 is committed as `65cc565` after the review fixes; CI green. Spec 017 is handed to the `train-env` session: the MLP runs first; the transformer run waits for Batch 19, item 2.
 - **Waiting on the user, to decide:** Batch 19 (two items); C13 (the new figure of G3; better after spec 015); C16 (which entropy mean the controller steers on); the open points A, B and D of spec 014; later C14.
 - **Dates:** the repo must be public or shared with the instructor on Mon 23 Nov (R5); it is private on 2026-11-23. The proposal, wireframe and pitch slide were due Wed 18 Nov; the files hold no record that they were handed in.
 - **Waiting on the user:** corrections to the wireframe and `pitch.md`; the proposal format. Later: C13 (the new figure of G3, after the smoke run), C14 (tier of the trula toggle).
