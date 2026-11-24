@@ -4,7 +4,7 @@
 //! play, and D deals. With seat 3 as the dealer, A is seat 0.
 
 use tarok_engine::{
-    Action, Card, CardSet, Contract, Deal, Game, Packet, Phase, Rank, Seat, Suit, Target,
+    Action, Bonus, Card, CardSet, Contract, Deal, Game, Packet, Phase, Rank, Seat, Suit, Target,
 };
 
 use super::{court, kralj, pip, tarok};
@@ -343,7 +343,8 @@ pub fn play_random(seed: u64, dealer: Seat, choices: &[u8], before: impl FnMut(&
 
 /// As [`play_random`], with announcements and kontras (flow B). In the
 /// round a choice that is a multiple of 3 says "done"; any other choice
-/// picks one of the other legal actions, if there is one.
+/// picks one of the other legal actions, if there is one. A valat is
+/// announced less often than that: see the code.
 pub fn play_random_b(seed: u64, dealer: Seat, choices: &[u8], before: impl FnMut(&Game)) -> Game {
     play_random_with(seed, dealer, choices, true, before)
 }
@@ -380,6 +381,13 @@ fn play_random_with(
                 let others = legal.len() - 1;
                 if choice % 3 != 0 && others > 0 {
                     action = legal.nth((choice / 3) % others).expect("in range");
+                }
+                // A valat is legal for every seat at every turn. Taken at
+                // random it would be announced in nearly every deal, and a
+                // deal with an announced valat scores nothing else. So it
+                // is kept one time in eight.
+                if action == Action::Announce(Bonus::Valat) && (choice / 3) % 8 != 1 {
+                    action = Action::Done;
                 }
             }
             game.apply(action).expect("a legal action is accepted");

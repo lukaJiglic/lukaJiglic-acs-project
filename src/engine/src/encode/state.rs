@@ -6,10 +6,11 @@
 //! seat" blocks have three: next, across, previous.
 //!
 //! The features read the public view and the observer's private view only.
-//! Blocks A8 (klop talon), D (announcements, kontra), G2 and G3 (reserved
-//! rule slots, radelci) belong to rules that are not built: they stay zero.
+//! Blocks A8 (klop talon), D3 (barvni valat), G2 and G3 (reserved rule
+//! slots, radelci) belong to rules that are not built: they stay zero.
 
 use crate::action::Action;
+use crate::announce::{Bonus, Target};
 use crate::card::Card;
 use crate::cardset::CardSet;
 use crate::contract::Contract;
@@ -42,6 +43,8 @@ const C1: usize = 755;
 const C2: usize = 768;
 const C3: usize = 772;
 const C4: usize = 776;
+const D1: usize = 828;
+const D2: usize = 838;
 const E1: usize = 869;
 const E2: usize = 873;
 const E3: usize = 877;
@@ -200,6 +203,30 @@ pub fn write_state(game: &Game, observer: Seat, out: &mut [f32]) {
         }
     }
 
+    // --- D: announcements and kontra (spec 009, criterion 36) -------------
+    // D1: each announcement on the side that owns it, the declarer's five
+    // and then the opponents' five. The side is the announcer's, as far as
+    // the observer knows it (criterion 15).
+    // Reading 2 of spec 009: an announcement whose side the observer does
+    // not know sets the bit on both sides. The token carries the seat.
+    for bonus in Bonus::ALL {
+        if let Some(announcer) = public.announced(bonus) {
+            let side = private.knows_side_of(announcer);
+            if side != Some(false) {
+                out[D1 + bonus.index()] = 1.0;
+            }
+            if side != Some(true) {
+                out[D1 + Bonus::ALL.len() + bonus.index()] = 1.0;
+            }
+        }
+    }
+    // D2: the kontra level of each of the six targets, five entries each:
+    // none, kontra, re, sub, mort. One of the five is always set; before
+    // the round that is "none".
+    for target in Target::ALL {
+        out[D2 + 5 * target.index() + usize::from(public.kontra_level(target))] = 1.0;
+    }
+
     // --- E: counts --------------------------------------------------------
     let tricks = public.tricks();
     for seat in Seat::ALL {
@@ -312,6 +339,8 @@ mod tests {
             ("C2", C2),
             ("C3", C3),
             ("C4", C4),
+            ("D1", D1),
+            ("D2", D2),
             ("E1", E1),
             ("E2", E2),
             ("E3", E3),

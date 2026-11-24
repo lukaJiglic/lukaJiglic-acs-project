@@ -48,9 +48,11 @@ const PER_SEAT_BLOCKS: [(&str, usize); 10] = [
     ("E3", 1),
 ];
 
-/// The public blocks that do not depend on who looks.
-const SAME_FOR_ALL: [&str; 15] = [
-    "A3", "A4", "A5", "A7", "A8", "B1", "B2", "B5", "C1", "D1", "D2", "D3", "E4", "G1", "G2",
+/// The public blocks that do not depend on who looks. D1 is not one of
+/// them since spec 009: an announcement shows on one side or on both,
+/// depending on what the looking seat knows (`tests/encode.rs`, c36).
+const SAME_FOR_ALL: [&str; 14] = [
+    "A3", "A4", "A5", "A7", "A8", "B1", "B2", "B5", "C1", "D2", "D3", "E4", "G1", "G2",
 ];
 
 #[test]
@@ -529,10 +531,13 @@ fn block_c_bidding_of_the_scripted_position() {
 fn block_d_e_and_g_of_the_scripted_position() {
     let game = scripted_position();
     let from_c = observe(&game, C);
-    // D: announcements and kontra. Not built: zero.
-    for name in ["D1", "D2", "D3"] {
-        assert!(features(&from_c, name).iter().all(|&v| v == 0.0));
-    }
+    // D: announcements and kontra (spec 009). All four passed in the
+    // round: no announcement, and every one of the six targets at "none",
+    // the first of its five entries. D3 (barvni valat) is not built: zero.
+    assert_eq!(features(&from_c, "D1"), [0.0; 10]);
+    let none: Vec<f32> = (0..6).flat_map(|_| one_hot(5, 0)).collect();
+    assert_eq!(features(&from_c, "D2"), none);
+    assert_eq!(features(&from_c, "D3"), [0.0]);
     // E1: cards in hand / 15: C 11, D 11, A 10, B 10.
     assert_eq!(
         features(&from_c, "E1"),

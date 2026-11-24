@@ -10,7 +10,7 @@
 //! {
 //!   "record_version": 1,
 //!   "encoding_version": 1,
-//!   "engine_version": "0.2.0",
+//!   "engine_version": "0.3.0",
 //!   "seed": "42",
 //!   "dealer": 3,
 //!   "preset": "default",
@@ -27,6 +27,17 @@
 //! ultimo, pagat ultimo, valat, mondfang, klop, radelc. A field `agent` may
 //! be added by whoever has a model (values, beliefs); the engine keeps it
 //! and does not read it.
+//!
+//! The decisions of the round of announcements (spec 009) are in the list
+//! like every other decision: the slots 77 to 88.
+//!
+//! **Another engine version (D135).** `engine_version` names the engine
+//! that wrote the record. The rules can differ between versions, so a
+//! record of another version may not replay. The replay does not refuse it
+//! for the version alone: it keeps going as long as each chosen action is
+//! legal here, and does not ask that the legal slots are the same. If a
+//! decision is not legal, the deal does not end, or the entries differ,
+//! the error names both versions ([`RecordError::OtherEngine`]).
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -105,6 +116,16 @@ pub enum RecordError {
     NotFinished,
     /// The replayed deal writes other entries than the record says.
     Entries { expected: [i32; 4], found: [i32; 4] },
+    /// The record was written by another engine version and does not
+    /// replay on this one (D135). `error` says where: a decision that is
+    /// not legal here, a deal that does not end, or other entries.
+    OtherEngine {
+        /// The `engine_version` of the record.
+        recorded: String,
+        /// The version of this engine.
+        running: String,
+        error: Box<RecordError>,
+    },
 }
 
 impl fmt::Display for RecordError {
@@ -132,6 +153,15 @@ impl fmt::Display for RecordError {
             RecordError::Entries { expected, found } => write!(
                 f,
                 "the replayed deal writes {found:?} and not the recorded entries {expected:?}"
+            ),
+            RecordError::OtherEngine {
+                recorded,
+                running,
+                error,
+            } => write!(
+                f,
+                "the record was written by engine {recorded} and this is engine {running}; \
+                 the rules may differ: {error}"
             ),
         }
     }
@@ -210,6 +240,11 @@ impl Record {
     /// slots, a legal chosen slot. At the end the deal must be over and
     /// write the recorded entries. The error names the first decision that
     /// does not fit, counted from 0.
+    ///
+    /// A record of another engine version (D135) is played too. Its legal
+    /// slots are not compared, only the seat and the chosen slot. If it
+    /// does not replay, the error is [`RecordError::OtherEngine`] with both
+    /// versions and the fault inside.
     pub fn replay(&self) -> Result<Game, RecordError> {
         for (field, found, expected) in [
             ("record_version", self.record_version, RECORD_VERSION),
@@ -271,6 +306,24 @@ impl Record {
             )));
         }
 
+        let same_engine = self.engine_version == crate::VERSION;
+        self.replay_decisions(seed, dealer, same_engine)
+            .map_err(|error| {
+                if same_engine {
+                    error
+                } else {
+                    RecordError::OtherEngine {
+                        recorded: self.engine_version.clone(),
+                        running: crate::VERSION.to_string(),
+                        error: Box::new(error),
+                    }
+                }
+            })
+    }
+
+    /// The decisions played on the deal of `seed`, and the entries
+    /// compared. `strict` also compares the legal slots of every decision.
+    fn replay_decisions(&self, seed: u64, dealer: Seat, strict: bool) -> Result<Game, RecordError> {
         let mut game = Game::from_seed(seed, dealer);
         for (index, decision) in self.decisions.iter().enumerate() {
             let Some(seat) = game.to_act() else {
@@ -293,7 +346,7 @@ impl Record {
                     slot: decision.chosen,
                 })?;
             let slots: Vec<u16> = legal.iter().map(|legal| legal.slot() as u16).collect();
-            if decision.legal != slots {
+            if strict && decision.legal != slots {
                 return Err(RecordError::Mismatch {
                     decision: index,
                     what: "the legal slots differ",

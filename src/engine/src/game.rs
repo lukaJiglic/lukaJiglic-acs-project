@@ -88,6 +88,11 @@ pub enum EventKind {
     /// The declarer puts down a tarok, face up (S14 a). Other discards are
     /// hidden and are not events.
     DiscardShown(Card),
+    /// A seat announces a bonus (spec 009).
+    Announce(Bonus),
+    /// A seat raises the kontra level of the game or of a bonus by one.
+    /// "Done" is no event (reading 1 of spec 009).
+    Kontra(Target),
     /// A card is played to a trick.
     Play(Card),
 }
@@ -105,7 +110,10 @@ pub struct Event {
 }
 
 /// Room for the events of a deal: the sequence limit of the encoding
-/// (`docs/encoding.md` section 3). The longest deal of this slice has 71.
+/// (`docs/encoding.md` section 3). Without the round of announcements the
+/// longest deal has 71. The round adds at most 29 ([`announce::MAX_SAID`]);
+/// "done" is no event. No deal has more than 26 events before the round,
+/// so none has more than 26 + 29 + 48 = 103.
 pub const MAX_EVENTS: usize = 128;
 
 /// Room for the actions of a deal.
@@ -437,6 +445,7 @@ impl Game {
                 }
             }
             (Phase::Announcements, Action::Announce(bonus)) => {
+                self.log(EventKind::Announce(bonus), seat);
                 self.round.announce(bonus);
                 // Kralj ultimo by a seat other than the declarer: only
                 // the holder of the called king may say it, so that seat
@@ -446,6 +455,7 @@ impl Game {
                 }
             }
             (Phase::Announcements, Action::Kontra(target)) => {
+                self.log(EventKind::Kontra(target), seat);
                 let level = self.round.raise(target);
                 // Re or mort on the game by a seat other than the
                 // declarer: that seat is the partner (criterion 14).
@@ -530,7 +540,8 @@ impl Game {
     ///
     /// Reading B12-7 (Batch 12, open): the contract, the called king, the
     /// taken packet and a shown discard carry the declarer's seat. The
-    /// start and the six shown talon cards carry none.
+    /// start and the six shown talon cards carry none. An announcement and
+    /// a kontra carry the seat that said it.
     fn log(&mut self, kind: EventKind, seat: Option<Seat>) {
         self.push_event(Event {
             kind,
@@ -558,7 +569,7 @@ impl Game {
     }
 
     /// No deal of the rules built so far has more than [`MAX_EVENTS`]
-    /// events; a test walks the longest. A rule that adds events (spec 009)
+    /// events; the tests walk the longest. A later rule that adds events
     /// may pass the limit. Then this panics: a log that silently stopped
     /// would give the network a sequence with its end cut off.
     fn push_event(&mut self, event: Event) {

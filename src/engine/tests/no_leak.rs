@@ -1,4 +1,5 @@
-//! Spec 006, criterion 6: no leak.
+//! Spec 006, criterion 6: no leak. Spec 009, criterion 38: the same on
+//! deals with announcements and kontra.
 //!
 //! Take a random moment of a random deal and one observing seat. Change two
 //! cards the observer cannot see between two hidden places. If the same
@@ -13,12 +14,18 @@
 //! the declarer put down: a card of the packet, or a card it was dealt. The
 //! two worlds are the same deal and the same actions but for that one
 //! discard, and no other seat may tell them apart.
+//!
+//! With announcements (spec 009) a change of hidden cards can change who
+//! the partner is, and who holds the pagat or the called king. If what was
+//! said is still legal with the cards changed, the observer must not see a
+//! difference either: not in the tokens, not in block D of the state, not
+//! in the legal actions of its own turn in the round.
 
 mod common;
 
 use std::cell::Cell;
 
-use common::flow::play_random;
+use common::flow::{play_random, play_random_b};
 use common::{run_cases, seat};
 use proptest::prelude::*;
 use tarok_engine::encode::{Observation, observe};
@@ -77,15 +84,42 @@ fn same_for_the_observer(one: &Observation, two: &Observation) {
     assert_eq!(one.mask, two.mask, "the mask differs");
 }
 
-fn case() -> impl Strategy<Value = (u64, u8, Vec<u8>, usize, u8, u64)> {
+/// A case: the seed of the cards, the dealer, the choices of the play, the
+/// moment (the number of actions taken), the observer and a number that
+/// picks the change. A deal of flow B is longer, so its moment goes
+/// further.
+fn case(flow_b: bool) -> impl Strategy<Value = (u64, u8, Vec<u8>, usize, u8, u64)> {
+    let (choices, moments): (usize, usize) = if flow_b { (191, 190) } else { (96, 80) };
     (
         any::<u64>(),
         0..4u8,
-        proptest::collection::vec(any::<u8>(), 96),
-        0..80usize,
+        proptest::collection::vec(any::<u8>(), choices),
+        0..moments,
         0..4u8,
         any::<u64>(),
     )
+}
+
+/// What the cases of a run were.
+struct Counts {
+    two_hands: u32,
+    hand_and_discards: u32,
+    hand_and_talon: u32,
+    which_card_hidden: u32,
+    not_a_legal_deal: u32,
+    /// Compared cases with an announcement or a kontra before the moment.
+    after_something_said: u32,
+    /// Of those: the partner was still hidden at the moment.
+    said_and_partner_hidden: u32,
+    /// Compared cases in which the partner is another seat in the other
+    /// world.
+    another_partner: u32,
+}
+
+impl Counts {
+    fn compared(&self) -> u32 {
+        self.two_hands + self.hand_and_discards + self.hand_and_talon + self.which_card_hidden
+    }
 }
 
 /// Picks element `pick mod len` of a set, or `None` if it is empty.
@@ -97,9 +131,13 @@ fn pick_from(cards: CardSet, pick: u64) -> Option<Card> {
     }
 }
 
-#[test]
-fn c06_no_leak_when_hidden_cards_change_places() {
+/// The cases of spec 006 on deals of flow A (all pass in the round) or of
+/// flow B (announcements and kontras at random).
+fn no_leak(flow_b: bool) -> Counts {
     let two_hands = Cell::new(0u32);
+    let after_something_said = Cell::new(0u32);
+    let said_and_partner_hidden = Cell::new(0u32);
+    let another_partner = Cell::new(0u32);
     let hand_and_discards = Cell::new(0u32);
     let hand_and_talon = Cell::new(0u32);
     let which_card_hidden = Cell::new(0u32);
@@ -107,12 +145,16 @@ fn c06_no_leak_when_hidden_cards_change_places() {
 
     run_cases(
         30_000,
-        case(),
+        case(flow_b),
         |(seed, dealer, choices, stop, observer, pick)| {
             let dealer = seat(dealer);
             let observer = seat(observer);
             // The moment: before action number `stop` (or the end of the deal).
-            let finished = play_random(seed, dealer, &choices, |_| {});
+            let finished = if flow_b {
+                play_random_b(seed, dealer, &choices, |_| {})
+            } else {
+                play_random(seed, dealer, &choices, |_| {})
+            };
             let actions: Vec<Action> = finished.full().actions().collect();
             let stop = stop.min(actions.len());
             let history = &actions[..stop];
@@ -270,24 +312,83 @@ fn c06_no_leak_when_hidden_cards_change_places() {
                 _ => &two_hands,
             };
             counter.set(counter.get() + 1);
+            let said = history
+                .iter()
+                .any(|action| matches!(action, Action::Announce(_) | Action::Kontra(_)));
+            if said {
+                after_something_said.set(after_something_said.get() + 1);
+                if game.public().partner() == tarok_engine::PublicPartner::NotKnown {
+                    said_and_partner_hidden.set(said_and_partner_hidden.get() + 1);
+                }
+            }
+            if game.full().partner() != other.full().partner() {
+                another_partner.set(another_partner.get() + 1);
+            }
             Ok(())
         },
     );
 
-    let compared =
-        two_hands.get() + hand_and_discards.get() + hand_and_talon.get() + which_card_hidden.get();
+    Counts {
+        two_hands: two_hands.get(),
+        hand_and_discards: hand_and_discards.get(),
+        hand_and_talon: hand_and_talon.get(),
+        which_card_hidden: which_card_hidden.get(),
+        not_a_legal_deal: not_a_legal_deal.get(),
+        after_something_said: after_something_said.get(),
+        said_and_partner_hidden: said_and_partner_hidden.get(),
+        another_partner: another_partner.get(),
+    }
+}
+
+#[test]
+fn c06_no_leak_when_hidden_cards_change_places() {
+    let counts = no_leak(false);
+    let compared = counts.compared();
     println!(
         "no-leak cases compared: {compared} (two hands {}, hand and hidden discards {}, hand and \
          unshown talon {}, which card the declarer hid {}); {} changes were not a legal deal",
-        two_hands.get(),
-        hand_and_discards.get(),
-        hand_and_talon.get(),
-        which_card_hidden.get(),
-        not_a_legal_deal.get()
+        counts.two_hands,
+        counts.hand_and_discards,
+        counts.hand_and_talon,
+        counts.which_card_hidden,
+        counts.not_a_legal_deal
     );
     assert!(compared >= 10_000, "{compared} cases compared");
-    assert!(two_hands.get() >= 5_000);
-    assert!(hand_and_discards.get() >= 300);
-    assert!(hand_and_talon.get() >= 300);
-    assert!(which_card_hidden.get() >= 300);
+    assert!(counts.two_hands >= 5_000);
+    assert!(counts.hand_and_discards >= 300);
+    assert!(counts.hand_and_talon >= 300);
+    assert!(counts.which_card_hidden >= 300);
+    // Flow A: nothing is said in these deals.
+    assert_eq!(counts.after_something_said, 0);
+}
+
+/// Spec 009, criterion 38: hidden sides stay hidden. The cases of `c06` on
+/// deals with announcements and kontras. A built pair of deals is in
+/// `tests/encode.rs` (c38).
+#[test]
+fn c38_no_leak_with_announcements_and_kontra() {
+    let counts = no_leak(true);
+    let compared = counts.compared();
+    println!(
+        "no-leak cases of flow B compared: {compared} (two hands {}, hand and hidden discards \
+         {}, hand and unshown talon {}, which card the declarer hid {}); {} changes were not a \
+         legal deal; {} compared after something was said, {} of them with the partner still \
+         hidden; {} with another partner in the other world",
+        counts.two_hands,
+        counts.hand_and_discards,
+        counts.hand_and_talon,
+        counts.which_card_hidden,
+        counts.not_a_legal_deal,
+        counts.after_something_said,
+        counts.said_and_partner_hidden,
+        counts.another_partner
+    );
+    assert!(compared >= 8_000, "{compared} cases compared");
+    assert!(counts.two_hands >= 4_000);
+    assert!(counts.after_something_said >= 4_000);
+    assert!(counts.said_and_partner_hidden >= 500);
+    // Rare: the called king must change hands between two seats the
+    // observer cannot see, and everything said must stay legal. The built
+    // pair of `tests/encode.rs` is such a case.
+    assert!(counts.another_partner >= 20);
 }

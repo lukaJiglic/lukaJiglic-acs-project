@@ -16,8 +16,8 @@
 //!
 //! Tokens, state and mask read the public view and the observer's private
 //! view of the game only. The critic features and the targets read the full
-//! view. Rules that are not built yet (announcements, kontra, klop, berač,
-//! radelci) leave their features zero and their slots masked.
+//! view. Rules that are not built yet (klop, berač, radelci) leave their
+//! features zero and their slots masked.
 //!
 //! The sizes below are the contract. `tests/encoding_contract.rs` reads the
 //! document and compares.
