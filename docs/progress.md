@@ -12,6 +12,16 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 **Next:** the next step.
 ```
 
+## 2026-11-24 — reports on specs 009 and 015; Batches 15 and 16 answered (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 8)
+
+**Done:** the `engine-core` session reported spec 009 built as far as Rust goes on the branch `spec-009` (last commit `dd012d9`). Checked by the main session from the branch: a test exists for each of the criteria 1 to 44, 50 and 51; the `engine` workflow is green on the branch tip; no `unsafe`; the version is 0.3.0. From the session's Results, not checked again: 231 engine tests, 52 of 52 planted wrong rules caught, 87.5 decisions per random deal (56.8 in flow A), 35% of them in the round. The user answered Batches 15 and 16 with a for every item (D146, D147): specs 016 and 017 are approved.
+**Spec 015, from the session's interim notes, not verified:** the twelve comparisons ran from committed code and agree with the scratch numbers. With a limit of 5,200 MiB on the allocator nothing spills into shared memory and the update step stays at 4.1 to 4.3 s (long run: 5.2 to 5.8 s). A trial with 5,000 MiB was running at 13:12.
+**Broken or open:**
+- The review agent's `cargo test` ran at 13:12 to 13:20, at the start of that trial. Its first updates are disturbed in timing. The main session runs no build during a timed run from now on.
+- Spec 009: criteria 45, 46 and the Python side of 52 need the module build. The review pass over its code is not back.
+- Flow B and rewards: a lost announced valat at mort is a reward of −160. Random play announces valat in about 40% of deals. For the training spec of flow B.
+**Next:** the review findings to the `engine-core` session, with the fifth case of D147. Spec 015: report, verification, review pass, commits. Then spec 017, then the rebuild and the merge of spec 009, then spec 016.
+
 ## 2026-11-24 — after the usage limit: sessions restarted; specs 016 and 017 drafted (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 8)
 
 **Done:** both side sessions had stopped at the usage limit; both were started again after its reset. A review pass over the engine code of spec 009 (commits `719a968..5f198bc` of the branch `spec-009`) was ordered from a separate agent. Specs 016 and 017 drafted from D142 and asked as Batch 15.

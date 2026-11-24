@@ -46,5 +46,5 @@ Tool and model: ...
 | 013 | [Three rulings of 12 November](013-rulings-of-12-nov.md) | done 2026-11-12 |
 | 014 | [Longer run on deal flow A](014-longer-run-flow-a.md) | done 2026-11-24 |
 | 015 | [Findings of the longer run](015-findings-of-the-longer-run.md) | approved 2026-11-24 (D140); in execution (session `train-env`) |
-| 016 | [Aligned updates: every played deal is trained on](016-aligned-updates.md) | draft 2026-11-24; waits for approval (Batch 15) and for spec 009 |
-| 017 | [Trial: the entropy controller's lower limit at 0.001](017-entropy-floor-trial.md) | draft 2026-11-24; waits for approval (Batch 15) and for spec 015 |
+| 016 | [Aligned updates: every played deal is trained on](016-aligned-updates.md) | approved 2026-11-24 (D146); waits for the merge of spec 009 |
+| 017 | [Trial: the entropy controller's lower limit at 0.001](017-entropy-floor-trial.md) | approved 2026-11-24 (D146); runs after spec 015, before the binding is rebuilt |

@@ -40,7 +40,8 @@
 - 2026-11-24, later: Batch 13 answered (D141; 3 b against the recommendation: no duty to keep an announced ultimo card), Batch 14 answered (D142, all a), spec 009 approved (D143). Claude no longer asks before every commit (D144). The repo is public (D145).
 - 2026-11-24, afternoon: both side sessions stopped at the usage limit and were started again after its reset. Spec 009 has stages (a), (b), (c), (e) and the property tests on the branch `spec-009` (231 engine tests); the wrong-rule run and the Results are left. Spec 015 has parts A and C done; part B found the excess in shared GPU memory, from about 5,400 MiB of allocator size. Specs 016 (aligned updates) and 017 (the trial of the lower entropy limit) are drafted from D142; Batch 15 below.
 - 2026-11-24, 13:20: the `engine-core` session reported spec 009 built as far as Rust goes (branch `spec-009`, last commit `dd012d9`; 231 engine tests; 52 of 52 planted wrong rules caught; the `engine` workflow green on the branch). Open: criteria 45, 46 and the Python side of 52, which need the module build. Its three questions are Batch 16 below. The `train-env` session reported the twelve comparisons of spec 015 done from committed code and the first memory trial: with a limit of 5,200 MiB on the allocator nothing spills and the update step stays at 4.1 to 4.3 s. Neither report is verified yet.
-- **Waiting on the user, to decide:** Batch 16 (three readings of spec 009); Batch 15 (the criteria of specs 016 and 017 and their open points); C13 (the new figure of G3; better after spec 015); C16 (which entropy mean the controller steers on); the open points A, B and D of spec 014; later C14.
+- 2026-11-24, 13:25: Batches 15 and 16 answered, a for every item (D146, D147). Specs 016 and 017 are approved. Order of the GPU work: spec 015, then spec 017 on the engine 0.2.0, then the rebuild of the binding for spec 009 and its merge, then spec 016.
+- **Waiting on the user, to decide:** C13 (the new figure of G3; better after spec 015); C16 (which entropy mean the controller steers on); the open points A, B and D of spec 014; later C14.
 - **Dates:** the repo must be public or shared with the instructor on Mon 23 Nov (R5); it is private on 2026-11-23. The proposal, wireframe and pitch slide were due Wed 18 Nov; the files hold no record that they were handed in.
 - **Waiting on the user:** corrections to the wireframe and `pitch.md`; the proposal format. Later: C13 (the new figure of G3, after the smoke run), C14 (tier of the trula toggle).
 - Next: spec 013 in the `engine-core` session and spec 008 in the `train-env` session; verification, review pass, the user's read of each diff, commit.
@@ -60,7 +61,7 @@ Open:
 - **C16. Which entropy mean the controller steers on.** Now: the mean over all decisions of a phase, forced ones included. In the smoke runs the share of forced decisions in the bidding went from 28% to 0%, so the mean moved without the policy getting firmer or looser. (a) the mean over decisions with two or more legal actions, with the targets set again as a quarter of random play under that mean; (b) keep the mean over all decisions. Recommended: (a). Asked 2026-11-12.
 - **C14. Tier of S40's other option** ("in any order"). Recommended: like S14 and S18 in D98: selectable in T0 with the note "agent ni učen s tem pravilom". Asked when the engine gets its toggles.
 
-## Batch 16 — three readings found while building spec 009 (asked 2026-11-24; open)
+## Batch 16 — three readings found while building spec 009 (asked 2026-11-24, answered 2026-11-24: a for all three; see D147)
 
 From the Results of spec 009 on the branch `spec-009`. The code follows the spec as approved; each item would change it. The first option is the recommendation.
 
@@ -70,7 +71,7 @@ From the Results of spec 009 on the branch `spec-009`. The code follows the spec
 | B16-2 | A declarer who holds the called king announces kralj ultimo. Only the holder may announce it, so every seat then knows the declarer plays alone. Reading 3 of spec 009 names four cases in which the partner is public; this is not one of them, so the observation still shows the partner as hidden | (a) add it as a fifth case: the declarer is shown as alone. (b) leave it | a: it is public knowledge at the table; without it the network has to learn it from the token |
 | B16-3 | An announced pagat ultimo shows who holds the pagat; an announced kralj ultimo shows who holds the called king. The state features that track where cards can be (block F) do not use this | (a) use it, built with the training spec for flow B. (b) leave it; the token is in the sequence | a: block F exists so that the network does not have to work out such facts; no hurry, the engine's rules do not depend on it |
 
-## Batch 15 — specs 016 and 017 (asked 2026-11-24; open)
+## Batch 15 — specs 016 and 017 (asked 2026-11-24, answered 2026-11-24: a for all seven; see D146)
 
 Both specs follow from D142. Each needs the approval of its acceptance criteria (D73). The first option is the recommendation.
 

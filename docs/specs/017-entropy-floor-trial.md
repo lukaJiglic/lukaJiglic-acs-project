@@ -1,6 +1,6 @@
 # 017 — Trial: the entropy controller's lower limit at 0.001
 
-Status: **draft** (2026-11-24). Waits for the user's approval of the acceptance criteria (D73) and for the commit of spec 015.
+Status: **approved** (2026-11-24, D146). Executed after spec 015 is committed, on the installed engine 0.2.0, before the binding is rebuilt for spec 009.
 
 Tool and model: Claude Code, claude-fable-5-2. Drafted by the main session; executed in the `train-env` session.
 
@@ -87,6 +87,12 @@ Three or more new configs in `src/train/configs/`, `src/train/tests/test_spec017
   - (b) Run it after the merge of spec 009, on flow B. Both arms of the transformer are then new runs (about twice the time, and deals are longer), and the first look at flow B is mixed into the trial.
 - **B. The seeds.** (a) Three MLP seeds per arm and one transformer seed. Recommended: the MLP is cheap and shows the size of chance; a second transformer pair costs about three more hours. (b) One seed everywhere. (c) Two transformer seeds per arm as well.
 - **C. The rule of criterion 14 and the recommendation of criterion 15.** (a) As written. Recommended: with no difference shown, nothing changes. (b) With no difference shown, take 0.001 if the entropy of the play came closer to its target.
+
+## Answers to the open points (D146)
+
+- A. (a) The trial runs right after spec 015, before the binding is rebuilt.
+- B. (a) Three MLP seeds per arm, one transformer seed.
+- C. (a) The rule of criterion 14 and the recommendation of criterion 15 as written.
 
 ## Results
 

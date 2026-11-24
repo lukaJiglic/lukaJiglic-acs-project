@@ -1,6 +1,6 @@
 # 016 — Aligned updates: every played deal is trained on
 
-Status: **draft** (2026-11-24). Waits for the user's approval of the acceptance criteria (D73) and for the merge of spec 009.
+Status: **approved** (2026-11-24, D146). Waits for the merge of spec 009.
 
 Tool and model: Claude Code, claude-fable-5-2. Drafted by the main session; executed in the `train-env` session.
 
@@ -104,6 +104,12 @@ Inferred from the code, not measured: the trained deals are not a fair sample of
 - **A. The old collection.** (a) Keep `rolling` in the code behind the config key. Recommended: the configs of specs 008 and 014 can still be run as they were, and the two modes can be compared. (b) Remove it. Less code, but the old configs describe runs that cannot be repeated.
 - **B. The speed gate of criterion 18.** (a) 10%. Recommended: under that the change does not pay for a second code path. (b) No gate, only the report.
 - **C. Which mode later runs use.** Decided by the user from the Results. Proposed rule: `aligned` if criteria 18 and 19 hold.
+
+## Answers to the open points (D146)
+
+- A. (a) `rolling` stays in the code behind the config key.
+- B. (a) The gate of criterion 18 is 10%.
+- C. Not decided. The user decides from the Results.
 
 ## Results
 
