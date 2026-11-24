@@ -11,6 +11,7 @@ use common::flow::{
     A, B, C, D, act, levels, may_by_seat, pass_round, round_deal, round_game, say,
     seeded_game_b_with,
 };
+use common::sides::known_from_events;
 use tarok_engine::Contract::{SoloTri, Tri};
 use tarok_engine::{
     Action, ActionSet, Bonus, Card, Deal, Game, GameError, Phase, PublicPartner, Seat, Suit, Target,
@@ -481,6 +482,9 @@ fn legal_from_what_the_seat_sees(game: &Game, seat: Seat) -> ActionSet {
     // The declarer's side as far as the seat knows it. Its own side: it is
     // the declarer, or it holds the called king.
     let own_side = seat == declarer || holds_king;
+    // The seats shown as opponents by their own kontra or sub (D150), read
+    // from the public events.
+    let shown = known_from_events(game).opponents;
     let side_of = |other: Seat| -> Option<bool> {
         if other == declarer {
             return Some(true);
@@ -495,6 +499,7 @@ fn legal_from_what_the_seat_sees(game: &Game, seat: Seat) -> ActionSet {
             // declarer alone: every other seat but the declarer is an
             // opponent.
             PublicPartner::NotKnown if holds_king => Some(false),
+            PublicPartner::NotKnown if shown[other.index()] => Some(false),
             PublicPartner::NotKnown => None,
         }
     };
@@ -561,8 +566,17 @@ fn c16_legal_actions_depend_only_on_what_the_seat_knows() {
     let turns: [(Seat, &[Action]); 11] = [
         (A, &[announce(Bonus::Trula)]),
         (B, &[announce(Bonus::Kralji)]),
-        (C, &[announce(Bonus::Valat)]),
-        (D, &[kontra(Target::Game), kontra(Target::Trula)]),
+        (C, &[]),
+        // D says kontra: it is shown as an opponent, in both deals (D150).
+        // Then it announces the valat.
+        (
+            D,
+            &[
+                kontra(Target::Game),
+                kontra(Target::Trula),
+                announce(Bonus::Valat),
+            ],
+        ),
         (A, &[kontra(Target::Game)]),
         (B, &[]),
         (C, &[]),
@@ -572,6 +586,7 @@ fn c16_legal_actions_depend_only_on_what_the_seat_knows() {
         (C, &[]),
     ];
     let mut compared = 0;
+    let mut valat_seen = 0;
     for (seat, actions) in turns {
         for step in 0..=actions.len() {
             for game in &games {
@@ -587,12 +602,19 @@ fn c16_legal_actions_depend_only_on_what_the_seat_knows() {
                     "{seat:?}, action {step} of its turn"
                 );
                 compared += 1;
-                // D never may raise B's kralji or C's valat: it does not
-                // know their sides. In the first deal it would be the
-                // owner's side for the kralji, in the second for the valat.
-                if seat == D {
-                    assert!(!may(&games[0], kontra(Target::Kralji)));
-                    assert!(!may(&games[0], kontra(Target::Valat)));
+                // Neither A nor D may ever raise B's kralji: they do not
+                // know B's side. In the second deal B is the partner.
+                assert!(!may(&games[0], kontra(Target::Kralji)));
+                // D150: once D is shown as an opponent, A knows whose the
+                // valat is and may say kontra on it, in both deals. A does
+                // not hold the called king in either.
+                let d_is_shown = games[0].public().side_of(D) == Some(false);
+                let valat_is_there = games[0].public().announced(Bonus::Valat) == Some(D);
+                if seat == A && valat_is_there {
+                    assert!(d_is_shown);
+                    assert!(may(&games[0], kontra(Target::Valat)));
+                    assert!(may(&games[1], kontra(Target::Valat)));
+                    valat_seen += 1;
                 }
             }
             let action = actions.get(step).copied().unwrap_or(Action::Done);
@@ -602,7 +624,15 @@ fn c16_legal_actions_depend_only_on_what_the_seat_knows() {
         }
     }
     assert!(compared >= 9);
+    assert!(valat_seen >= 4, "{valat_seen} turns of A with D's valat");
     // What all see is the same in both deals, to the end of the round.
+    for game in &games {
+        assert_eq!(game.public().partner(), PublicPartner::NotKnown);
+        assert_eq!(
+            Seat::ALL.map(|seat| game.public().side_of(seat)),
+            [Some(true), None, None, Some(false)]
+        );
+    }
     assert_eq!(
         format!("{:?}", games[0].public()),
         format!("{:?}", games[1].public())
@@ -747,4 +777,201 @@ fn c14_what_is_said_and_shows_no_partner() {
         let other = up_to_c(&round_deal(B));
         assert!(!may(&other, action), "{action:?} by an opponent");
     }
+}
+
+/// What all know about the side of each seat (A, B, C, D): `Some(true)` the
+/// declarer's, `Some(false)` the opponents', `None` not known.
+fn sides(game: &Game) -> [Option<bool>; 4] {
+    Seat::ALL.map(|seat| game.public().side_of(seat))
+}
+
+/// D150: a seat that says kontra or sub on the game, or on a bonus the
+/// declarer announced, is shown as an opponent. Written out by hand.
+#[test]
+fn c15_a_seat_shown_as_an_opponent_by_its_own_kontra() {
+    let on_trula = kontra(Target::Trula);
+    let on_game = kontra(Target::Game);
+    let (ours, theirs) = (Some(true), Some(false));
+
+    // 1. A plays tri and does not hold the called king. C is the hidden
+    // partner. Before anything is said only the declarer's side is known.
+    let mut game = round_game(C, Tri);
+    assert_eq!(sides(&game), [ours, None, None, None]);
+    say(&mut game, A, &[]);
+    // B says kontra on the game: only an opponent may. Every seat knows
+    // B's side from that action on. The partner stays hidden.
+    raise(&mut game, B, Target::Game);
+    assert_eq!(sides(&game), [ours, theirs, None, None]);
+    assert_eq!(game.public().partner(), PublicPartner::NotKnown);
+    // B announces trula: it is the opponents', and all know it.
+    act(&mut game, B, announce(Bonus::Trula));
+    act(&mut game, B, Action::Done);
+    // C holds the called king and knew B's side before. Its kontra on B's
+    // trula would show it as the partner: it acts for the declarer's side
+    // (D148 case i, also on a bonus of a seat shown as an opponent).
+    assert!(may(&game, on_trula));
+    let mut c_speaks = game.clone();
+    raise(&mut c_speaks, C, Target::Trula);
+    assert_eq!(c_speaks.public().partner(), PublicPartner::With(C));
+    assert_eq!(sides(&c_speaks), [ours, theirs, ours, theirs]);
+    say(&mut game, C, &[]);
+    // D is an opponent and knows B's side now. Kontra is not for its
+    // side to say.
+    assert!(!may(&game, on_trula), "kontra is not for B's side");
+    say(&mut game, D, &[]);
+    // A does not hold the called king. It knows B's side from what B
+    // said, so it may say kontra on B's trula.
+    assert!(may(&game, on_trula), "the declarer knows B's side");
+    raise(&mut game, A, Target::Trula);
+    // That shows nothing: the declarer need not hold the called king to
+    // know the side of a seat shown as an opponent. (On a bonus of a seat
+    // not shown it would: D148 case iii, `c15` above.)
+    assert_eq!(game.public().partner(), PublicPartner::NotKnown);
+    assert_eq!(sides(&game), [ours, theirs, None, None]);
+    act(&mut game, A, Action::Done);
+    // B may say re on its own trula. It passes.
+    assert!(may(&game, on_trula));
+    say(&mut game, B, &[]);
+    // Re is for B's side: not for C.
+    assert!(!may(&game, on_trula));
+    say(&mut game, C, &[]);
+    // D knows B's side and is on it: re.
+    assert!(may(&game, on_trula), "D knows B's side");
+    raise(&mut game, D, Target::Trula);
+    // The engine shows nothing for it. (D is an opponent by this re; that
+    // further case is not built, D150.) Above all it does not show a
+    // partner.
+    assert_eq!(game.public().partner(), PublicPartner::NotKnown);
+    assert_eq!(sides(&game), [ours, theirs, None, None]);
+    act(&mut game, D, Action::Done);
+    // Sub by the declarer and mort by D: still nothing.
+    raise(&mut game, A, Target::Trula);
+    act(&mut game, A, Action::Done);
+    say(&mut game, B, &[]);
+    say(&mut game, C, &[]);
+    raise(&mut game, D, Target::Trula);
+    assert_eq!(levels(&game), [1, 4, 0, 0, 0, 0]);
+    assert_eq!(game.public().partner(), PublicPartner::NotKnown);
+    assert_eq!(sides(&game), [ours, theirs, None, None]);
+
+    // 2. Kontra on a bonus of the declarer, and sub, show an opponent too.
+    // Two seats shown as opponents do not make the third the partner: the
+    // declarer may hold the called king itself. Two worlds: C holds the
+    // king, or A does.
+    let said = |king: Seat| {
+        let mut game = round_game(king, Tri);
+        say(&mut game, A, &[announce(Bonus::Trula)]);
+        // Kontra on the declarer's trula.
+        raise(&mut game, B, Target::Trula);
+        assert_eq!(sides(&game), [ours, theirs, None, None]);
+        act(&mut game, B, Action::Done);
+        say(&mut game, C, &[]);
+        say(&mut game, D, &[]);
+        // The declarer's re shows nothing.
+        raise(&mut game, A, Target::Trula);
+        assert_eq!(sides(&game), [ours, theirs, None, None]);
+        act(&mut game, A, Action::Done);
+        say(&mut game, B, &[]);
+        say(&mut game, C, &[]);
+        // Sub by D.
+        raise(&mut game, D, Target::Trula);
+        assert_eq!(sides(&game), [ours, theirs, None, theirs]);
+        assert_eq!(game.public().partner(), PublicPartner::NotKnown);
+        act(&mut game, D, Action::Done);
+        say(&mut game, A, &[]);
+        say(&mut game, B, &[]);
+        game
+    };
+    let with_partner = said(C);
+    let mut alone = said(A);
+    assert_eq!(with_partner.full().partner(), Some(C));
+    assert_eq!(alone.full().partner(), None);
+    // What all see is the same in both worlds.
+    assert_eq!(
+        format!("{:?}", with_partner.public()),
+        format!("{:?}", alone.public())
+    );
+
+    // 3. All three other seats shown as opponents: the declarer plays
+    // alone, and all know it. C says kontra on the game where it is an
+    // opponent. Where it is the partner it may not.
+    assert!(!may(&with_partner, on_game));
+    raise(&mut alone, C, Target::Game);
+    assert_eq!(sides(&alone), [ours, theirs, theirs, theirs]);
+    assert_eq!(alone.public().partner(), PublicPartner::Alone);
+}
+
+/// Criterion 16 with D150: what all know about the sides follows from what
+/// was said. On random deals of flow B, at every decision before the
+/// called king is played, the engine's public partner and the public side
+/// of every seat are what a second reading of the public events gives
+/// (`common::sides`), and they are true of the deal.
+#[test]
+fn c16_what_all_know_about_the_sides_follows_from_what_was_said() {
+    let mut decisions = 0u32;
+    let mut an_opponent_shown = 0u32;
+    let mut two_shown = 0u32;
+    let mut alone_by_three = 0u32;
+    let mut their_bonus_raised = 0u32;
+    for seed in 0..2_000u64 {
+        seeded_game_b_with(seed, |game| {
+            let public = game.public();
+            let before_play = public.tricks().is_empty() && public.current_trick().is_empty();
+            if public.declarer().is_none() || public.called_king_played() {
+                return;
+            }
+            let known = known_from_events(game);
+            // The engine and the second reading agree.
+            assert_eq!(public.partner(), known.partner(game), "seed {seed}");
+            for seat in Seat::ALL {
+                assert_eq!(
+                    public.side_of(seat),
+                    known.side_of(game, seat),
+                    "seed {seed}, {seat:?}"
+                );
+            }
+            // What is shown is true.
+            let full = game.full();
+            match public.partner() {
+                PublicPartner::With(seat) => assert_eq!(full.partner(), Some(seat)),
+                PublicPartner::Alone => assert_eq!(full.partner(), None),
+                PublicPartner::NotKnown => {}
+            }
+            for seat in Seat::ALL {
+                if let Some(side) = public.side_of(seat) {
+                    assert_eq!(side, full.on_declarer_side(seat), "seed {seed}, {seat:?}");
+                }
+            }
+            if !before_play || game.phase() != Phase::Announcements {
+                return;
+            }
+            // How often the cases of D150 come up in the round.
+            decisions += 1;
+            let shown = known.opponents.iter().filter(|&&shown| shown).count();
+            if public.partner() == PublicPartner::NotKnown {
+                an_opponent_shown += u32::from(shown >= 1);
+                two_shown += u32::from(shown == 2);
+                // A bonus of a seat shown as an opponent was raised and
+                // the partner is still hidden.
+                their_bonus_raised += u32::from(Bonus::ALL.into_iter().any(|bonus| {
+                    public.announced(bonus).is_some_and(|announcer| {
+                        known.opponents[announcer.index()]
+                            && public.kontra_level(Target::of(bonus)) > 0
+                    })
+                }));
+            }
+            alone_by_three += u32::from(shown == 3 && known.holder.is_none());
+        });
+    }
+    println!(
+        "{decisions} decisions in the round of 2,000 random deals: {an_opponent_shown} with a \
+         seat shown as an opponent and the partner hidden, {two_shown} of them with two such \
+         seats, {their_bonus_raised} with a raised bonus of such a seat; {alone_by_three} with \
+         the declarer alone because all three are shown"
+    );
+    assert!(decisions > 20_000);
+    assert!(an_opponent_shown >= 1_000);
+    assert!(two_shown >= 100);
+    assert!(their_bonus_raised >= 100);
+    assert!(alone_by_three >= 20);
 }

@@ -9,6 +9,7 @@ pub mod built;
 pub mod encoding;
 pub mod flow;
 pub mod second_scorer;
+pub mod sides;
 pub mod written;
 
 use proptest::strategy::Strategy;

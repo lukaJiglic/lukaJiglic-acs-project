@@ -298,6 +298,13 @@ fn d1_bits(game: &Game, observer: Seat, announcer: Seat) -> (bool, bool) {
             PublicPartner::With(seat) => Some(announcer == seat),
             PublicPartner::Alone => Some(false),
             PublicPartner::NotKnown if partner || own_king => Some(false),
+            // A seat shown as an opponent by its own kontra or sub (D150),
+            // read from the public events.
+            PublicPartner::NotKnown
+                if common::sides::known_from_events(game).opponents[announcer.index()] =>
+            {
+                Some(false)
+            }
             PublicPartner::NotKnown => None,
         }
     };
@@ -492,6 +499,51 @@ fn c36_state_block_d_holds_the_announcements_by_side_and_the_kontra_levels() {
         check_block_d(&game, observer, &observation);
     }
 
+    // A seat shown as an opponent by its own kontra (D150): its
+    // announcements are on the opponents' side for every seat.
+    let mut game = round_game(C, Tri);
+    say(&mut game, A, &[]);
+    act(&mut game, B, ann(Bonus::Trula));
+    // A and D do not know B's side yet. C holds the called king and knows.
+    let unknown = bits(&[TRULA, OPPONENTS + TRULA]);
+    let theirs = bits(&[OPPONENTS + TRULA]);
+    assert_eq!(d1(&game, A), unknown);
+    assert_eq!(d1(&game, D), unknown);
+    assert_eq!(d1(&game, B), theirs);
+    assert_eq!(d1(&game, C), theirs);
+    // B says kontra on the game: it is an opponent, and all know it.
+    act(&mut game, B, k(Target::Game));
+    assert_eq!(game.public().partner(), PublicPartner::NotKnown);
+    for observer in Seat::ALL {
+        let observation = observe(&game, observer);
+        assert_eq!(features(&observation, "D1"), theirs, "{observer:?}");
+        // The partner is still hidden: no seat in B6, not "alone" in B7.
+        assert_eq!(features(&observation, "B6"), [0.0; 4]);
+        assert_eq!(features(&observation, "B7")[3], 0.0);
+        check_block_d(&game, observer, &observation);
+    }
+    // All three other seats shown as opponents: "the declarer is publicly
+    // alone" in B7. A holds the called king here.
+    let mut game = round_game(A, Tri);
+    say(&mut game, A, &[ann(Bonus::Trula)]);
+    say(&mut game, B, &[k(Target::Game)]);
+    say(&mut game, C, &[k(Target::Trula)]);
+    say(&mut game, D, &[]);
+    say(&mut game, A, &[k(Target::Game)]);
+    say(&mut game, B, &[]);
+    say(&mut game, C, &[]);
+    assert_eq!(game.public().partner(), PublicPartner::NotKnown);
+    assert_eq!(features(&observe(&game, B), "B7")[3], 0.0);
+    act(&mut game, D, k(Target::Game));
+    assert_eq!(game.public().partner(), PublicPartner::Alone);
+    for observer in Seat::ALL {
+        let observation = observe(&game, observer);
+        let holds = if observer == A { 1.0 } else { 0.0 };
+        assert_eq!(features(&observation, "B7"), [0.0, 0.0, holds, 1.0]);
+        assert_eq!(features(&observation, "B6"), [0.0; 4]);
+        check_block_d(&game, observer, &observation);
+    }
+
     // Random deals of flow B: at every decision, for every seat, block D
     // is what follows from the public state and the seat's own view.
     let mut with_both_bits = 0u32;
@@ -508,10 +560,10 @@ fn c36_state_block_d_holds_the_announcements_by_side_and_the_kontra_levels() {
         });
     }
     assert!(checked > 80_000, "{checked} observations checked");
-    // Fewer than before D147: a declarer's kralj ultimo now makes every
-    // side known.
+    // Fewer with each of D147, D148 and D150: more of what is said makes
+    // a side known. 1,896 are left.
     assert!(
-        with_both_bits > 3_000,
+        with_both_bits > 1_200,
         "{with_both_bits} with an unknown side"
     );
 }

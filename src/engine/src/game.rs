@@ -58,17 +58,31 @@ pub enum Phase {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PublicPartner {
     /// Not known yet: no king is called, or the called king has not been
-    /// played.
+    /// played. Single seats may be known as opponents all the same: see
+    /// [`PublicView::side_of`].
     NotKnown,
     /// The declarer plays alone and all know it: a solo contract, the
     /// called king in the shown talon, the declarer played the called
-    /// king, or the round of announcements showed that the declarer holds
-    /// it (D147, D148).
+    /// king, the round of announcements showed that the declarer holds
+    /// it (D147, D148), or it showed all three other seats as opponents
+    /// (D150).
     Alone,
     /// This seat is the partner and all know it: it played the called
     /// king, or the round of announcements showed that it holds it (spec
     /// 009, criteria 10, 14 and 15).
     With(Seat),
+}
+
+/// What an action of the round of announcements shows every seat about
+/// the seat that takes it. See [`Game::shows`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Shows {
+    Nothing,
+    /// The seat holds the called king: it is the partner, or the declarer
+    /// who plays alone. The sides are public from the action on.
+    HoldsTheKing,
+    /// The seat is an opponent of the declarer (D150).
+    Opponent,
 }
 
 /// What a public event is. Every event is seen by all four seats.
@@ -176,11 +190,16 @@ pub struct Game {
     /// What was said in the round of announcements. Empty before it.
     round: Round,
     /// The round has shown who holds the called king, and so the sides:
-    /// see [`Game::shows_the_king_holder`]. A holder that is not the
-    /// declarer is the partner; a declarer who holds it plays alone. Read
-    /// only where a king was called and does not lie in the talon
+    /// see [`Game::shows`]. A holder that is not the declarer is the
+    /// partner; a declarer who holds it plays alone. Read only where a
+    /// king was called and does not lie in the talon
     /// ([`PublicView::partner`]).
     partner_shown: bool,
+    /// By seat: the round has shown this seat as an opponent of the
+    /// declarer, by its own kontra or sub on the game or on a bonus of the
+    /// declarer (D150). Read only while the partner is not public
+    /// ([`PublicView::side_of`]).
+    shown_opponents: [bool; 4],
     play: Option<PlayState>,
     /// The public events so far. Only the first `n_events` entries count.
     events: [Event; MAX_EVENTS],
@@ -218,6 +237,7 @@ impl Game {
             discards: CardSet::EMPTY,
             round: Round::new(dealer),
             partner_shown: false,
+            shown_opponents: [false; 4],
             play: None,
             events: [START; MAX_EVENTS],
             n_events: 1,
@@ -360,68 +380,93 @@ impl Game {
         self.declarer == Some(seat) || self.partner == Some(seat)
     }
 
-    /// Does this action of the round, about to be taken by `seat`, show
-    /// every seat who holds the called king? If it does, the sides are
-    /// public from the action on: a holder that is not the declarer is the
-    /// partner, and a declarer who holds the king plays alone.
+    /// What does this action of the round, about to be taken by `seat`,
+    /// show every seat about `seat`?
     ///
     /// This is the one place that says what the round shows (reading 3 of
-    /// spec 009 with D147 and D148). Each case follows from who may say
-    /// what; the engine works out nothing else from what is said.
+    /// spec 009 with D147, D148 and D150). Each case follows from who may
+    /// say what; the engine works out nothing else from what is said.
     ///
     /// - Kralj ultimo: only the holder of the called king may announce it
     ///   (criterion 10; by the declarer: D147).
-    /// - Re or mort on the game or on a bonus the declarer announced, by
-    ///   another seat than the declarer: those levels belong to the
-    ///   declarer's side, so the seat is the partner (criterion 14; on a
-    ///   bonus: D148, case ii). The declarer's own re or mort shows
-    ///   nothing.
-    /// - A raise of a bonus that another seat than the declarer announced,
-    ///   while the partner is hidden: a seat may raise a bonus only if it
-    ///   knows the announcer's side (criterion 15), and here only a holder
-    ///   of the called king knows it (D148, cases i and iii).
+    /// - A raise of a target whose side every seat knows. The game and a
+    ///   bonus of the declarer are the declarer's side's; a bonus of a
+    ///   seat shown as an opponent is the opponents'. Kontra and sub are
+    ///   said against the owner, re and mort for it (criterion 12). So a
+    ///   seat other than the declarer shows its own side by the raise.
+    ///   For the declarer's side: it is the partner (criterion 14; D148,
+    ///   cases i and ii). Against the declarer's side: it is an opponent
+    ///   (D150). The declarer's own raise shows nothing: its side is
+    ///   known, and it knows the owner from what was said.
+    /// - A raise of a bonus whose announcer's side is not public: a seat
+    ///   may raise a bonus only if it knows the announcer's side
+    ///   (criterion 15), and here only a holder of the called king knows
+    ///   it (D148, cases i and iii).
     ///
-    /// The last case is written without its two conditions, since neither
-    /// can change the answer. The first raise of a bonus is a kontra, which
-    /// belongs to the other side than the announcer's: it is never the
-    /// announcer's own. And from that raise on the sides are public, so a
-    /// later raise sets a flag that is set already. The same holds when
-    /// the sides were public before the round (a solo, the called king in
-    /// the talon): the flag is not read then.
-    fn shows_the_king_holder(&self, action: Action, seat: Option<Seat>) -> bool {
-        match action {
-            Action::Announce(bonus) => bonus == Bonus::KraljUltimo,
-            Action::Kontra(target) => {
-                let announcer = target.bonus().and_then(|bonus| self.round.announced(bonus));
-                if target == Target::Game || announcer == self.declarer {
-                    // The declarer's side owns the target.
-                    let next = self.round.level(target) + 1;
-                    seat != self.declarer && announce::is_re_or_mort(next)
-                } else {
-                    // A bonus of another seat than the declarer.
-                    true
-                }
-            }
-            _ => false,
+    /// Two things are left out on purpose. The last case has no test for
+    /// "not the announcer itself": the first raise of a bonus is a kontra,
+    /// which belongs to the other side than the announcer's, and from that
+    /// raise on the sides are public. And no case asks whether the sides
+    /// are public already: what is shown then is known already.
+    ///
+    /// One thing is not recorded although it follows: re or mort on a
+    /// bonus of a seat shown as an opponent, by another seat, shows that
+    /// seat as an opponent too. D150 names kontra and sub on the game and
+    /// on a bonus of the declarer only; the further case is a question in
+    /// the Results of the spec.
+    fn shows(&self, action: Action, seat: Option<Seat>) -> Shows {
+        let target = match action {
+            Action::Announce(Bonus::KraljUltimo) => return Shows::HoldsTheKing,
+            Action::Kontra(target) => target,
+            _ => return Shows::Nothing,
+        };
+        // Whose the target is, as every seat knows it: `Some(true)` the
+        // declarer's side's.
+        let owner = match target.bonus().and_then(|bonus| self.round.announced(bonus)) {
+            None => Some(true),
+            Some(announcer) => self.public().side_of(announcer),
+        };
+        let for_the_owner = announce::is_re_or_mort(self.round.level(target) + 1);
+        match owner {
+            None => Shows::HoldsTheKing,
+            Some(_) if seat == self.declarer => Shows::Nothing,
+            // For the declarer's side, by another seat: the partner.
+            Some(declarers) if declarers == for_the_owner => Shows::HoldsTheKing,
+            // Against the declarer's side.
+            Some(true) => Shows::Opponent,
+            // For the opponents, on a bonus of a seat shown as one.
+            Some(false) => Shows::Nothing,
         }
     }
 
     /// Is `other` on the declarer's side? `None` if `observer` cannot know
     /// it. It knows it (spec 009, criterion 15) when
     ///
-    /// - `other` is the declarer, or `observer` itself;
-    /// - the partner is public, or the declarer is publicly alone;
+    /// - every seat knows it ([`PublicView::side_of`]): `other` is the
+    ///   declarer, the partner is public or the declarer is publicly
+    ///   alone, or `other` is shown as an opponent (D150);
+    /// - `other` is `observer` itself;
     /// - `observer` holds the called king, or held it when it was played:
     ///   it is the partner, or the declarer who called its own king. For
     ///   such a seat every other seat but the declarer is an opponent.
     fn side_known_to(&self, observer: Seat, other: Seat) -> Option<bool> {
         let holds_the_king = self.partner == Some(observer)
             || (self.declarer == Some(observer) && self.partner.is_none());
-        let knows = self.declarer == Some(other)
-            || other == observer
-            || self.public().partner() != PublicPartner::NotKnown
-            || holds_the_king;
+        let knows = other == observer || holds_the_king || self.public().side_of(other).is_some();
         knows.then(|| self.on_declarer_side(other))
+    }
+
+    /// Records what an action of the round shows, before the action is
+    /// taken: [`Game::shows`] reads the state the action was legal in.
+    fn note_what_is_shown(&mut self, action: Action, seat: Option<Seat>) {
+        match self.shows(action, seat) {
+            Shows::Nothing => {}
+            Shows::HoldsTheKing => self.partner_shown = true,
+            Shows::Opponent => {
+                let seat = seat.expect("a seat speaks in the round");
+                self.shown_opponents[seat.index()] = true;
+            }
+        }
     }
 
     /// The seat to act takes an action. On an error nothing changes.
@@ -496,18 +541,12 @@ impl Game {
             }
             (Phase::Announcements, Action::Announce(bonus)) => {
                 self.log(EventKind::Announce(bonus), seat);
-                // Asked before the action is taken: it reads the state
-                // the action was legal in.
-                if self.shows_the_king_holder(action, seat) {
-                    self.partner_shown = true;
-                }
+                self.note_what_is_shown(action, seat);
                 self.round.announce(bonus);
             }
             (Phase::Announcements, Action::Kontra(target)) => {
                 self.log(EventKind::Kontra(target), seat);
-                if self.shows_the_king_holder(action, seat) {
-                    self.partner_shown = true;
-                }
+                self.note_what_is_shown(action, seat);
                 self.round.raise(target);
             }
             (Phase::Announcements, Action::Done) => {
@@ -717,6 +756,7 @@ impl fmt::Debug for PublicView<'_> {
             .field("discards_made", &self.discards_made())
             .field("shown_discards", &self.shown_discards())
             .field("partner", &self.partner())
+            .field("sides", &Seat::ALL.map(|seat| self.side_of(seat)))
             .field("announced", &Bonus::ALL.map(|bonus| self.announced(bonus)))
             .field(
                 "kontra_levels",
@@ -856,15 +896,43 @@ impl<'a> PublicView<'a> {
         if !contract.calls_king() || self.king_in_talon() {
             return PublicPartner::Alone;
         }
-        // Reading 3 of spec 009, with D147 and D148: the called king was
-        // played, it lies in the talon (above), or the round of
-        // announcements showed who holds it (`shows_the_king_holder`).
+        // Reading 3 of spec 009, with D147, D148 and D150: the called
+        // king was played, it lies in the talon (above), or the round of
+        // announcements showed who holds it (`Game::shows`).
         if !self.game.called_king_played && !self.game.partner_shown {
-            return PublicPartner::NotKnown;
+            // Or the round showed all three other seats as opponents: no
+            // seat is left to be the partner (D150).
+            let all_three = Seat::ALL.into_iter().all(|seat| {
+                self.game.declarer == Some(seat) || self.game.shown_opponents[seat.index()]
+            });
+            return if all_three {
+                PublicPartner::Alone
+            } else {
+                PublicPartner::NotKnown
+            };
         }
         match self.game.partner {
             Some(partner) => PublicPartner::With(partner),
             None => PublicPartner::Alone,
+        }
+    }
+
+    /// What everyone knows about the side of `seat`: `Some(true)` the
+    /// declarer's side, `Some(false)` the opponents', `None` not known.
+    ///
+    /// The declarer's own side is always known. The other seats' sides
+    /// are known once the partner is public or the declarer is publicly
+    /// alone ([`PublicView::partner`]). Before that a single seat can be
+    /// known as an opponent: it said kontra or sub on the game or on a
+    /// bonus the declarer announced, which only an opponent may (D150).
+    pub fn side_of(&self, seat: Seat) -> Option<bool> {
+        if self.game.declarer == Some(seat) {
+            return Some(true);
+        }
+        match self.partner() {
+            PublicPartner::With(partner) => Some(partner == seat),
+            PublicPartner::Alone => Some(false),
+            PublicPartner::NotKnown => self.game.shown_opponents[seat.index()].then_some(false),
         }
     }
 
@@ -961,8 +1029,8 @@ impl PrivateView<'_> {
 
     /// Is `other` on the declarer's side, as far as this seat knows?
     /// `None` if it cannot know: the partner is hidden, `other` is neither
-    /// the declarer nor this seat, and this seat does not hold the called
-    /// king (spec 009, criterion 15).
+    /// the declarer nor this seat nor shown as an opponent, and this seat
+    /// does not hold the called king (spec 009, criterion 15, D150).
     pub fn knows_side_of(&self, other: Seat) -> Option<bool> {
         self.game.side_known_to(self.seat, other)
     }

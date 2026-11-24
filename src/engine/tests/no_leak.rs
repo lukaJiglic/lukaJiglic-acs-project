@@ -122,6 +122,11 @@ struct Counts {
     /// Cases of the fifth kind in which the same actions were not legal
     /// with the king in the other hand.
     king_change_not_legal: u32,
+    /// Compared cases in which a seat is shown as an opponent while the
+    /// partner is hidden (D150).
+    opponent_shown: u32,
+    /// Of those: cases of the fifth kind.
+    opponent_shown_and_king_moved: u32,
     not_a_legal_deal: u32,
     /// Compared cases with an announcement or a kontra before the moment.
     after_something_said: u32,
@@ -168,6 +173,8 @@ fn no_leak(flow_b: bool) -> Counts {
     let king_changes_hands = Cell::new(0u32);
     let king_changes_hands_after_something_said = Cell::new(0u32);
     let king_change_not_legal = Cell::new(0u32);
+    let opponent_shown = Cell::new(0u32);
+    let opponent_shown_and_king_moved = Cell::new(0u32);
     let not_a_legal_deal = Cell::new(0u32);
 
     run_cases(
@@ -379,6 +386,20 @@ fn no_leak(flow_b: bool) -> Counts {
             );
             // ...and the observer sees no difference.
             same_for_the_observer(&here, &there);
+            // What all know about the sides is the same in both worlds: it
+            // may depend only on what was said and on the cards all have
+            // seen (criterion 16, D150).
+            assert_eq!(game.public().partner(), other.public().partner());
+            let shown = Seat::ALL.map(|seat| game.public().side_of(seat));
+            assert_eq!(shown, Seat::ALL.map(|seat| other.public().side_of(seat)));
+            if game.public().partner() == tarok_engine::PublicPartner::NotKnown
+                && shown.contains(&Some(false))
+            {
+                opponent_shown.set(opponent_shown.get() + 1);
+                if used == 4 {
+                    opponent_shown_and_king_moved.set(opponent_shown_and_king_moved.get() + 1);
+                }
+            }
 
             let counter = match used {
                 1 => &hand_and_discards,
@@ -420,6 +441,8 @@ fn no_leak(flow_b: bool) -> Counts {
         king_changes_hands: king_changes_hands.get(),
         king_changes_hands_after_something_said: king_changes_hands_after_something_said.get(),
         king_change_not_legal: king_change_not_legal.get(),
+        opponent_shown: opponent_shown.get(),
+        opponent_shown_and_king_moved: opponent_shown_and_king_moved.get(),
         not_a_legal_deal: not_a_legal_deal.get(),
         after_something_said: after_something_said.get(),
         said_and_partner_hidden: said_and_partner_hidden.get(),
@@ -476,6 +499,13 @@ fn c38_no_leak_with_announcements_and_kontra() {
         counts.king_changes_hands_after_something_said,
         counts.king_change_not_legal
     );
+    println!(
+        "a seat shown as an opponent while the partner is hidden: {} compared, {} of them with \
+         the called king in another hand",
+        counts.opponent_shown, counts.opponent_shown_and_king_moved
+    );
+    assert!(counts.opponent_shown >= 1_000);
+    assert!(counts.opponent_shown_and_king_moved >= 100);
     assert!(compared >= 15_000, "{compared} cases compared");
     assert!(counts.two_hands >= 10_000);
     assert!(counts.after_something_said >= 12_000);
