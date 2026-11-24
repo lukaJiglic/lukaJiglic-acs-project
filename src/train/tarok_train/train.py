@@ -72,6 +72,7 @@ SCHEMA = {
         "out_dir": str,
         "time_limit_minutes": float,
         "fault": str,
+        "gpu_memory_limit_mib": int,
     },
     "env": None,  # depends on the kind: see ENV_KEYS
     "model": {
@@ -147,6 +148,31 @@ CONTROL_PREFIX = "control-"
 # What the wall time of an update is split into (spec 008, criterion 10).
 CLOCKS = ("environment", "acting", "bookkeeping", "update")
 
+# GPU memory right now, read twice per update (spec 015, criterion 4): when acting is over, and
+# when the update step is over. "reserved" is what PyTorch's allocator holds from the card,
+# "allocated" the tensors in it. The two "gpu/peak_..." tags are the largest values since the start.
+MEMORY_TAGS = (
+    "gpu/reserved_after_acting_mib",
+    "gpu/allocated_after_acting_mib",
+    "gpu/reserved_after_update_mib",
+    "gpu/allocated_after_update_mib",
+)
+
+# Keys that were added to the config after runs had been made, with the value those runs had.
+# A checkpoint from before the key existed is read with that value, so it can still be resumed.
+# This is not a default for config files: a file without the key is refused.
+LATER_KEYS = {
+    ("run", "gpu_memory_limit_mib"): 0,  # spec 015: the runs before it had no limit on the allocator
+}
+
+# The cards (by number) on which this process has set a limit on PyTorch's allocator. A limit
+# holds for the process; a trainer without one must lift what an earlier trainer set.
+LIMITED_CARDS = set()
+
+# A limit this much above what PyTorch reports as the card's size is read as "the whole card".
+# The card reports a little less than its nominal size (6,143.7 MiB for a card of 6,144 MiB).
+CARD_SIZE_TOLERANCE = 0.01
+
 
 class ConfigError(ValueError):
     """The config file lacks a key, has an unknown key, or a value that cannot be used."""
@@ -189,6 +215,8 @@ def validate_config(cfg: dict) -> None:
     run = cfg["run"]
     if run["time_limit_minutes"] < 0:
         raise ConfigError("time_limit_minutes in [run] must be 0 (no limit) or more")
+    if run["gpu_memory_limit_mib"] < 0:
+        raise ConfigError("gpu_memory_limit_mib in [run] must be 0 (no limit) or more")
     if run["fault"] not in FAULTS:
         raise ConfigError(f"fault in [run] must be one of {FAULTS}, got {run['fault']!r}")
     if run["fault"] != "none" and not run["name"].startswith(CONTROL_PREFIX):
@@ -219,6 +247,77 @@ def load_config(path) -> dict:
     return cfg
 
 
+def gpu_state(when: str) -> dict:
+    """The reading of nvidia-smi `when` ("before" or "after") the run. An empty reading is said in one line."""
+    reading = gpu_snapshot()
+    if not reading:
+        print(f"the GPU state {when} the run could not be read: nvidia-smi gave no output this code can read")
+    return reading
+
+
+def with_later_keys(cfg: dict) -> dict:
+    """The config of a checkpoint, with every key of LATER_KEYS it lacks set to the value its run had."""
+    for (section, key), value in LATER_KEYS.items():
+        if section in cfg and key not in cfg[section]:
+            cfg[section][key] = value
+    return cfg
+
+
+def limit_gpu_memory(limit_mib: int, device) -> float | None:
+    """Limit PyTorch's allocator on a CUDA device to `limit_mib` MiB (spec 015). 0: no limit.
+
+    Why: on Windows the driver does not refuse memory above what the card has free. It places
+    the excess in shared system memory, and the run slows down without an error. The allocator
+    keeps freed blocks as a cache, and that cache is what grows past the card (measured in spec
+    015: tensors 2.2 GB between the phases and 4.4 GB at their peak, allocator 6.5 GB). With a
+    limit the allocator frees its cache and retries when a new block would pass the limit; only
+    if the tensors themselves do not fit does it raise an out-of-memory error.
+
+    The limit holds for the whole process. Returns the fraction of the card's memory that was
+    set, or None when nothing was set (the CPU, or no limit in a process that never set one).
+
+    No limit after a limit: if this process has limited the card before, 0 sets the fraction
+    back to 1.0, the whole card, and returns 1.0. That is the widest setting PyTorch takes. It
+    is not the same as never having set one: without any setting the driver may hand out more
+    than the card has (the spill this limit is for); with 1.0 the allocator stops at the
+    card's size.
+    """
+    device = torch.device(device)
+    if device.type != "cuda":
+        return None
+    # The calls below want the number of the card; "cuda" without a number is the current one.
+    card = device.index if device.index is not None else torch.cuda.current_device()
+    if limit_mib == 0:
+        if card not in LIMITED_CARDS:
+            return None
+        torch.cuda.set_per_process_memory_fraction(1.0, card)
+        LIMITED_CARDS.discard(card)
+        return 1.0
+    total_mib = torch.cuda.get_device_properties(card).total_memory / 2**20
+    if limit_mib > total_mib * (1.0 + CARD_SIZE_TOLERANCE):
+        raise ConfigError(f"gpu_memory_limit_mib in [run] is {limit_mib}, above the card's {total_mib:.0f} MiB")
+    fraction = min(1.0, limit_mib / total_mib)
+    torch.cuda.set_per_process_memory_fraction(fraction, card)
+    LIMITED_CARDS.add(card)
+    return fraction
+
+
+def gpu_limit_line(limit_mib: int, fraction) -> str:
+    """What a GPU run prints at its start about the limit. `fraction`: what `limit_gpu_memory` returned."""
+    if limit_mib:
+        return f"gpu memory: PyTorch's allocator is limited to {limit_mib:,} MiB"
+    if fraction is None:
+        return "gpu memory: no limit on PyTorch's allocator"
+    return "gpu memory: a limit set earlier in this process was lifted; PyTorch's allocator may take the whole card and not more"
+
+
+def gpu_memory_now(device) -> tuple | None:
+    """(reserved, allocated) in MiB at this moment, of this process on a CUDA device. None on the CPU."""
+    if torch.device(device).type != "cuda":
+        return None
+    return torch.cuda.memory_reserved(device) / 2**20, torch.cuda.memory_allocated(device) / 2**20
+
+
 def make_env(cfg_env: dict, seed: int):
     """The environment a config asks for. The engine's module is imported only when it is needed."""
     if cfg_env["kind"] == "mock":
@@ -234,6 +333,8 @@ class Trainer:
         self.cfg = copy.deepcopy(cfg)
         run, cfg_model, cfg_ppo, cfg_opp = (self.cfg[k] for k in ("run", "model", "ppo", "opponents"))
         self.device = torch.device(device)
+        # Before anything is put on the device. The limit holds for the whole process (spec 015).
+        self.gpu_memory_fraction = limit_gpu_memory(run["gpu_memory_limit_mib"], self.device)
         self.kind = run["network"]
         seed = run["seed"]
         torch.manual_seed(seed)
@@ -410,6 +511,7 @@ class Trainer:
             stats["task/score"] = float(deals.reward.mean())
         if getattr(self.env, "real_deals", False):
             stats.update(ppo.deal_stats(deals))
+        memory = [gpu_memory_now(self.device)]  # acting is over: the acting cache is at its largest
         lap = self._lap("bookkeeping", lap)
         stats.update(
             ppo.update(
@@ -419,6 +521,10 @@ class Trainer:
         )
         self._synchronise()
         lap = self._lap("update", lap)
+        memory.append(gpu_memory_now(self.device))  # the update step is over
+        if memory[0] is not None and memory[1] is not None:
+            for tag, value in zip(MEMORY_TAGS, (*memory[0], *memory[1])):
+                stats[tag] = float(value)
         self.net.eval()
         self.critic.eval()
         self.actor.reset()  # the weights changed: the cached keys and values are stale
@@ -551,16 +657,25 @@ class Trainer:
         )
 
     @classmethod
-    def load(cls, path, device, log_dir=None) -> "Trainer":
-        """A trainer that goes on from a checkpoint."""
-        data = torch.load(path, map_location=device, weights_only=True)
+    def load(cls, path, device, log_dir=None, gpu_memory_limit_mib=None) -> "Trainer":
+        """A trainer that goes on from a checkpoint.
+
+        gpu_memory_limit_mib: None keeps the checkpoint's value; a number replaces it. The limit
+        is a setting of the machine, not of the training, so a resumed run may change it.
+        """
+        # To the CPU first: the trainer sets the limit on the allocator when it is built, and until
+        # then nothing may be put on the card. `load_state_dict` moves the weights over afterwards.
+        data = torch.load(path, map_location="cpu", weights_only=True)
         version = data.get("encoding_version")
         if version != C.ENCODING_VERSION:
             raise EncodingVersionError(
                 f"the checkpoint was made for encoding version {version}; this code reads "
                 f"encoding version {C.ENCODING_VERSION} (docs/encoding.md). It cannot be loaded."
             )
-        trainer = cls(data["config"], device, log_dir)
+        cfg = with_later_keys(data["config"])
+        if gpu_memory_limit_mib is not None:
+            cfg["run"]["gpu_memory_limit_mib"] = gpu_memory_limit_mib
+        trainer = cls(cfg, device, log_dir)
         trainer.net.load_state_dict(data["model"])
         trainer.critic.load_state_dict(data["critic"])
         trainer.optimizer.load_state_dict(data["optimizer"])
@@ -661,6 +776,9 @@ def main(argv=None) -> int:
     parser.add_argument("--name", default=None, help="overrides [run] name")
     parser.add_argument("--fault", default=None, help="control runs only: overrides [run] fault")
     parser.add_argument("--time-limit-minutes", type=float, default=None, help="overrides [run] time_limit_minutes")
+    parser.add_argument(
+        "--gpu-memory-limit-mib", type=int, default=None, help="overrides [run] gpu_memory_limit_mib; 0 is no limit; also on --resume"
+    )
     args = parser.parse_args(argv)
 
     resume = None
@@ -669,7 +787,7 @@ def main(argv=None) -> int:
             if getattr(args, name) is not None:
                 parser.error(f"--{name.replace('_', '-')} cannot change on --resume: the checkpoint's config is used")
         resume = Path(args.resume)
-        cfg = torch.load(resume, map_location="cpu", weights_only=True)["config"]
+        cfg = with_later_keys(torch.load(resume, map_location="cpu", weights_only=True)["config"])
     else:
         cfg = load_config(args.config)
     # Overrides go into the config, so the checkpoint records what really ran.
@@ -678,6 +796,7 @@ def main(argv=None) -> int:
         ("run", "name", args.name),
         ("run", "fault", args.fault),
         ("run", "time_limit_minutes", args.time_limit_minutes),
+        ("run", "gpu_memory_limit_mib", args.gpu_memory_limit_mib),
         ("env", "tables", args.tables),
         ("env", "mode", args.mode),
         ("ppo", "seat_deals_per_update", args.seat_deals),
@@ -705,15 +824,17 @@ def main(argv=None) -> int:
     kind = cfg["env"]["kind"]
     what = f"mode {cfg['env']['mode']}" if kind == "mock" else f"{cfg['env']['threads']} threads"
     print(f"run {name}: {total} updates on {device}, environment {kind}, {cfg['env']['tables']} tables, {what}")
-    gpu_before = gpu_snapshot() if device == "cuda" else None
+    gpu_before = gpu_state("before") if device == "cuda" else None
     if device == "cuda":
         print(f"gpu: {torch.cuda.get_device_name(0)}; load before the run: {gpu_before}")
     if resume is not None:
-        trainer = Trainer.load(resume, device, log_dir=out)
+        trainer = Trainer.load(resume, device, log_dir=out, gpu_memory_limit_mib=args.gpu_memory_limit_mib)
         print(f"resumed from {resume.name} at update {trainer.updates}")
     else:
         cfg["run"]["updates"] = total
         trainer = Trainer(cfg, device, log_dir=out)
+    if device == "cuda":
+        print(gpu_limit_line(trainer.cfg["run"]["gpu_memory_limit_mib"], trainer.gpu_memory_fraction))
 
     # The run log needs the commit and the state of the tree: a run may start on uncommitted work.
     info = {
@@ -748,7 +869,7 @@ def main(argv=None) -> int:
         counts = run_summary(history, seconds)
         played = counts["played"]
         finished = failed is None and not trainer.stopped_by_time_limit and trainer.updates >= total
-        gpu_after = gpu_snapshot() if device == "cuda" else None
+        gpu_after = gpu_state("after") if device == "cuda" else None
         peak = int(torch.cuda.max_memory_allocated() // 2**20) if device == "cuda" else None
         reserved = int(torch.cuda.max_memory_reserved() // 2**20) if device == "cuda" else None
         shares = {name: trainer.clock_total[name] / seconds for name in CLOCKS} if seconds > 0 else {}

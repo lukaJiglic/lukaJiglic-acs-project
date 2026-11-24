@@ -1,9 +1,11 @@
-"""A checkpoint against random legal play on seeded deals (spec 008, criteria 7, 8 and 15).
+"""A checkpoint on seeded deals: against random legal play (spec 008, criteria 7, 8 and 15),
+or against another checkpoint (spec 015, criteria 11 to 15).
 
 Run (cmd, from the repo root, venv active):
 
     python -m tarok_train.evaluate --checkpoint src\\train\\runs\\<run folder>\\checkpoint-000200.pt --deals 2000 --seed 2008 --records 100
     python -m tarok_train.evaluate --checkpoint <the same> --deals 2000 --seed 2008 --untrained
+    python -m tarok_train.evaluate --checkpoint <A> --opponent <B> --deals 2000 --seed 5151
 
 Every deal is played four times: with the agent in seat 0, 1, 2 and 3, and random
 legal play in the other three seats. The cards of a deal depend only on the seed and
@@ -16,10 +18,27 @@ The agent samples from its policy, as in training. With `--untrained` the networ
 of the checkpoint's config is built with the run's seed and no weights are loaded:
 the same network before its first update.
 
+The random numbers of the sampling come from one generator per network for the whole
+evaluation, seeded with `--seed` (the opponent's with `--seed` + 1). No chunk of deals
+and no seating gets the numbers of another one. (Until the review of spec 015 every
+environment started a new generator from the same seed. A table index then met the same
+numbers in every chunk, the deal values were tied to each other, and the interval was too
+narrow for policies that depend little on the cards. Files made before that fix cannot
+be repeated to the digit with this code.)
+
 `--records N` exports the first N deals (agent in seat 0) as game records of spec 006
 and replays each one: the replay must give the entries the environment reported.
 
-This is a test of the wiring, not a measure of playing strength.
+Against random legal play this is a test of the wiring, not a measure of playing strength.
+
+With `--opponent B` the three other seats are played by checkpoint B, which samples from
+its policy too, with its own seeded generator. The value of a deal is then what one seat of
+A earns among three seats of B: above zero means A does better in that company than B does.
+The result goes to `evaluation-NNNNNN-vs-<run folder of B>-MMMMMM.json` next to A (N: A's
+updates, M: B's), so it never replaces the file of the evaluation against random play, and
+two runs of one name give two files. The same pair with another seed, other deals or other
+tables has the same file name: an existing file is replaced only with `--overwrite`. No
+chunk of deals may use the training seed of A or of B.
 """
 
 from __future__ import annotations
@@ -72,13 +91,18 @@ def network_agent(net, cfg_model: dict, device, seed: int):
     """`make_agent` for `evaluate`: the network samples from its masked policy.
 
     Every call of the result gives an agent for one environment of `n_tables` tables,
-    with its own acting cache (the transformer) and its own seeded generator.
+    with its own acting cache (the transformer). All of them draw from ONE generator,
+    made here and seeded with `seed`: the environments of an evaluation are played one
+    after the other, so each gets the next random numbers and none gets them twice.
+    A new generator per environment from the same seed would give every chunk of deals
+    and every seating the same numbers at the same table (review of spec 015, point 1).
+    Make a new `network_agent` for a new evaluation.
     """
     device = torch.device(device)
+    generator = torch.Generator(device=device).manual_seed(seed)
 
     def make_agent(n_tables: int):
         actor = Actor(net, None, n_tables, device, cfg_model)
-        generator = torch.Generator(device=device).manual_seed(seed)
 
         def agent(rows, obs) -> np.ndarray:
             action, _, _ = actor.act(
@@ -109,13 +133,18 @@ class Seating:
     decisions: int  # decisions the agent took
 
 
-def play_seating(env, agent_seat: int, agent, others, n_record: int = 0) -> Seating:
+def play_seating(env, agent_seat: int, agent, others, n_record: int = 0, others_skip_agent: bool = False) -> Seating:
     """Play the first deal of every table of a fresh `env`.
 
     agent(rows, obs) and others(rows, obs) return one legal slot for each of the tables
     `rows`. The agent is asked only where the seat to act is `agent_seat`. A table whose
     first deal has ended goes on with `others` in every seat until all are done; those
     later deals are not counted.
+
+    others_skip_agent: False (random legal play, spec 008): `others` is asked for every
+    table at every step and the agent's slot replaces its answer, so its stream of random
+    numbers does not depend on the agent. True (a network as the opponent, spec 015):
+    `others` is asked only for the tables the agent does not play at this step.
     """
     n = env.n
     all_rows = np.arange(n)
@@ -126,8 +155,15 @@ def play_seating(env, agent_seat: int, agent, others, n_record: int = 0) -> Seat
     decisions = 0
     while open_tables.any():
         obs = env.observe()
-        mine = np.flatnonzero(open_tables & (obs["seat"] == agent_seat))
-        action = np.asarray(others(all_rows, obs)).astype(np.int64)
+        is_mine = open_tables & (obs["seat"] == agent_seat)
+        mine = np.flatnonzero(is_mine)
+        if others_skip_agent:
+            action = np.zeros(n, dtype=np.int64)
+            rest = np.flatnonzero(~is_mine)
+            if len(rest):
+                action[rest] = others(rest, obs)
+        else:
+            action = np.asarray(others(all_rows, obs)).astype(np.int64)
         if len(mine):
             action[mine] = agent(mine, obs)
             decisions += len(mine)
@@ -157,22 +193,41 @@ def chunk_seeds(deals: int, tables: int, seed: int) -> list:
 
 
 def evaluate(
-    make_agent, deals: int, tables: int, seed: int, threads: int, others, records: int = 0, training_seed=None
+    make_agent,
+    deals: int,
+    tables: int,
+    seed: int,
+    threads: int,
+    others=None,
+    records: int = 0,
+    training_seed=None,
+    make_others=None,
+    opponent_training_seed=None,
 ) -> dict:
     """`deals` seeded deals, each in four seatings.
 
-    make_agent(n_tables) gives the agent of one environment; `others` plays the other
-    seats. The deals are played in chunks of `tables` tables; chunk c uses the engine
-    seed `seed + c`, so deal number d is table d mod `tables` of chunk d // `tables`,
-    its first deal. `records`: export that many deals of the first chunk (agent in
-    seat 0) as game records and replay them. `training_seed`: the seed of the run that
-    made the agent; no chunk may use it, or its deals would be deals the agent trained on.
+    make_agent(n_tables) gives the agent of one environment. The other three seats are
+    played by `others` (one callable for all environments: random legal play) or by
+    make_others(n_tables) (an opponent with a state per environment: a network); give
+    exactly one of the two. The deals are played in chunks of `tables` tables; chunk c
+    uses the engine seed `seed + c`, so deal number d is table d mod `tables` of chunk
+    d // `tables`, its first deal. `records`: export that many deals of the first chunk
+    (agent in seat 0) as game records and replay them. `training_seed`: the seed of the run
+    that made the agent; no chunk may use it, or its deals would be deals the agent trained
+    on. `opponent_training_seed`: the same for the run that made the opponent.
     """
+    if (others is None) == (make_others is None):
+        raise ValueError("give either `others` (random legal play) or `make_others` (an opponent), not both and not neither")
     seeds = chunk_seeds(deals, tables, seed)
     if training_seed is not None and training_seed in seeds:
         raise ValueError(
             f"the evaluation would play a chunk of deals with the engine seed {training_seed}, the seed of the "
             f"training run (its chunks use the seeds {seeds[0]} to {seeds[-1]}): choose a seed outside that range"
+        )
+    if opponent_training_seed is not None and opponent_training_seed in seeds:
+        raise ValueError(
+            f"the evaluation would play a chunk of deals with the engine seed {opponent_training_seed}, the seed of the "
+            f"opponent's training run (its chunks use the seeds {seeds[0]} to {seeds[-1]}): choose a seed outside that range"
         )
     if records > min(tables, deals):
         raise ValueError(f"at most {min(tables, deals)} records: they come from the first chunk of tables")
@@ -184,7 +239,10 @@ def evaluate(
         for seat in range(SEATS):
             env = EngineEnv(n, seeds[chunk], threads)
             n_record = records if (chunk, seat) == (0, 0) else 0
-            seating = play_seating(env, seat, make_agent(n), others, n_record)
+            if make_others is None:
+                seating = play_seating(env, seat, make_agent(n), others, n_record)
+            else:
+                seating = play_seating(env, seat, make_agent(n), make_others(n), n_record, others_skip_agent=True)
             rewards[first : first + n, seat] = seating.reward
             decisions += seating.decisions
             for table in range(n_record):
@@ -211,8 +269,51 @@ def evaluate(
     }
 
 
+CHECKPOINT_KEYS = ("config", "network", "updates", "model", "encoding_version")
+
+
+def load_checkpoint(path: Path, who: str):
+    """The data of a checkpoint of a run on the engine, or None with one printed line that says why not."""
+    if not path.is_file():
+        print(f"{who} cannot be read: there is no file {path}")
+        return None
+    try:
+        data = torch.load(path, map_location="cpu", weights_only=True)
+    except Exception as error:  # whatever the unpickler says: the file is not one of ours
+        print(f"{who} cannot be read: {path} is not a checkpoint of tarok_train.train ({type(error).__name__})")
+        return None
+    if not isinstance(data, dict) or any(key not in data for key in CHECKPOINT_KEYS):
+        print(f"{who} cannot be read: {path} is not a checkpoint of tarok_train.train")
+        return None
+    if data["encoding_version"] != C.ENCODING_VERSION:
+        print(f"{who} was made for encoding version {data['encoding_version']}, this code reads {C.ENCODING_VERSION}")
+        return None
+    kind = data["config"].get("env", {}).get("kind")
+    if kind != "engine":
+        # The mock environment has the same array sizes and another game: its network would play, and mean nothing.
+        print(f"{who} ({path}) comes from a run on the {kind} environment: only checkpoints of runs on the engine are evaluated")
+        return None
+    return data
+
+
+def load_network(data: dict, device, untrained: bool = False):
+    """The actor of a checkpoint on the device, in evaluation mode."""
+    cfg = data["config"]
+    torch.manual_seed(cfg["run"]["seed"])  # the trainer builds its network first, from this seed
+    net = build_network(cfg["model"], data["network"])
+    if not untrained:
+        net.load_state_dict(data["model"])
+    return net.to(device).eval()
+
+
+def run_name(data: dict) -> str:
+    return f"{data['config']['run']['name']}-{data['network']}"
+
+
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="A checkpoint against random legal play on seeded deals (spec 008).")
+    parser = argparse.ArgumentParser(
+        description="A checkpoint on seeded deals, against random legal play (spec 008) or another checkpoint (spec 015)."
+    )
     parser.add_argument("--checkpoint", required=True, help="a checkpoint of tarok_train.train")
     parser.add_argument("--deals", type=int, required=True, help="number of deals; each is played in four seatings")
     parser.add_argument("--seed", type=int, required=True, help="seed of the deals; not the seed of the training run")
@@ -221,55 +322,120 @@ def main(argv=None) -> int:
     parser.add_argument("--device", default="auto", help="cuda, cpu or auto")
     parser.add_argument("--records", type=int, default=0, help="export this many deals as game records and replay them")
     parser.add_argument("--untrained", action="store_true", help="the same network before its first update")
+    parser.add_argument(
+        "--opponent",
+        default=None,
+        help="a checkpoint that plays the three other seats (spec 015); without it they are random legal play",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="with --opponent: replace the result file of an earlier call for the same pair of checkpoints",
+    )
     args = parser.parse_args(argv)
 
     path = Path(args.checkpoint)
-    data = torch.load(path, map_location="cpu", weights_only=True)
-    if data.get("encoding_version") != C.ENCODING_VERSION:
-        print(f"the checkpoint was made for encoding version {data.get('encoding_version')}, this code reads {C.ENCODING_VERSION}")
+    data = load_checkpoint(path, "the checkpoint")
+    if data is None:
         return 2
     cfg = data["config"]
-    if cfg["run"]["seed"] in chunk_seeds(args.deals, args.tables, args.seed):
+    seeds = chunk_seeds(args.deals, args.tables, args.seed)
+    if cfg["run"]["seed"] in seeds:
         print(
             f"the evaluation would use the seed of the training run ({cfg['run']['seed']}) for one of its chunks of "
             "deals: choose a seed outside that range, or the deals are training deals"
         )
         return 2
+    opponent_path = opponent_data = None
+    if args.opponent is not None:
+        opponent_path = Path(args.opponent)
+        opponent_data = load_checkpoint(opponent_path, "the opponent's checkpoint")
+        if opponent_data is None:
+            return 2
+        if opponent_data["config"]["run"]["seed"] in seeds:
+            print(
+                f"the evaluation would use the seed of the opponent's training run ({opponent_data['config']['run']['seed']}) "
+                "for one of its chunks of deals: choose a seed outside that range, or the deals are training deals of the opponent"
+            )
+            return 2
+    label = "untrained" if args.untrained else f"{data['updates']:06d}"
+    if opponent_data is not None:
+        # The opponent's run folder, not its run name: the folder carries the date and time of the run,
+        # so two runs of one name (one config, several seeds) give two files.
+        label = f"{label}-vs-{opponent_path.resolve().parent.name}-{opponent_data['updates']:06d}"
+        existing = path.parent / f"evaluation-{label}.json"
+        if existing.exists() and not args.overwrite:
+            # Seed, deals and tables are not in the name: another call for this pair would replace the file.
+            print(f"{existing.name} exists next to the checkpoint: it is replaced only with --overwrite")
+            return 2
     device = args.device
     if device == "auto":
         device = "cuda" if torch.cuda.is_available() else "cpu"
-    torch.manual_seed(cfg["run"]["seed"])  # the trainer builds its network first, from this seed
-    net = build_network(cfg["model"], data["network"])
-    if not args.untrained:
-        net.load_state_dict(data["model"])
-    net = net.to(device).eval()
+    net = load_network(data, device, args.untrained)
+    make_agent = network_agent(net, cfg["model"], device, args.seed)
 
-    result = evaluate(
-        network_agent(net, cfg["model"], device, args.seed),
-        args.deals,
-        args.tables,
-        args.seed,
-        args.threads,
-        RandomLegal(args.seed + 1),
-        args.records,
-        training_seed=cfg["run"]["seed"],
-    )
-    label = "untrained" if args.untrained else f"{data['updates']:06d}"
+    if opponent_data is None:
+        opponents = "random legal play"
+        result = evaluate(
+            make_agent,
+            args.deals,
+            args.tables,
+            args.seed,
+            args.threads,
+            RandomLegal(args.seed + 1),
+            args.records,
+            training_seed=cfg["run"]["seed"],
+        )
+    else:
+        # The opponent samples from its policy, as the agent does, from a generator of its own.
+        opponent_net = load_network(opponent_data, device)
+        opponents = (
+            f"{run_name(opponent_data)}, {opponent_path.name} ({opponent_data['updates']} updates), samples from its policy"
+        )
+        result = evaluate(
+            make_agent,
+            args.deals,
+            args.tables,
+            args.seed,
+            args.threads,
+            records=args.records,
+            training_seed=cfg["run"]["seed"],
+            make_others=network_agent(opponent_net, opponent_data["config"]["model"], device, args.seed + 1),
+            opponent_training_seed=opponent_data["config"]["run"]["seed"],
+        )
+        # "Beats random" belongs to the evaluation against random play. Here: where the interval lies.
+        del result["beats_random"]
+        result["above_zero"] = bool(result["low"] > 0)
+        result["below_zero"] = bool(result["high"] < 0)
     records = result.pop("records")
+    folder = path.parent / f"records-{label}"
+    if opponent_data is not None and folder.is_dir():
+        for stale in folder.glob("deal-*.json"):  # of the call that --overwrite replaces
+            stale.unlink()
     if records:
-        folder = path.parent / f"records-{label}"
         folder.mkdir(parents=True, exist_ok=True)
         for record in records:
             (folder / f"deal-{record['table']:04d}.json").write_text(record["json"], encoding="utf-8")
     result.update(
         {
             "checkpoint": None if args.untrained else path.name,
-            "run": f"{cfg['run']['name']}-{data['network']}",
+            "run": run_name(data),
             "updates": 0 if args.untrained else data["updates"],
             "fault": cfg["run"]["fault"],
-            "opponents": "random legal play",
+            "opponents": opponents,
+            # The opponent's checkpoint; `folder` is its run folder, which tells two runs of one name apart.
+            "opponent": None
+            if opponent_data is None
+            else {
+                "checkpoint": opponent_path.name,
+                "run": run_name(opponent_data),
+                "updates": opponent_data["updates"],
+                "folder": opponent_path.resolve().parent.name,
+            },
             "agent": "samples from its policy",
             "seed": args.seed,
+            "tables": args.tables,
+            "threads": args.threads,
             "device": device,
             "engine_sources": tarok_env.SOURCE_HASH,
         }
@@ -277,13 +443,21 @@ def main(argv=None) -> int:
     (path.parent / f"evaluation-{label}.json").write_text(json.dumps(result, indent=1), encoding="utf-8")
 
     who = "the untrained network" if args.untrained else f"{path.name} ({result['updates']} updates)"
-    print(f"{result['run']}, {who}: {args.deals} deals, each in four seatings, against random legal play")
+    if opponent_data is None:
+        print(f"{result['run']}, {who}: {args.deals} deals, each in four seatings, against random legal play")
+    else:
+        print(f"{result['run']}, {who}, in one seat: {args.deals} deals, each in four seatings, against three seats of {opponents}")
     print(
         f"mean reward per deal {result['mean']:+.4f}; 95% interval {result['low']:+.4f} to {result['high']:+.4f} "
         f"(reward 1 = 50 points of the paper score)"
     )
     print("by seat of the agent: " + ", ".join(f"{value:+.4f}" for value in result["mean_by_seat"]))
-    print("beats random: " + ("yes, the whole interval is above zero" if result["beats_random"] else "no"))
+    if opponent_data is None:
+        print("beats random: " + ("yes, the whole interval is above zero" if result["beats_random"] else "no"))
+    elif result["above_zero"] or result["below_zero"]:
+        print(f"the whole interval is {'above' if result['above_zero'] else 'below'} zero")
+    else:
+        print("the interval includes zero")
     if records:
         print(
             f"game records: {result['records_exported']} exported, "
