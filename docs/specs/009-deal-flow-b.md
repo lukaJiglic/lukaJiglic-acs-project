@@ -1,6 +1,6 @@
 # 009 — Deal flow B: announcements and kontra
 
-Status: **approved** (2026-11-24, D143), with the answers to Batch 13 (D141) and the wait of D142 written in. In execution in the `engine-core` session on the branch `spec-009`. Needs specs 005, 006 and 013 (done).
+Status: **approved** (2026-11-24, D143), with the answers to Batch 13 (D141) and the wait of D142 written in. Executed on 2026-11-24 in the `engine-core` session on the branch `spec-009` as far as Rust goes: stages (a), (b), (c), (e) and the property tests of (d) are committed there. Criteria 45, 46 and the Python side of 52 wait for the binding module; see "Results". Not merged. Needs specs 005, 006 and 013 (done).
 
 Build-plan row 009. Tool and model: Claude Code 2.1.306, `claude-fable-5-2`.
 
@@ -180,4 +180,300 @@ The four readings chosen by Claude were not objected to and stand.
 
 ## Results
 
-(empty until executed)
+Executed on 2026-11-24 by the session `engine-core` (Claude Code 2.1.306, `claude-fable-5-2`) on the branch `spec-009`, in the worktree `.worktrees/spec-009`. Nothing is on `main`.
+
+**State: stages (a), (b), (c) and (e) are built and committed; of stage (d) the property tests are. Open: criteria 45 and 46 and the Python side of 52. They need the binding module built again, which waits for the GPU work of spec 015.**
+
+| Commit | Stage | Holds |
+|---|---|---|
+| `af56384` | (a) | the round, the three actions, who may say what; criteria 1 to 17 |
+| `f72721a` | (b) | the score; criteria 18 to 33 |
+| `717268f` | (c) | tokens, state block D, the record, D135, `docs/encoding.md` section 4b; criteria 34 to 40 |
+| `d35aa5e` | (e) | the hold flag in the engine and in the binding's Rust; criteria 50 and 51 |
+| `42a2001` | (d), part 1 | the property tests; criteria 41 to 44 |
+| `3ce38c8` | (d), part 1 | `bench_game` counts decisions and tokens (for criterion 46) |
+| `5f198bc` | | four comments in `tests/vecenv.rs` |
+| the commit after it | | this section |
+
+Tests were written from the criteria before the code of each stage. Where the old code could compile them they were run against it first: 14 of the 15 tests of `scoring_b.rs` failed before the scoring change (the fifteenth, `c24`, tests a silent valat, which ignores what is said before and after).
+
+### What was built
+
+- `src/announce.rs` (new): `Bonus`, `Target`, and `Round`, which holds what was said and whose turn it is.
+- `src/action.rs`: `Action::Announce` (slots 77 to 81), `Action::Kontra` (82 to 87), `Action::Done` (88). Slot 89 has no action.
+- `src/game.rs`: `Phase::Announcements` between the last discard and the first lead. `round_actions` gives the legal set from what the speaker knows. `side_known_to` is the one place that says whether a seat knows another seat's side (criterion 15); the legal set and block D1 both use it. `PublicView::announced`, `PublicView::kontra_level`, `PrivateView::knows_side_of`. `MAX_ACTIONS` is 192 (was 96).
+- `src/score.rs`: announced bonuses, the announced valat, the kontra multipliers. The eight parts keep their order.
+- `src/encode/`: tokens 146 to 156, phase entry 5, block D1 and D2.
+- `src/record.rs`: `RecordError::OtherEngine` and the replay of a record of another version (D135).
+- `src/vecenv.rs`: `Tables::step_hold_into`, `VecEnv::step_hold`. `src/train/tarok_env/src/lib.rs`: `step_into` takes an optional last argument `hold`.
+- The crate version is 0.3.0.
+
+### Criteria
+
+| # | Criterion | Status | Test |
+|---|---|---|---|
+| 1 | The round follows the last discard; the declarer first, then in order of play | met | `c01_after_the_last_discard_the_declarer_opens_the_round` |
+| 2 | A turn: actions, then "done"; "done" always legal | met | `c02_a_turn_is_any_number_of_actions_and_then_done` |
+| 3 | The end of the round | met | `c03_the_round_ends_after_three_passes_once_every_seat_had_a_turn` |
+| 4 | Forehand leads, also after an announced valat | met | `c04_forehand_leads_the_first_trick_also_after_an_announced_valat` |
+| 5 | All pass: the deal of flow A | met | `c05_a_deal_in_which_all_pass_plays_and_scores_as_in_flow_a`; the tests of specs 005 and 013 pass with the four passes in the helpers (list below) |
+| 6 | Trula, kralji, valat by every seat | met | `c06_trula_kralji_and_valat_may_be_announced_by_every_seat` |
+| 7 | Kralj ultimo by the holder of the called king | met | `c07_kralj_ultimo_only_by_the_holder_of_the_called_king` |
+| 8 | Pagat ultimo by the holder of the pagat | met | `c08_pagat_ultimo_only_by_the_holder_of_the_pagat` |
+| 9 | Each bonus once | met | `c09_each_bonus_can_be_announced_once_in_a_deal` |
+| 10 | An announcement does not show the side; kralj ultimo does | met | `c10_an_announcement_does_not_show_the_side_except_kralj_ultimo` |
+| 11 | Six targets, four levels | met | `c11_six_targets_four_levels_one_action_raises_one_level` |
+| 12 | Who says which level | met | `c12_kontra_and_sub_by_the_other_side_re_and_mort_by_the_owner` |
+| 13 | Not announced: no kontra; mort is the top | met | `c13_a_bonus_not_announced_cannot_be_kontrad_and_mort_cannot_be_raised` |
+| 14 | The game's ladder; a partner shown by re or mort | met | `c14_the_game_ladder_and_a_partner_shown_by_re_or_mort` |
+| 15 | A bonus is raised only by a seat that knows the side | met | `c15_a_bonus_is_raised_only_by_a_seat_that_knows_the_announcers_side` |
+| 16 | The legal set depends only on what the seat knows | met | `c16_legal_actions_depend_only_on_what_the_seat_knows`: the two deals of the criterion, and 400 random deals against a second legal set written from the public and the private view |
+| 17 | No duty to keep an announced card | met | `c17_an_announced_ultimo_card_may_be_played_when_the_rules_of_play_allow` |
+| 18 | Announced trula | met | `c18_announced_trula_scores_20_for_or_against_its_owner` |
+| 19 | Announced kralji | met | `c19_announced_kralji_scores_20_for_or_against_its_owner` |
+| 20 | Announced replaces silent | met | `c20_an_announced_bonus_replaces_the_silent_one_of_its_kind` |
+| 21 | Announced kralj ultimo | met | `c21_announced_kralj_ultimo` |
+| 22 | Announced pagat ultimo follows the side | met | `c22_announced_pagat_ultimo_follows_the_side_that_takes_the_last_trick` |
+| 23 | Announced valat | met | `c23_announced_valat_scores_500_and_nothing_else` |
+| 24 | Silent valat next to announced bonuses | met | `c24_a_silent_valat_next_to_announced_bonuses_scores_250_and_nothing_else` |
+| 25 | Not announced: as in flow A | met | `c25_a_bonus_nobody_announced_is_scored_as_in_flow_a` |
+| 26 | Kontra on the game | met | `c26_kontra_on_the_game_multiplies_game_and_difference_only` |
+| 27 | Kontra on a bonus | met | `c27_kontra_on_a_bonus_multiplies_that_announced_bonus_only` |
+| 28 | Silent bonuses and the mondfang are never multiplied | met | `c28_silent_bonuses_and_the_mondfang_are_never_multiplied` |
+| 29 | Kontra and a valat | met | `c29_with_a_valat_only_the_kontra_on_the_announced_valat_counts` |
+| 30 | The kontra examples | met | `c30_kontra_examples_on_whole_deals` |
+| 31 | The three examples of the source | met | `c31_the_three_examples_of_the_source` |
+| 32 | The parts add up to the entry | met | `c32_the_ten_parts_of_a_seat_add_up_to_its_entry` |
+| 33 | Three written deals | met | `c33_three_written_deals_with_announcements_and_kontra` |
+| 34 | The slots 77 to 88 | met | `c34_the_round_uses_the_slots_77_to_88` |
+| 35 | One token per announcement and kontra, none for "done" | met | `c35_every_announcement_and_kontra_writes_one_token_with_the_acting_seat` |
+| 36 | State block D | met | `c36_state_block_d_holds_the_announcements_by_side_and_the_kontra_levels` |
+| 37 | At most 128 tokens | met | `c37_no_legal_deal_has_more_than_128_tokens` |
+| 38 | Hidden sides stay hidden | met | `c38_hidden_sides_stay_hidden_in_the_observation` (the built pair) and `c38_no_leak_with_announcements_and_kontra` (30,000 random cases) |
+| 39 | The record with the round | met | `c39_a_record_with_announcements_and_kontras_replays_to_the_same_entries` |
+| 40 | D135 | met | `c40_a_record_of_another_engine_version_keeps_going_and_names_both_versions` |
+| 41 | Every deal ends; the round is bounded | met | `c41_every_deal_of_flow_b_reaches_over_and_the_round_is_bounded` |
+| 42 | The second scorer agrees | met | `c42_the_second_scorer_agrees_on_random_deals_of_flow_b` |
+| 43 | Declarer and partner equal; an opponent 0 or −20 | met | `c43_declarer_and_partner_write_the_same_and_an_opponent_0_or_minus_20` |
+| 44 | Coverage with fixed seeds | met | `c44_fixed_seeds_cover_the_rules_of_flow_b` |
+| 45 | The module builds, pytest, the smoke config | **not done** | waits for the module build |
+| 46 | Reported numbers | part | the counts are measured (below); the deals per second were measured next to other jobs and are to be measured again |
+| 47 | fmt, clippy, no `unsafe`, workflows green | part | local: met for the engine and the binding crate. `engine` on the branch: green on `5f198bc` (run 45368097231) and on `42a2001` before it. `train` runs on `main` and on pull requests only |
+| 48 | Every earlier test passes; changes listed | met | list below |
+| 49 | At least 30 wrong rules | met | 52 planted, 52 caught; table below |
+| 50 | A held table does not move | met | `c50_a_held_table_does_not_move` |
+| 51 | Holding never changes what a table plays | met | `c51_holding_never_changes_what_a_table_plays` |
+| 52 | The binding passes the flag through | part | the binding's Rust takes `hold` and compiles (`cargo clippy`, `cargo test` of the crate). `EngineEnv.step(actions, hold)` in `env.py` and its test are not written: they cannot be run before the module is built |
+
+The tests are in `src/engine/tests/`: `announcements.rs` (c01 to c10, c17), `kontra.rs` (c11 to c16), `scoring_b.rs` (c18 to c32), `written_deals.rs` (c33), `encode.rs` (c34 to c38), `no_leak.rs` (c38), `record.rs` (c39, c40), `whole_games.rs` (c41 to c44), `vecenv.rs` (c50, c51).
+
+### Earlier tests that had to change (criterion 48)
+
+Every test of specs 002, 005, 006 and 013 passes. These had to change, each for the reason given. No expected entry, count of card points or trick winner of an earlier test changed.
+
+**Because the round now lies between the last discard and the first card**
+
+- `tests/common/flow.rs`: `exchange`, `exchange_back`, `run_until`, `finish`, `play_scripted` and `play_random` say "done" for every seat in the round (criterion 5). A pass uses none of the random choices, so every seeded deal of flow A has the cards and the plays it had.
+- `tests/talon.rs` `c19_…`, `c20_…` and `tests/views.rs` `hidden_discards_and_the_unshown_talon_do_not_show_in_the_public_view`: the phase after the last discard is "announcements"; after four passes it is "play".
+- `tests/game_play.rs` `c28_called_king_played_makes_the_partner_public`: its loop took the lowest legal action. In the round that is an announcement, and kralj ultimo shows the partner. It passes in the round now.
+- `tests/state_features.rs` `block_b_through_the_phases`: the phase entry 5 exists and is seen; the loop passes in the round.
+- `tests/whole_games.rs`: the order of the phases has the new one; `c46` allows four more actions; `c50` has the slot range 77 to 88 for the round.
+- `tests/tokens.rs`: `tokens_name_the_actions_that_were_taken` expects no token for "done"; `longest_possible_sequence_of_this_slice` counts the four passes among the actions.
+- `tests/golden/record_seed_42.json`: the version is 0.3.0 and the record has four more decisions, the passes, with their legal slots. `examples/record_deal.rs` and the example in `src/lib.rs` pass in the round.
+
+**Because slots, limits and features are in use that were reserved**
+
+- `tests/actions.rs` `every_slot_is_one_action_or_reserved`: twelve more slots have an action; 89 and 144 to 159 are left.
+- `src/game.rs`, unit test `the_action_history_panics_when_it_is_full`: the limit in the message is 192.
+- `tests/state_features.rs` `block_d_e_and_g_of_the_scripted_position`: block D2 holds "none" for each of the six targets, where it was all zero. `SAME_FOR_ALL` no longer lists D1: an announcement shows on one side or on both, depending on who looks.
+
+**Because a random deal is longer**
+
+- `tests/vecenv.rs`: a random deal has about 88 decisions, not about 57, so a fixed number of steps finishes fewer deals. Lower bounds: `c15` 900 to 500 deals, `c18` 400 to 300, `random_runs_do_not_depend_on_the_thread_count` 400 to 250. `c17` takes more steps for its two runs per table.
+
+**Because an entry can be thousands of points**
+
+- `tests/vecenv.rs` `c18_rewards_and_parts_are_delivered_once_per_deal`: "the four rewards sum to zero" and "the ten parts sum to the reward" held within 1e-6. Rewards are 32-bit numbers; with a valat under kontra a reward is above 100 and its last place is about 1e-5. The room is now 1e-6 times the largest reward of the deal, and 1e-6 for rewards up to 1. See question 1.
+
+**Moved, not changed**
+
+- `tests/scoring.rs`: its built deals moved to `tests/common/built.rs`, so `scoring_b.rs` uses the same deals. No test body changed.
+- `tests/no_leak.rs`: the body of `c06` is a function now, which runs once on deals of flow A (`c06`, the same checks) and once on deals of flow B (`c38`). The seeds of a property test depend on the line of its call, so `c06` runs other cases than before: 16,620 compared.
+- `tests/common/second_scorer.rs`: it reads what was said and scores it by criteria 18 to 29, written a second time.
+
+### Wrong rules (criterion 49)
+
+52 wrong rules, each put into the code alone, in a copy of `src/engine` outside the repo (with `docs/encoding.md` next to it and its own target folder). One text replacement per rule; the whole suite ran each time; the file was restored after. Two copies ran side by side. Both clean copies pass all 231 tests before the first and after the last rule.
+
+**52 planted, 52 caught. None was missed.** Every rule fails the test of the criterion it breaks; the column names every test of this spec that failed, by its number. The last column counts the failing tests of earlier specs and the unit tests.
+
+| # | Criterion | Wrong rule | Tests of this spec that failed | Other tests that failed |
+|---|---|---|---|---|
+| 1 | 1 | Forehand opens the round, not the declarer | `c01`, `c04`, `c05`, `c33` | 11 |
+| 2 | 1 | The turns go against the order of play | `c01`, `c02`, `c03`, `c04`, `c06`, `c09`, `c10`, `c11`, `c12`, `c13`, `c14`, `c15`, `c16`, `c17`, `c35`, `c36`, `c37`, `c38` | 1 |
+| 3 | 3 | Three passes end the round also before every seat had a turn | `c01`, `c03`, `c05`, `c06`, `c07`, `c08`, `c10`, `c12`, `c13`, `c14`, `c18`, `c22`, `c23`, `c41` | 2 |
+| 4 | 3 | The round ends after four turns, whatever was said | `c03`, `c09`, `c11`, `c12`, `c13`, `c14`, `c15`, `c16`, `c26`, `c27`, `c28`, `c29`, `c30`, `c32`, `c34`, `c35`, `c36`, `c37`, `c38`, `c39`, `c44` | 1 |
+| 5 | 3 | A kontra does not count as speaking: the turn is a pass | `c03`, `c11`, `c12`, `c13`, `c14`, `c15`, `c16`, `c26`, `c27`, `c28`, `c29`, `c30`, `c32`, `c36`, `c37`, `c38` | 0 |
+| 6 | 4 | The declarer leads the first trick | `c04`, `c05`, `c31`, `c33` | 11 |
+| 7 | 6 | Trula, kralji and valat only by the declarer's side | `c02`, `c03`, `c04`, `c06`, `c09`, `c12`, `c15`, `c16`, `c18`, `c19`, `c20`, `c23`, `c24`, `c25`, `c29`, `c33`, `c36`, `c38`, `c44` | 1 |
+| 8 | 7 | Kralj ultimo by every seat when a king is called | `c07`, `c09`, `c16`, `c36`, `c38`, `c42`, `c44` | 1 |
+| 9 | 7 | Kralj ultimo by the partner only, not by a declarer who holds the king | `c07`, `c10`, `c16`, `c20`, `c21`, `c44` | 0 |
+| 10 | 8 | Pagat ultimo by every seat | `c08`, `c09`, `c16` | 1 |
+| 11 | 9 | A bonus can be announced again by another seat | `c09`, `c16`, `c34`, `c35`, `c36`, `c37`, `c38`, `c39`, `c41`, `c42`, `c43`, `c44`, `c50`, `c51` | 10 |
+| 12 | 10 | Kralj ultimo by another seat does not show the partner | `c10`, `c11`, `c15`, `c27`, `c35`, `c36` | 0 |
+| 13 | 10 | Every announcement by the partner shows the partner | `c10`, `c16`, `c36`, `c38` | 1 |
+| 14 | 12 | Every level may be said by either side | `c12`, `c14`, `c15`, `c16`, `c36`, `c38` | 1 |
+| 15 | 12 | Kontra and sub by the owning side, re and mort by the other | `c02`, `c03`, `c11`, `c12`, `c13`, `c14`, `c15`, `c16`, `c24`, `c26`, `c27`, `c28`, `c29`, `c30`, `c32`, `c33`, `c35`, `c36`, `c37`, `c38` | 3 |
+| 16 | 13 | Mort can be raised again | `c13`, `c14`, `c16`, `c34`, `c35`, `c36`, `c37`, `c38`, `c39`, `c41`, `c42`, `c43`, `c44`, `c50`, `c51` | 10 |
+| 17 | 13 | A bonus nobody announced can be kontra'd, as the declarer's | `c13`, `c16` | 1 |
+| 18 | 14 | Only mort on the game shows the partner, re does not | `c14` | 0 |
+| 19 | 14 | Every kontra on the game by another seat shows a partner | `c14`, `c15`, `c16`, `c36`, `c38` | 2 |
+| 20 | 15 | A seat may raise a bonus without knowing the announcer's side | `c15`, `c16`, `c36`, `c38` | 0 |
+| 21 | 15 | A seat that holds the called king does not know the sides | `c15`, `c16`, `c36` | 0 |
+| 22 | 15 | The announcer may not raise its own bonus while the partner is hidden | `c15`, `c16`, `c36` | 0 |
+| 23 | 17 | The announced pagat may not be played before the last trick while another card is legal | `c17`, `c22`, `c23`, `c31` | 0 |
+| 24 | 18 | An announced trula is worth 10 | `c18`, `c20`, `c25`, `c27`, `c28`, `c30`, `c31`, `c32`, `c33`, `c42` | 0 |
+| 25 | 19 | An announced kralji is checked against the declarer's pile, whoever owns it | `c18`, `c19`, `c20`, `c25`, `c33`, `c42` | 0 |
+| 26 | 20 | A failed announced trula costs the silent bonus on top | `c18`, `c20`, `c28`, `c42` | 0 |
+| 27 | 18 | A failed announced bonus costs nothing | `c18`, `c19`, `c20`, `c21`, `c22`, `c23`, `c25`, `c27`, `c28`, `c29`, `c30`, `c31`, `c33`, `c42` | 0 |
+| 28 | 18 | An opponent's announced bonus is written with the owner's sign | `c18`, `c19`, `c20`, `c22`, `c23`, `c25`, `c27`, `c29`, `c32`, `c33`, `c42` | 0 |
+| 29 | 21 | An announced kralj ultimo played before the last trick scores nothing | `c21`, `c42` | 0 |
+| 30 | 22 | The announced pagat ultimo needs the pagat itself to take the trick | `c22`, `c42` | 0 |
+| 31 | 22 | An announced pagat played before the last trick scores nothing | `c22`, `c31`, `c42` | 0 |
+| 32 | 23 | An announced valat that fails costs 250 | `c23`, `c29`, `c33`, `c42` | 0 |
+| 33 | 23 | An opponent's announced valat is made when the declarer takes all twelve | `c23`, `c29`, `c42`, `c44` | 0 |
+| 34 | 23 | An announced valat that fails still scores the game | `c23`, `c29`, `c33`, `c42` | 0 |
+| 35 | 24 | A silent valat scores an announced trula next to it | `c24`, `c29`, `c42` | 0 |
+| 36 | 26 | A kontra on the game does not multiply the difference | `c26`, `c28`, `c30`, `c32`, `c33`, `c42` | 0 |
+| 37 | 26 | A kontra on the game multiplies the kralji too | `c26`, `c28`, `c33`, `c42` | 0 |
+| 38 | 26 | A level adds one instead of doubling: 2, 3, 4, 5 | `c26`, `c27`, `c28`, `c29`, `c30`, `c32`, `c42` | 1 |
+| 39 | 27 | A kontra on a bonus is not counted | `c27`, `c28`, `c29`, `c30`, `c32`, `c33`, `c42` | 0 |
+| 40 | 28 | The mondfang is multiplied by the kontra on the game | `c28`, `c33`, `c42`, `c43` | 0 |
+| 41 | 29 | A silent valat is multiplied by the kontra on the game | `c29`, `c42` | 0 |
+| 42 | 34 | "Done" lies on slot 89 | `c02`, `c34`, `c39`, `c40`, `c50` | 3 |
+| 43 | 35 | A kontra writes no token | `c35`, `c37` | 0 |
+| 44 | 35 | The token of an announcement carries no seat | `c35` | 0 |
+| 45 | 35 | The kontra tokens start at id 150 | `c35` | 1 |
+| 46 | 36 | D1 shows the true side of every announcement to every seat | `c36`, `c38` | 0 |
+| 47 | 36 | D1 sets no bit for an announcement of unknown side on the declarer's half | `c36`, `c38` | 0 |
+| 48 | 36 | D2 stays at "none" | `c36` | 0 |
+| 49 | 40 | The legal slots of a record of another version must fit too | `c40` | 0 |
+| 50 | 40 | The error of a record of another version does not name the versions | `c40` | 0 |
+| 51 | 50 | The action of a held table must be legal | `c50`, `c51` | 0 |
+| 52 | 50 | A held table takes its action | `c50` | 0 |
+
+The script and its two output files are in the session's scratch folder (`mutate009.py`, `mutations009_0.txt`, `mutations009_1.txt`).
+
+What the table shows about the tests: rules 18, 44, 48, 49, 50 and 52 are caught by one test only. Each of those tests has the case written out by hand (`c14`, `c35`, `c36`, `c40`, `c50`).
+
+### Measured
+
+- **Tokens.** The longest of 10,000 random deals of flow B has 94 tokens (seed 66). The built longest round (5 announcements, 24 kontras) gives a deal of 91. No deal can have more than 26 + 29 + 48 = 103. The limit is 128.
+- **Actions.** The longest of those deals has 130 actions. The bound is 187; `MAX_ACTIONS` is 192.
+- **Counts of `bench_game`** (200,000 deals, every action drawn uniformly from the legal ones): 87.5 decisions per deal (largest 125), 21.9 per seat and deal (largest 41), 79.1 tokens per deal (largest 94), 35.0 % of the decisions in the round. In flow A a random deal had 56.8.
+- **Deals per second:** 192,231 on one thread, measured while the wrong-rule runs and the jobs of spec 015 used the machine. To be measured again (criterion 46). Spec 005 measured about 350,000 for flow A, with 56.8 actions per deal.
+- **No leak.** 9,352 pairs of worlds of flow B compared, 7,566 of them after something was said, 1,417 with the partner still hidden, 50 with another seat as the partner in the other world. No difference in tokens, state or mask.
+- **Coverage of the 10,000 seeded deals (`c44`).** Announced by the declarer, the partner, an opponent: trula 3,603 / 547 / 4,563; kralji 3,654 / 512 / 4,533; kralj ultimo 744 / 1,886 / 0; pagat ultimo 1,525 / 368 / 3,602; valat 1,188 / 304 / 2,551. The game at kontra, re, sub, mort: 3,591 / 703 / 1,330 / 2,059. Announced valats won 95, lost 3,948. An announced pagat played before the last trick 5,357 times, an announced king 2,299 times.
+- **Seeds used in `c30` and `c31`,** found by trying seeds, with what they must give written by hand: 167 (tri, 43 points), 367 (tri, 21 points), 476 (dve, 35 points, the declarer plays its pagat to trick 7), 3185 (solo tri, 51 points, the trula with the declarer). The third example of the source is built by hand (`source_example_ena`): 43 points.
+
+### Command output (trimmed)
+
+Engine, run from `src\engine` in the worktree:
+
+```
+> cargo --version
+cargo 1.94.1 (29ea6fb6a 2026-03-24)
+> cargo fmt --check
+(no output)
+> cargo clippy --locked --all-targets -- -D warnings
+    Finished `dev` profile [optimized + debuginfo] target(s)
+> cargo test --locked
+     Running unittests src\lib.rs            test result: ok. 22 passed; 0 failed
+     Running tests\actions.rs                test result: ok. 6 passed; 0 failed
+     Running tests\announcements.rs          test result: ok. 11 passed; 0 failed
+     Running tests\bidding.rs                test result: ok. 13 passed; 0 failed
+     Running tests\cards_and_counting.rs     test result: ok. 7 passed; 0 failed
+     Running tests\cardset.rs                test result: ok. 5 passed; 0 failed
+     Running tests\critic_targets_reward.rs  test result: ok. 3 passed; 0 failed
+     Running tests\deal.rs                   test result: ok. 5 passed; 0 failed
+     Running tests\encode.rs                 test result: ok. 5 passed; 0 failed
+     Running tests\encoding_contract.rs      test result: ok. 1 passed; 0 failed
+     Running tests\game_play.rs              test result: ok. 3 passed; 0 failed
+     Running tests\inference.rs              test result: ok. 8 passed; 0 failed
+     Running tests\king_call.rs              test result: ok. 5 passed; 0 failed
+     Running tests\kontra.rs                 test result: ok. 6 passed; 0 failed
+     Running tests\legal_cards.rs            test result: ok. 7 passed; 0 failed
+     Running tests\no_leak.rs                test result: ok. 2 passed; 0 failed
+     Running tests\record.rs                 test result: ok. 6 passed; 0 failed
+     Running tests\scoring.rs                test result: ok. 28 passed; 0 failed
+     Running tests\scoring_b.rs              test result: ok. 15 passed; 0 failed
+     Running tests\state_features.rs         test result: ok. 9 passed; 0 failed
+     Running tests\talon.rs                  test result: ok. 9 passed; 0 failed
+     Running tests\tokens.rs                 test result: ok. 7 passed; 0 failed
+     Running tests\trick_winner.rs           test result: ok. 10 passed; 0 failed
+     Running tests\vecenv.rs                 test result: ok. 13 passed; 0 failed
+     Running tests\views.rs                  test result: ok. 3 passed; 0 failed
+     Running tests\whole_deals.rs            test result: ok. 4 passed; 0 failed
+     Running tests\whole_games.rs            test result: ok. 11 passed; 0 failed
+     Running tests\written_deals.rs          test result: ok. 4 passed; 0 failed
+   Doc-tests tarok_engine                    test result: ok. 3 passed; 0 failed
+(231 tests, 0 failed; 182 before this spec)
+> cargo test --locked --no-default-features
+(218 tests, 0 failed; tests\vecenv.rs is left out)
+> cargo run --release --bin bench_game -- 200000
+deals:              200000
+actions:            17501509
+seconds:            1.040
+deals per second:   192231
+actions per second: 16821658
+
+counted on 200000 deals, not timed:
+decisions per deal:      mean 87.5, largest 125
+decisions per seat-deal: mean 21.9, largest 41
+tokens per deal:         mean 79.1, largest 94 (the limit is 128)
+decisions in the round of announcements: 35.0 % of all
+```
+
+Binding crate, run from `src\train\tarok_env` in the worktree. Nothing was installed and no module was built:
+
+```
+> cargo fmt --check
+(no output)
+> cargo clippy --locked --all-targets -- -D warnings
+    Finished `dev` profile [unoptimized + debuginfo] target(s)
+> cargo test --locked
+test result: ok. 0 passed; 0 failed
+```
+
+### Readings and deviations
+
+1. **D2 is a one-hot from the first decision of a deal.** Each of the six targets has its "none" entry set before the round too, and for a bonus nobody announced. So six state features that were 0 in flow A are 1 now, at every decision. A model trained before this spec sees an input it never saw. `docs/encoding.md` section 4b says it.
+2. **A declarer who announces kralj ultimo with its own king is not shown as alone.** Reading 3 of the spec names four cases in which the partner is public, and this is not one. A player at the table would know: only the holder of the called king may announce it. `c10` pins what is built. Question 2.
+3. **A turn can be a pass after the seat spoke earlier.** A seat that passed may speak in a later turn; the round ends only on three passes in a row after every seat had a turn. That is criterion 3 as written.
+4. **`MAX_ACTIONS` is 192.** A round has at most 29 announcements and kontras and at most 91 turns, so a deal has at most 187 actions. The array of the environment's state that the binding hands to Python has 192 columns, not 96: a state saved by the trainer before this spec does not fit.
+5. **D135, "keeps going".** A record of another version is not held to its lists of legal slots, only to the seat and to a legal chosen slot. A record of this engine's own version is checked as before. Any text is taken as a version.
+6. **The random deals of the tests announce a valat one time in eight** of what uniform choice would give. Drawn uniformly, a valat is announced in nearly every deal and nothing else is scored. The environment's own random policy (`run_random`, `bench_game`) is uniform and unchanged.
+7. **Block F is unchanged.** An announced pagat ultimo tells every seat who holds the pagat, and kralj ultimo who holds the called king. Block F3 ("certainly holds") does not use that. It stays sound; it knows less than it could. Question 3.
+8. **Stage (d) is split.** Its property tests are Rust only and are committed. Criterion 49 needs them.
+9. **The built deals moved** to `tests/common/built.rs`, and the helpers can speak a script in the round of a built or seeded deal (`with_round`). So the scoring tests of flow B are the forced deals of flow A with something said, and the play is the same card for card.
+
+### Open issues
+
+1. **Criteria 45, 46 and the Python side of 52 are not done.** They need the binding module built from these sources. What that stage has to do, as far as it can be seen from the Rust side:
+   - Build the module from the worktree (`maturin develop --release` in `src	rain	arok_env`). The module in the shared `.venv` then is engine 0.3.0, and the check of the shared checkout against its own engine sources (0.2.0) will refuse it. So this cannot happen while spec 015 runs there, or it needs a virtual environment of its own for the worktree.
+   - `EngineEnv.step(actions, hold=None)` in `tarok_train/env.py`, and a test in `src/train/tests` that a held table does not move and that `step(actions)` works as before (criterion 52). The binding's `step_into` already takes `hold` as an optional last argument.
+   - `test_spec006.py`: one message names the shape `(96, 4)`, which is `(192, 4)` now; two checks use the absolute 1e-6 of question 1. Any Python test that expects block D to be zero, the phase entry 5 never to be set, or the slots 77 to 88 never to be legal has to change, and is to be listed here.
+   - The environment state the trainer saves has 192 columns of actions, not 96: a checkpoint of an earlier run does not load its environment state (reading 4).
+   - `pytest` on the CPU and with the GPU tests; a run of `smoke-a-ci.toml` with the round in play; the entropy of the phase "announcements" in its log (criterion 45).
+   - `bench_game` and the environment benchmark (`python -m tarok_train.env`) on a quiet machine (criterion 46).
+   - The `train` workflow, which runs on a pull request or on `main`.
+2. **The `train` workflow has not run on this branch.** It runs on `main` and on pull requests.
+3. **Block F on deals of flow B has no soundness test of its own.** `tests/inference.rs` plays deals in which all pass. Block F does not read the round, so nothing changed for it; a test would be needed with question 3.
+4. **A reward can be above 100.** Mort on an announced valat is 8,000 points, a reward of 160 for the declarer. The scale is unchanged (reading 4 of the spec). The training spec for flow B has to look at it.
+5. **The deals per second are not a clean number yet** (see "Measured").
+
+### Questions for the user
+
+1. **Rewards as 32-bit numbers.** Spec 006 asked that the ten parts of a seat sum to its reward within 1e-6. With kontra that cannot hold for large rewards. Options: (a) the room grows with the reward: 1e-6 times the largest reward of the deal, as the engine's tests now have it; (b) the rewards become 64-bit numbers in the arrays, which changes the contract and the binding; (c) the reward scale grows with flow B so rewards stay small. Recommended: (a). The parts and the reward are exact as whole points in the record; only the divided numbers round.
+2. **A declarer who announces kralj ultimo with its own king.** Options: (a) as built: the engine shows nothing; the other seats may not kontra each other's announcements until the king falls; (b) the declarer is shown as alone from that announcement on, as a player at the table would conclude. Recommended: (b). It is a fifth case next to the four of reading 3, and one line in `PublicView::partner`.
+3. **Block F and the announcements.** Options: (a) as built: block F does not use them; (b) F3 holds the pagat for the seat that announced pagat ultimo and the called king for the seat that announced kralj ultimo, until the card is played, with a soundness test on deals of flow B. Recommended: (b), with the training spec for flow B. The network can also read it from the token, which carries the seat.
