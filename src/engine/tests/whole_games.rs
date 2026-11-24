@@ -1,15 +1,18 @@
-//! Spec 005, criteria 46-50: whole deals with random legal actions.
+//! Spec 005, criteria 46-50: whole deals with random legal actions. Spec
+//! 009, criteria 41-44: the same with announcements and kontra.
 //!
 //! One case is a deal seed, a dealer and a list of choices. Choice `i`
 //! picks action `i` among the legal actions; see `common::flow::play_random`.
 
 mod common;
 
-use common::flow::{play_random, seeded_game};
+use common::flow::{play_random, play_random_b, seeded_game, seeded_game_b};
 use common::second_scorer::{assert_scores_agree, second_score};
 use common::{run_cases, seat};
 use proptest::prelude::*;
-use tarok_engine::{Action, CardSet, Contract, Game, Phase, Seat, action::slots, points};
+use tarok_engine::{
+    Action, Bonus, Card, CardSet, Contract, Game, Phase, Seat, Target, action::slots, points,
+};
 
 const CASES: u32 = 10_000;
 
@@ -287,4 +290,239 @@ fn random_deals_cover_contracts_seats_and_partner_cases() {
     );
     assert!(mondfang >= 100, "{mondfang} deals with a mondfang");
     assert!(won >= 500 && lost >= 500, "{won} won, {lost} lost");
+}
+
+// ---------------------------------------------------------------------
+// Spec 009, criteria 41-44: whole deals with announcements and kontra
+// ---------------------------------------------------------------------
+
+/// A case of flow B: more choices, because a deal has more decisions.
+fn case_b() -> impl Strategy<Value = (u64, u8, Vec<u8>)> {
+    (
+        any::<u64>(),
+        0..4u8,
+        proptest::collection::vec(any::<u8>(), 191),
+    )
+}
+
+#[test]
+fn c41_every_deal_of_flow_b_reaches_over_and_the_round_is_bounded() {
+    run_cases(CASES, case_b(), |(seed, dealer, choices)| {
+        let mut actions = 0u32;
+        let mut said = 0u32;
+        let mut last_phase = Phase::Bidding;
+        let mut announced = [false; 5];
+        let mut levels = [0u8; 6];
+        let game = play_random_b(seed, seat(dealer), &choices, |game| {
+            actions += 1;
+            assert_ne!(game.phase(), Phase::Over);
+            // The legal set is never empty before the end.
+            assert!(!game.legal_actions().is_empty());
+            assert!(game.to_act().is_some());
+            assert!(game.score().is_none(), "no score before the end");
+            assert!(order(game.phase()) >= order(last_phase));
+            last_phase = game.phase();
+            // What was said only grows: a bonus stays announced, a level
+            // goes up by one at a time and never above mort.
+            let now_announced = Bonus::ALL.map(|bonus| game.public().announced(bonus).is_some());
+            let now_levels = Target::ALL.map(|target| game.public().kontra_level(target));
+            let mut steps = 0;
+            for index in 0..5 {
+                assert!(now_announced[index] || !announced[index]);
+                steps += u32::from(now_announced[index] && !announced[index]);
+            }
+            for index in 0..6 {
+                assert!(now_levels[index] >= levels[index] && now_levels[index] <= 4);
+                steps += u32::from(now_levels[index] - levels[index]);
+            }
+            assert!(steps <= 1, "one thing per action");
+            said += steps;
+            (announced, levels) = (now_announced, now_levels);
+            if game.phase() == Phase::Announcements {
+                assert!(game.legal_actions().contains(Action::Done));
+            }
+        });
+        prop_assert_eq!(game.phase(), Phase::Over);
+        prop_assert!(game.legal_actions().is_empty());
+        prop_assert_eq!(game.to_act(), None);
+        prop_assert!(game.score().is_some());
+
+        // The round is bounded: at most 29 announcements and kontras.
+        let all: Vec<Action> = game.full().actions().collect();
+        let in_the_round = all
+            .iter()
+            .filter(|action| matches!(action, Action::Announce(_) | Action::Kontra(_)))
+            .count();
+        prop_assert!(in_the_round <= 29, "{} things said", in_the_round);
+        // The last thing said is not seen by the callback: it is counted
+        // from the final state.
+        let final_levels: u32 = Target::ALL
+            .iter()
+            .map(|&target| u32::from(game.public().kontra_level(target)))
+            .sum();
+        let final_announced = Bonus::ALL
+            .iter()
+            .filter(|&&bonus| game.public().announced(bonus).is_some())
+            .count();
+        prop_assert_eq!(in_the_round, final_announced + final_levels as usize);
+        prop_assert!(said as usize <= in_the_round);
+        // And its turns: one "done" per turn, at most 3 x 29 + 4.
+        let turns = all.iter().filter(|&&action| action == Action::Done).count();
+        prop_assert!((4..=91).contains(&turns), "{} turns", turns);
+        prop_assert!(all.len() <= tarok_engine::game::MAX_ACTIONS);
+        prop_assert_eq!(actions as usize, all.len());
+        Ok(())
+    });
+}
+
+#[test]
+fn c42_the_second_scorer_agrees_on_random_deals_of_flow_b() {
+    run_cases(CASES, case_b(), |(seed, dealer, choices)| {
+        let game = play_random_b(seed, seat(dealer), &choices, |_| {});
+        // Both piles, both counts and all eight parts of all four entries.
+        assert_scores_agree(&game);
+        Ok(())
+    });
+}
+
+#[test]
+fn c43_declarer_and_partner_write_the_same_and_an_opponent_0_or_minus_20() {
+    run_cases(CASES, case_b(), |(seed, dealer, choices)| {
+        let game = play_random_b(seed, seat(dealer), &choices, |_| {});
+        let score = game.score().unwrap();
+        let declarer = game.public().declarer().unwrap();
+        let mut mondfangs = 0;
+        for seat in Seat::ALL {
+            let parts = score.parts(seat);
+            prop_assert!(parts.mondfang == 0 || parts.mondfang == -20);
+            mondfangs += u32::from(parts.mondfang != 0);
+            if game.full().on_declarer_side(seat) {
+                // Equal apart from a mondfang.
+                prop_assert_eq!(
+                    score.entry(seat) - parts.mondfang,
+                    score.entry(declarer) - score.parts(declarer).mondfang
+                );
+            } else {
+                // An opponent writes 0, or -20 for a lost mond: no kontra
+                // and no announcement changes that (S20 a).
+                prop_assert!(score.entry(seat) == 0 || score.entry(seat) == -20);
+                prop_assert_eq!(score.entry(seat), parts.mondfang);
+            }
+            prop_assert_eq!(parts.entry(), score.entry(seat));
+        }
+        prop_assert!(mondfangs <= 1);
+        Ok(())
+    });
+}
+
+#[test]
+fn c44_fixed_seeds_cover_the_rules_of_flow_b() {
+    // Who announced: the declarer, the partner, an opponent.
+    let mut announced = [[0u32; 3]; 5];
+    // Levels reached on the game and on any bonus: 1 to 4.
+    let mut game_levels = [0u32; 5];
+    let mut bonus_levels = [0u32; 5];
+    let (mut valat_won, mut valat_lost) = (0u32, 0u32);
+    let (mut pagat_early, mut king_early) = (0u32, 0u32);
+    let (mut pagat_made, mut king_made) = (0u32, 0u32);
+    let mut partner_shown = 0u32;
+
+    for seed in 0..10_000u64 {
+        let game = seeded_game_b(seed);
+        let public = game.public();
+        let full = game.full();
+        let declarer = public.declarer().unwrap();
+        let score = game.score().unwrap();
+        for bonus in Bonus::ALL {
+            let Some(seat) = public.announced(bonus) else {
+                continue;
+            };
+            let who = if seat == declarer {
+                0
+            } else if full.partner() == Some(seat) {
+                1
+            } else {
+                2
+            };
+            announced[bonus.index()][who] += 1;
+        }
+        game_levels[usize::from(public.kontra_level(Target::Game))] += 1;
+        for target in Target::ALL {
+            if target != Target::Game && public.announced(target.bonus().unwrap()).is_some() {
+                bonus_levels[usize::from(public.kontra_level(target))] += 1;
+            }
+        }
+        if let Some(seat) = public.announced(Bonus::Valat) {
+            // Won: the announcer's side wrote plus.
+            let owner_sign = if full.on_declarer_side(seat) { 1 } else { -1 };
+            if score.parts(declarer).valat * owner_sign > 0 {
+                valat_won += 1;
+            } else {
+                valat_lost += 1;
+            }
+        }
+        let trick_of = |card: Card| {
+            public
+                .tricks()
+                .iter()
+                .position(|trick| trick.cards.contains(&card))
+        };
+        // Without an announced valat the ultimo bonuses are scored.
+        let no_valat = score.parts(declarer).valat == 0;
+        if public.announced(Bonus::PagatUltimo).is_some() {
+            pagat_early += u32::from(trick_of(Card::PAGAT) != Some(11));
+            pagat_made += u32::from(no_valat && score.parts(declarer).pagat_ultimo.abs() >= 50);
+        }
+        if public.announced(Bonus::KraljUltimo).is_some() {
+            let king = public.called_king().unwrap();
+            king_early += u32::from(trick_of(king) != Some(11));
+            king_made += u32::from(no_valat && score.parts(declarer).kralj_ultimo > 0);
+        }
+        // A partner shown by the round alone: public before its king fell.
+        partner_shown += u32::from(
+            full.partner().is_some()
+                && public
+                    .announced(Bonus::KraljUltimo)
+                    .is_some_and(|seat| seat != declarer),
+        );
+    }
+    println!(
+        "10,000 seeded deals of flow B. Announced by declarer / partner / opponent: trula \
+         {:?}, kralji {:?}, kralj ultimo {:?}, pagat ultimo {:?}, valat {:?}. Game at level 0 \
+         to 4: {game_levels:?}. Announced bonuses at level 0 to 4: {bonus_levels:?}. Announced \
+         valat won {valat_won}, lost {valat_lost}. Announced pagat played before the last \
+         trick {pagat_early}, announced king {king_early}; announced pagat ultimo scored \
+         {pagat_made}, kralj ultimo won {king_made}. Partner shown by kralj ultimo \
+         {partner_shown}.",
+        announced[0], announced[1], announced[2], announced[3], announced[4]
+    );
+
+    // Each of the five announcements, by the declarer, by the partner and
+    // by an opponent where the rules allow it.
+    for bonus in [
+        Bonus::Trula,
+        Bonus::Kralji,
+        Bonus::PagatUltimo,
+        Bonus::Valat,
+    ] {
+        for (who, count) in announced[bonus.index()].into_iter().enumerate() {
+            assert!(count >= 20, "{bonus:?} by {who}: {count}");
+        }
+    }
+    // Kralj ultimo: by the declarer or the partner, never by an opponent.
+    let [by_declarer, by_partner, by_opponent] = announced[Bonus::KraljUltimo.index()];
+    assert!(by_declarer >= 20 && by_partner >= 20);
+    assert_eq!(by_opponent, 0);
+    // Each kontra level on the game and on a bonus.
+    for level in 1..=4 {
+        assert!(game_levels[level] >= 20, "game at level {level}");
+        assert!(bonus_levels[level] >= 20, "a bonus at level {level}");
+    }
+    // An announced valat won and lost.
+    assert!(valat_won >= 3, "{valat_won} announced valats won");
+    assert!(valat_lost >= 100);
+    // An announced ultimo card played before the last trick.
+    assert!(pagat_early >= 100 && king_early >= 100);
+    assert!(pagat_made >= 20 && king_made >= 3);
+    assert!(partner_shown >= 20);
 }
