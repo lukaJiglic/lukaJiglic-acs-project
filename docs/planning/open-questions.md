@@ -44,7 +44,8 @@
 - 2026-11-24, 13:40: the review pass over spec 009 is back: no rule defect; weak tests and two points for the user. Batch 17 below.
 - 2026-11-24, 13:50: Batch 17 answered, a for every item (D148). Spec 018 (first runs on flow B) is drafted; Batch 18 below. The timed 200-update run of spec 015 is going since about 13:40.
 - 2026-11-24, 13:55: Batch 18 answered, a for every item (D149). Spec 018 is approved. Order of the GPU work: spec 015, spec 017, the rebuild and merge of spec 009, spec 018, spec 016.
-- **Waiting on the user, to decide:** C13 (the new figure of G3; better after spec 015); C16 (which entropy mean the controller steers on); the open points A, B and D of spec 014; later C14.
+- 2026-11-24, evening: spec 015 is executed and verified from its run files; its review pass was cut by the usage limit and resumed. Spec 009 is at `6bce5d8` on its branch (D147, D148 and the review's tests built; 233 tests). Batch 19 below.
+- **Waiting on the user, to decide:** Batch 19 (two items); C13 (the new figure of G3; better after spec 015); C16 (which entropy mean the controller steers on); the open points A, B and D of spec 014; later C14.
 - **Dates:** the repo must be public or shared with the instructor on Mon 23 Nov (R5); it is private on 2026-11-23. The proposal, wireframe and pitch slide were due Wed 18 Nov; the files hold no record that they were handed in.
 - **Waiting on the user:** corrections to the wireframe and `pitch.md`; the proposal format. Later: C13 (the new figure of G3, after the smoke run), C14 (tier of the trula toggle).
 - Next: spec 013 in the `engine-core` session and spec 008 in the `train-env` session; verification, review pass, the user's read of each diff, commit.
@@ -63,6 +64,15 @@ Open:
 - **C13. The new figure of G3** (D128). Measured in spec 008, end to end on this PC with 512 tables and two epochs: transformer 6,506 decisions played per second and 3,194 trained; MLP 34,743 and 17,050. (a) at least 5,000 decisions played per second with the transformer; (b) at least 6,000 played; (c) at least 3,000 trained. Recommended: (a); it is met with a margin of 30%, which flow B's longer sequences will use up in part. Asked 2026-11-12.
 - **C16. Which entropy mean the controller steers on.** Now: the mean over all decisions of a phase, forced ones included. In the smoke runs the share of forced decisions in the bidding went from 28% to 0%, so the mean moved without the policy getting firmer or looser. (a) the mean over decisions with two or more legal actions, with the targets set again as a quarter of random play under that mean; (b) keep the mean over all decisions. Recommended: (a). Asked 2026-11-12.
 - **C14. Tier of S40's other option** ("in any order"). Recommended: like S14 and S18 in D98: selectable in T0 with the note "agent ni učen s tem pravilom". Asked when the engine gets its toggles.
+
+## Batch 19 — a seat shown as an opponent; the memory limit in the trial (asked 2026-11-24; open)
+
+The first option is the recommendation.
+
+| # | Question | Options | Recommended, and why |
+|---|---|---|---|
+| B19-1 | Found by the engine session while it checked the cases of D148. A seat that says kontra on the game, or on a bonus the declarer announced, is an opponent, and every seat sees it. The engine does not use this. Example: D says kontra on the game and then announces trula. The declarer does not hold the called king and the partner is hidden. At the table the declarer knows the trula is the opponents' and may say kontra on it; in the engine it may not | (a) the engine keeps "shown as an opponent" per seat: a seat may raise a bonus of such a seat, the observation shows that seat's announcements on the opponents' side, and when all three other seats are shown so, the declarer is publicly alone. Built now on the branch, before the merge. (b) the same, built after the merge as a spec change. (c) leave it | a: the same reason as D147 and D148. Before the merge, because it changes who may say kontra; built later it would change the game under the first runs on flow B (spec 018). The engine session has the time while spec 017 holds the card |
+| B19-2 | Spec 017, criterion 1, says the trial's transformer config differs from `long-a-transformer.toml` in four values only. Spec 015 has since added the key `gpu_memory_limit_mib`; the run of spec 014 had no limit and spilled into shared memory | (a) the trial's transformer config sets the limit 5,000 MiB; criterion 1 allows that key. (b) no limit, as in the run of spec 014 | a: the limit is a setting of the machine and changes no number of the training; without it the run is about a third slower. The MLP configs keep 0 |
 
 ## Batch 18 — spec 018, first runs on flow B (asked 2026-11-24, answered 2026-11-24: a for all four; see D149)
 

@@ -12,6 +12,19 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 **Next:** the next step.
 ```
 
+## 2026-11-24 — spec 015 verified; its review pass; spec 009 at `6bce5d8` (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 8)
+
+**Done:** the `train-env` session reported spec 015 executed. The main session read the numbers of criteria 7 and 8 from the run files (`src/train/runs/spec015/c7-smoke-limit5000-transformer`, not tracked): median 8.347 s per update over the updates 101 to 200 (smoke run of spec 008: 9.818), update step 4.086 s (4.477), allocator's peak 4,910 MiB (5,156), no illegal action, +0.6015 (+0.5931 to +0.6099) against random legal play (smoke run: +0.6049, +0.5968 to +0.6130). The not-slow suite with the GPU, run by the main session: 204 passed, 1 failed; the failure is `test_c20` of spec 006 under load from the review agent's own test run, and it passes alone. A separate agent reviewed the uncommitted diff; its CPU run of the not-slow suite: 194 passed, 11 skipped.
+**Review findings, sent to the `train-env` session; nothing is committed before they are fixed:**
+- A defect in the evaluation with a checkpoint as opponent: the sampling noise of both networks is seeded anew, with the same seed, in every seating and chunk. For a policy that reads the cards weakly the deal values are then not independent and the 95% interval is too narrow. The reviewer measured the recipe of `test_c15` on 20 seeds: the control's interval excludes zero in 8 of 20. In the files of the twelve pairs and of all trained checkpoints the effect is within ±0.03 correlation, so those intervals stand; for the untrained network against random play (spec 008) the standard error was understated 1.3 to 1.4 times. The seeding of the agent was there before spec 015.
+- No test has the two checkpoints of different kinds or model configs; two wrong changes survive. The code is right by the reviewer's hand check.
+- Evaluation files of the same pair with another seed, or of two opponents with one run name, overwrite each other.
+- Lesser: the limit is set after a resumed checkpoint is on the card; a limit of 0 does not lift an earlier limit in one process; a limit equal to the card's size may be refused; `nan` passes as a temperature; a wrong path ends in a traceback.
+**Not covered by the review:** nothing ran on the GPU; the measured numbers of the Results were not derived again by the reviewer (the main session read those of criteria 7 and 8).
+**Spec 009:** the branch `spec-009` is at `6bce5d8`: D147, D148 and the tests the review asked for; 233 engine tests, 64 planted wrong rules caught, the `engine` workflow green (session's report and the workflow list). The new code gets a review pass with stage (d). Its question 4 is Batch 19, item 1.
+**Broken or open:** both sessions and the review agent were stopped once more by the usage limit and resumed.
+**Next:** the fixes of spec 015, then its commits; then spec 017. The user's answers to Batch 19.
+
 ## 2026-11-24 — Batches 17 and 18 answered; spec 018 approved (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 8)
 
 **Done:** the user answered Batch 17 (D148) and Batch 18 (D149) with a for every item. Spec 018 (first runs on flow B: monitors of the round, a silent random opponent, two runs of 200 updates, a rule fixed beforehand for when the flood of announced valats counts as ended) is drafted and approved. The three more cases of the public partner and the guard by engine version (criterion 53) went to the `engine-core` session for spec 009.
