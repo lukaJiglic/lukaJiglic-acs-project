@@ -23,7 +23,7 @@ Built so far: the pinned environment, the GPU check, a PyO3 probe and a throughp
 | `tarok_train/train.py` | The loop on the mock or the engine, config check, checkpoints, TensorBoard logs, `run-info.json` and `summary.json` per run. |
 | `tarok_train/evaluate.py` | A checkpoint against random legal play on seeded deals, with a 95% interval; exports game records. |
 | `tarok_train/smoke_report.py` | Reads the files of a run folder and prints the numbers of spec 008 as Markdown. |
-| `configs/` | One TOML file per run (D79). Every hyperparameter is in the file; the code has no defaults. `mock.toml` (spec 007), `smoke-a-mlp.toml`, `smoke-a-transformer.toml` and the small `smoke-a-ci.toml` for the tests (spec 008). |
+| `configs/` | One TOML file per run (D79). Every hyperparameter is in the file; the code has no defaults. `mock.toml` (spec 007), `smoke-a-mlp.toml`, `smoke-a-transformer.toml` and the small `smoke-a-ci.toml` for the tests (spec 008). `long-a-mlp.toml` and `long-a-transformer.toml`: the same runs with 2,000 updates (spec 014). |
 | `runs/` | Checkpoints and TensorBoard files of local runs. Not tracked by git. |
 | `pyo3_probe/` | Throwaway Rust crate: fills an array on 12 threads with the GIL released, returns NumPy arrays. |
 | `bench_results/` | Raw rows of each benchmark run, JSON. Numbers only: no process names, no paths. |
@@ -209,3 +209,26 @@ weight    = integral * exp(proportional * error), kept inside [min_weight, max_w
 ```
 
 It changes only these weights. Every weight starts at `[ppo] entropy_weight`. With `enabled = false` the weights never move and the update uses `[ppo] entropy_weight`. `band` is used by the monitor `entropy/phases_outside_band` and by the test of the controller: a phase is in its band when its entropy is within that share of its target.
+
+## The longer run on flow A (spec 014; cmd, venv active, from the repo root)
+
+The smoke configs with 2,000 updates, a checkpoint every 100 updates and seed 14. Measured on 2026-11-24 on a free GTX 1660 SUPER: 60.7 minutes for the MLP and 414.7 minutes (6.9 hours) for the transformer.
+
+```bat
+python -m tarok_train.train --config src\train\configs\long-a-mlp.toml
+python -m tarok_train.train --config src\train\configs\long-a-transformer.toml
+```
+
+A run that stops (time limit, out of memory, the PC) does not go on by itself. At the time limit the trainer saves a checkpoint and ends with exit code 3. Start it again from its last checkpoint; the folder then holds one `run-info-from-NNNNNN.json` per resume, and `summary.json` is that of the last part. The two runs of 2026-11-24 did not need a resume. So the resume is covered only by the small test `test_c06_a_resumed_run_reaches_the_same_update_count_from_the_checkpoints_state` of `tests\test_spec008.py` (engine, CPU, three updates), not by a run on the GPU:
+
+```bat
+python -m tarok_train.train --resume src\train\runs\<run folder>\checkpoint-NNNNNN.pt
+```
+
+Evaluate several checkpoints on the same deals: one call per checkpoint with the same `--seed`. Each call writes its own `evaluation-NNNNNN.json`, named by the checkpoint's update, so nothing is overwritten.
+
+```bat
+python -m tarok_train.evaluate --checkpoint src\train\runs\<run folder>\checkpoint-000500.pt --deals 2000 --seed 2008
+```
+
+The run is on deal flow A only (six normal contracts, no announcements, no klop). Its evaluation is against random legal play and says nothing more about playing strength.
