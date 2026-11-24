@@ -523,13 +523,31 @@ fn c10_an_announcement_does_not_show_the_side_except_kralj_ultimo() {
         assert_eq!(game.public().partner(), PublicPartner::With(holder));
     }
 
-    // The declarer announces kralj ultimo with its own king: the engine
-    // shows no partner and no "alone" (reading 3 of the spec: four cases
-    // only).
+    // The declarer announces kralj ultimo with its own king (D147): only
+    // the holder of the called king may announce it, so the declarer
+    // plays alone and all know it, from that action on.
     let mut game = round_game(A, Tri);
     assert_eq!(game.full().partner(), None);
-    act(&mut game, A, announce(Bonus::KraljUltimo));
     assert_eq!(game.public().partner(), PublicPartner::NotKnown);
+    // Another announcement of the declarer shows nothing.
+    act(&mut game, A, announce(Bonus::Trula));
+    assert_eq!(game.public().partner(), PublicPartner::NotKnown);
+    act(&mut game, A, announce(Bonus::Valat));
+    assert_eq!(game.public().partner(), PublicPartner::NotKnown);
+    act(&mut game, A, announce(Bonus::KraljUltimo));
+    assert_eq!(game.public().partner(), PublicPartner::Alone);
+    act(&mut game, A, Action::Done);
+    assert_eq!(game.public().partner(), PublicPartner::Alone);
+    pass_round(&mut game);
+    assert_eq!(game.public().partner(), PublicPartner::Alone);
+    // The king has not been played, and it does not lie in the talon.
+    assert!(!game.public().called_king_played());
+    assert!(!game.public().king_in_talon());
+
+    // Without the announcement the same declarer stays hidden: the other
+    // seats cannot tell whether it has a partner.
+    let mut game = round_game(A, Tri);
+    say(&mut game, A, &[announce(Bonus::Trula)]);
     pass_round(&mut game);
     assert_eq!(game.public().partner(), PublicPartner::NotKnown);
 }

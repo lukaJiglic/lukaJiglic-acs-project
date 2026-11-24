@@ -313,6 +313,38 @@ fn c14_the_game_ladder_and_a_partner_shown_by_re_or_mort() {
     assert_eq!(game.public().partner(), PublicPartner::With(C));
     act(&mut game, C, Action::Done);
     assert!(!may(&game, on_game));
+
+    // The same on a bonus the declarer announced (D148, case ii): re and
+    // mort belong to the declarer's side. A announces trula, B says
+    // kontra, which shows nothing; C says re: C is the partner.
+    let on_trula = kontra(Target::Trula);
+    let mut game = round_game(C, Tri);
+    say(&mut game, A, &[announce(Bonus::Trula)]);
+    raise(&mut game, B, Target::Trula);
+    assert_eq!(game.public().partner(), PublicPartner::NotKnown);
+    act(&mut game, B, Action::Done);
+    let at_c = game.clone();
+    assert!(may(&game, on_trula));
+    raise(&mut game, C, Target::Trula);
+    assert_eq!(game.public().kontra_level(Target::Trula), 2);
+    assert_eq!(game.public().partner(), PublicPartner::With(C));
+
+    // The declarer's own re shows nothing, and neither does an opponent's
+    // sub. C's mort shows C.
+    let mut game = at_c;
+    say(&mut game, C, &[]);
+    assert!(!may(&game, on_trula), "D cannot say re");
+    say(&mut game, D, &[]);
+    raise(&mut game, A, Target::Trula);
+    assert_eq!(game.public().partner(), PublicPartner::NotKnown);
+    act(&mut game, A, Action::Done);
+    raise(&mut game, B, Target::Trula);
+    assert_eq!(game.public().partner(), PublicPartner::NotKnown);
+    act(&mut game, B, Action::Done);
+    assert!(may(&game, on_trula));
+    raise(&mut game, C, Target::Trula);
+    assert_eq!(game.public().kontra_level(Target::Trula), 4);
+    assert_eq!(game.public().partner(), PublicPartner::With(C));
 }
 
 #[test]
@@ -348,11 +380,16 @@ fn c15_a_bonus_is_raised_only_by_a_seat_that_knows_the_announcers_side() {
     say(&mut game, A, &[]);
     assert!(!may(&game, on_kralji), "B cannot kontra its own bonus");
     say(&mut game, B, &[]);
-    // C says kontra.
+    // C says kontra. While the partner is hidden, a seat that raises a
+    // bonus of another seat that is not the declarer must hold the called
+    // king. C is not the declarer: it is the partner, and all know it
+    // from this action on (D148, case i).
+    assert_eq!(game.public().partner(), PublicPartner::NotKnown);
     raise(&mut game, C, Target::Kralji);
+    assert_eq!(game.public().partner(), PublicPartner::With(C));
     act(&mut game, C, Action::Done);
-    // Re is for B's side. D is on it but does not know it: no re.
-    assert!(!may(&game, on_kralji), "D does not know B's side");
+    // Re is for B's side. D is on it, and knows it now.
+    assert!(may(&game, on_kralji), "D knows B's side now");
     say(&mut game, D, &[]);
     assert!(!may(&game, on_kralji), "A is not on the owning side");
     say(&mut game, A, &[]);
@@ -390,11 +427,38 @@ fn c15_a_bonus_is_raised_only_by_a_seat_that_knows_the_announcers_side() {
     assert!(!may(&game, on_kralji));
     say(&mut game, D, &[]);
     assert!(may(&game, on_kralji), "the declarer knows it is alone");
+    // The declarer raises a bonus of another seat while the partner is
+    // hidden: it must hold the called king, so it plays alone and all
+    // know it from this action on (D148, case iii).
+    assert_eq!(game.public().partner(), PublicPartner::NotKnown);
+    raise(&mut game, A, Target::Kralji);
+    assert_eq!(game.public().partner(), PublicPartner::Alone);
+    act(&mut game, A, Action::Done);
+    say(&mut game, B, &[]);
+    // C is on B's side, and knows it now: re.
+    assert!(may(&game, on_kralji), "C knows B's side now");
+
+    // 5. The same deal, but the declarer announces kralj ultimo first. It
+    // is then publicly alone (D147): every seat knows every side.
+    let mut game = round_game(A, Tri);
+    say(&mut game, A, &[announce(Bonus::KraljUltimo)]);
+    assert_eq!(game.public().partner(), PublicPartner::Alone);
+    say(&mut game, B, &[announce(Bonus::Kralji)]);
+    assert!(!may(&game, on_kralji), "C is on B's side: no kontra");
+    say(&mut game, C, &[]);
+    assert!(!may(&game, on_kralji));
+    say(&mut game, D, &[]);
     raise(&mut game, A, Target::Kralji);
     act(&mut game, A, Action::Done);
     say(&mut game, B, &[]);
-    // C is on B's side but cannot know it: no re.
-    assert!(!may(&game, on_kralji), "C does not know B's side");
+    // C knows now that it is on B's side: re.
+    assert!(may(&game, on_kralji), "C knows B's side");
+    raise(&mut game, C, Target::Kralji);
+    act(&mut game, C, Action::Done);
+    // And D may not say sub: it is on the owning side too.
+    assert!(!may(&game, on_kralji));
+    // The opponents may kontra the declarer's kralj ultimo.
+    assert!(may(&game, kontra(Target::KraljUltimo)));
 }
 
 /// The swap of two cards between two seats.

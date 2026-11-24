@@ -71,14 +71,14 @@ The user approves these before tests are written (D73). Seats in the examples: A
 7. Kralj ultimo: only the seat that holds the called king, the declarer included. Never in a solo contract. Never when the called king lies in a packet that was not taken.
 8. Pagat ultimo: only the seat that holds the pagat. Nobody when the pagat lies in a packet that was not taken.
 9. Each of the five can be announced once in a deal. After that it is not legal for any seat (open point A).
-10. An announcement by a seat other than the declarer does not show that seat's side. One exception: kralj ultimo by another seat shows that seat as the partner, from that action on.
+10. An announcement by a seat other than the declarer does not show that seat's side. One exception: kralj ultimo by another seat shows that seat as the partner, from that action on. Kralj ultimo by the declarer shows that the declarer plays alone, from that action on: only the holder of the called king may announce it (D147).
 
 **Kontra**
 11. Six targets: the game and each of the five bonuses. Four levels on each: kontra, re, sub, mort (S18 a). One action raises one target by one level.
 12. The game belongs to the declarer's side. A bonus belongs to the side of the seat that announced it. Kontra and sub are said by the other side, re and mort by the owning side.
 13. A bonus that was not announced cannot be kontra'd. Mort cannot be raised.
-14. The game: an opponent of the declarer may say kontra and sub; the declarer or the partner may say re and mort. A partner who says re or mort on the game is public from that action on.
-15. A bonus: a seat may raise it only when it knows the announcer's side (open point B). It knows it when the announcer is the declarer, when the announcer is the seat itself, when the partner is public, or when the seat itself holds the called king.
+14. The game: an opponent of the declarer may say kontra and sub; the declarer or the partner may say re and mort. A partner who says re or mort on the game is public from that action on. So is a seat other than the declarer who says re or mort on a bonus the declarer announced: those levels belong to the declarer's side (D148, case ii).
+15. A bonus: a seat may raise it only when it knows the announcer's side (open point B). It knows it when the announcer is the declarer, when the announcer is the seat itself, when the partner is public, or when the seat itself holds the called king. So a raise can show who holds the called king (D148): while the partner is hidden, a seat that raises a bonus announced by another seat that is not the declarer must hold the called king. If that seat is not the declarer, it is the partner and is public from that action on (case i). If it is the declarer, the declarer plays alone and all know it from that action on (case iii).
 16. A seat's legal actions depend only on what that seat knows. Test: two deals with the same public history and the same hand of seat Y, in which another seat is once the partner and once an opponent, give Y the same legal set at every turn of the round.
 
 **No duty to keep the card (D141, B13-3 b)**
@@ -121,6 +121,9 @@ The user approves these before tests are written (D73). Seats in the examples: A
 45. The binding module builds from the new sources. `pytest` in `src\train` passes on the CPU and with the GPU tests. `smoke-a-ci.toml` runs with the round in play; the entropy of the phase "announcements" is logged.
 46. Reported, no threshold: whole random deals per second (`bench_game`), decisions and tokens per seat-deal (mean and largest), the share of a deal's decisions that fall in the round.
 
+**Checkpoints (D148, B17-2 a; in stage (d))**
+53. The trainer writes the engine version into every checkpoint. Resuming a checkpoint of another engine version, or of none (made before this guard), is refused with an error that names both versions. The evaluation takes such a checkpoint as agent or as opponent only with a flag, and prints a warning. `encoding_version` stays 1. Tests in the Python tests of this spec, written before the code.
+
 **Quality gates**
 47. `cargo fmt --check` and `cargo clippy --locked --all-targets -- -D warnings` pass on Rust 1.94.1. No `unsafe`. The `engine` and `train` workflows are green.
 48. Every earlier test passes. Each one that had to change is listed in the Results with the reason.
@@ -137,7 +140,7 @@ These are not table rules. They are choices about the machine side. Say so if on
 
 1. **"Done" writes no token.** With a token per "done" a legal deal can reach about 190 tokens; the limit is 128. Without it the longest deal has 103 (26 before the round, 29 in it, 48 plays). The passes are not lost to the network through the tokens of what was said; what a seat did not say is not shown.
 2. **An announcement of unknown side sets both bits of D1.** The token carries the seat. The side becomes one bit when the observing seat knows it.
-3. **The engine shows the partner as public in four cases only:** the called king is played, the called king lies in the talon, a seat other than the declarer announces kralj ultimo, a seat other than the declarer says re or mort on the game. It does not work out sides from other kontras. The network may.
+3. **The engine shows the partner as public in eight cases only.** The first execution had four: the called king is played; the called king lies in the talon; a seat other than the declarer announces kralj ultimo; a seat other than the declarer says re or mort on the game. The user added four on 2026-11-24, each a fact that follows from what was said and from who may say what. D147: the declarer announces kralj ultimo (it holds the called king and plays alone). D148: (i) a seat other than the declarer raises a bonus of another seat that is not the declarer while the partner is hidden (it is the partner); (ii) a seat other than the declarer says re or mort on a bonus of the declarer (it is the partner); (iii) the declarer raises a bonus of a seat that is not the declarer while the partner is hidden (it plays alone). The engine works out nothing else from what was said. The network may.
 4. **A deal's reward can be large.** Mort on a won solo ena with full difference is 16 × 95 = 1,520 points, a reward of about 30 with the scale of 50 (D117). The scale is not changed here; the training spec for flow B looks at it.
 
 ## Checks
@@ -177,6 +180,19 @@ Places where the source is silent or where your table decides.
 - G. (a) A declarer who holds the called king may announce kralj ultimo. Criterion 7 stands.
 
 The four readings chosen by Claude were not objected to and stand.
+
+## Answers after the first execution (D147)
+
+The Results asked three questions. The user answered on 2026-11-24.
+
+- **Rewards as 32-bit numbers.** The room for "the rewards of a deal add up to zero" grows with the largest reward of the deal, as built.
+- **A declarer who announces kralj ultimo with its own called king** is shown as alone to every seat. Criterion 10 and reading 3 are changed above; the test `c10` and the code follow in one commit.
+- **Block F and the announced ultimo cards.** Block F will use what an announced pagat ultimo or kralj ultimo shows about the holder. Not in this spec: it is built with the training spec for flow B.
+
+## Answers to Batch 17 (D148)
+
+- **Three more cases in which the sides follow from what was said** (B17-1 a), on the condition that each is checked against the rules of who may say what before it is built. The check is in the Results ("The three cases of D148"). Criteria 14 and 15 and reading 3 are changed above; tests and code follow in one commit with the case of D147.
+- **A guard by engine version for checkpoints** (B17-2 a): criterion 53, in stage (d).
 
 ## Results
 

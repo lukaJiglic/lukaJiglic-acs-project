@@ -455,6 +455,43 @@ fn c36_state_block_d_holds_the_announcements_by_side_and_the_kontra_levels() {
         assert_eq!(d2(&game, observer), levels([4, 1, 2, 0, 0, 1]));
     }
 
+    // The declarer announces kralj ultimo with its own king (D147): it is
+    // publicly alone from then on, and every seat sees every announcement
+    // on one side.
+    let mut game = round_game(A, Tri);
+    say(&mut game, A, &[]);
+    say(&mut game, B, &[ann(Bonus::Trula)]);
+    // The partner is hidden: C and D do not know B's side. A holds the
+    // called king and knows.
+    let b_unknown = bits(&[TRULA, OPPONENTS + TRULA]);
+    assert_eq!(d1(&game, A), bits(&[OPPONENTS + TRULA]));
+    assert_eq!(d1(&game, C), b_unknown);
+    assert_eq!(d1(&game, D), b_unknown);
+    say(&mut game, C, &[]);
+    say(&mut game, D, &[]);
+    for observer in Seat::ALL {
+        // B7: called king played, king in the talon, I hold the called
+        // king, the declarer is publicly alone.
+        let holds = if observer == A { 1.0 } else { 0.0 };
+        let b7 = features(&observe(&game, observer), "B7").to_vec();
+        assert_eq!(b7, [0.0, 0.0, holds, 0.0], "{observer:?}");
+    }
+    act(&mut game, A, ann(Bonus::KraljUltimo));
+    assert_eq!(game.public().partner(), PublicPartner::Alone);
+    for observer in Seat::ALL {
+        let observation = observe(&game, observer);
+        assert_eq!(
+            features(&observation, "D1"),
+            bits(&[KRALJ_ULTIMO, OPPONENTS + TRULA]),
+            "{observer:?}"
+        );
+        let holds = if observer == A { 1.0 } else { 0.0 };
+        assert_eq!(features(&observation, "B7"), [0.0, 0.0, holds, 1.0]);
+        // No partner seat is shown.
+        assert_eq!(features(&observation, "B6"), [0.0; 4]);
+        check_block_d(&game, observer, &observation);
+    }
+
     // Random deals of flow B: at every decision, for every seat, block D
     // is what follows from the public state and the seat's own view.
     let mut with_both_bits = 0u32;
@@ -471,8 +508,10 @@ fn c36_state_block_d_holds_the_announcements_by_side_and_the_kontra_levels() {
         });
     }
     assert!(checked > 80_000, "{checked} observations checked");
+    // Fewer than before D147: a declarer's kralj ultimo now makes every
+    // side known.
     assert!(
-        with_both_bits > 5_000,
+        with_both_bits > 3_000,
         "{with_both_bits} with an unknown side"
     );
 }
