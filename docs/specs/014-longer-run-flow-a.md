@@ -1,6 +1,6 @@
 # 014 — Longer run on deal flow A
 
-Status: **approved** (2026-11-23) by the user's instruction "go for a longer run" (D138). The user gave no settings: every setting below is Claude's choice and open to correction. Executed on 2026-11-23 and 24 in the `train-env` session; committed on the user's go-ahead of 2026-11-24 (D139). **Done** once the workflows are green on that commit.
+Status: **done** (2026-11-24). Approved on 2026-11-23 by the user's instruction "go for a longer run" (D138). The user gave no settings: every setting below is Claude's choice and open to correction. Executed on 2026-11-23 and 24 in the `train-env` session; committed on the user's go-ahead of 2026-11-24 (D139) as `e1a325f`. The three workflows are green on `bb917ce`, which holds it.
 
 Tool and model: Claude Code 2.1.306, `claude-fable-5-2`.
 

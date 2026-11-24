@@ -44,5 +44,5 @@ Tool and model: ...
 | 008 | [Pipeline smoke run](008-pipeline-smoke-run.md) | done 2026-11-23 |
 | 009 | [Deal flow B: announcements and kontra](009-deal-flow-b.md) | draft 2026-11-24; waits for the user's approval and Batch 13 |
 | 013 | [Three rulings of 12 November](013-rulings-of-12-nov.md) | done 2026-11-12 |
-| 014 | [Longer run on deal flow A](014-longer-run-flow-a.md) | committed 2026-11-24 (D139); done once its workflows are green |
+| 014 | [Longer run on deal flow A](014-longer-run-flow-a.md) | done 2026-11-24 |
 | 015 | [Findings of the longer run](015-findings-of-the-longer-run.md) | approved 2026-11-24 (D140); in execution (session `train-env`) |
