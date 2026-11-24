@@ -32,7 +32,7 @@ Not yet: klop, berač, solo brez, valat as a bid, radelci (spec 010). Their feat
 | `src/game.rs` | `Game`: the state machine of a whole deal, and its public, private and full views. |
 | `src/bin/bench_play.rs` | Benchmark: random legal card play, card plays per second. |
 | `src/encode/` | The encoding: `tokens.rs`, `state.rs` (blocks A to G), `inference.rs` (what a seat knows for certain, block F), `critic.rs` (hidden features, targets), `reward.rs`. The sizes are constants in `mod.rs`. |
-| `src/vecenv.rs` | `Tables` and `VecEnv`: N tables, runs of 24 deals, deal seeds from (base seed, table, run, deal). Needs the feature `vecenv` (on by default). |
+| `src/vecenv.rs` | `Tables` and `VecEnv`: N tables, runs of 24 deals, deal seeds from (base seed, table, run, deal). A step can hold tables (`step_hold`): a held table does not move, so a trainer can make finished tables wait for the others (spec 009, D142). Needs the feature `vecenv` (on by default). |
 | `src/record.rs` | `Record`: the JSON game record, export and replay. |
 | `src/bin/bench_game.rs` | Benchmark: whole deals with random legal actions, deals per second. |
 | `examples/print_deal.rs` | Prints the deal for a seed. CI compares it with `tests/golden_deal_reference.py`. |
