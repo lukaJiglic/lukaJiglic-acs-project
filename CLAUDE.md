@@ -23,11 +23,11 @@ End: update `docs/progress.md`, the spec status and `docs/planning/ai-log.md`; c
 - For research, say what was checked in a source and what is inferred.
 - A spec is executed only after the user approved its acceptance criteria (D70, D73). Tests are written from the criteria before the code.
 
-## Verification before each commit (D72)
+## Verification before each commit (D72, D144)
 
 1. The spec's acceptance criteria are met and named in the commit.
 2. Tests pass locally (`cargo test`, `pytest`, app tests, `python tools/check_skeleton.py`, as applicable).
-3. The user reads the diff. Code is not committed before that.
+3. The agent commits without asking and reports each commit with what it holds (D144). The user reads a diff when they choose. Decisions still go to the user.
 4. A separate agent review pass over the diff, apart from the writing pass.
 5. CI is green after the push.
 

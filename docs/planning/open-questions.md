@@ -37,7 +37,8 @@
 - 2026-11-24: the GPU was free at 00:04 and the longer run of spec 014 started (MLP first). Spec 009 (deal flow B: announcements and kontra) is drafted from a new read of pagat.com; its seven open points are Batch 13 below.
 - 2026-11-24, later: the longer run ended at 08:12 (both networks 2,000 updates; +0.619 and +0.617 against random legal play). Verified, reviewed, committed on the user's go-ahead (D139). The user ordered an analysis of the training, proposals for improvements, fixes of the problems found, and to go on with development (D140). The fixes are spec 015. The message does not answer Batch 13.
 - 2026-11-24, later: the analysis of the run is in spec 015. One checkpoint against another shows what random play hid: both networks were still improving at update 2,000 and the transformer is ahead of the MLP. Spec 015 (the GPU reading, the transformer's memory, a checkpoint as opponent) is in the `train-env` session. Batch 14 below holds the improvements that are not fixes.
-- **Waiting on the user, to decide:** Batch 14; Batch 13 and the acceptance criteria of spec 009; C13 (the new figure of G3); C16 (which entropy mean the controller steers on); the open points A–D of spec 014.
+- 2026-11-24, later: Batch 13 answered (D141; 3 b against the recommendation: no duty to keep an announced ultimo card), Batch 14 answered (D142, all a), spec 009 approved (D143). Claude no longer asks before every commit (D144). The repo is public (D145).
+- **Waiting on the user, to decide:** C13 (the new figure of G3; better after spec 015); C16 (which entropy mean the controller steers on); the open points A, B and D of spec 014; later C14.
 - **Dates:** the repo must be public or shared with the instructor on Mon 23 Nov (R5); it is private on 2026-11-23. The proposal, wireframe and pitch slide were due Wed 18 Nov; the files hold no record that they were handed in.
 - **Waiting on the user:** corrections to the wireframe and `pitch.md`; the proposal format. Later: C13 (the new figure of G3, after the smoke run), C14 (tier of the trula toggle).
 - Next: spec 013 in the `engine-core` session and spec 008 in the `train-env` session; verification, review pass, the user's read of each diff, commit.
@@ -57,7 +58,7 @@ Open:
 - **C16. Which entropy mean the controller steers on.** Now: the mean over all decisions of a phase, forced ones included. In the smoke runs the share of forced decisions in the bidding went from 28% to 0%, so the mean moved without the policy getting firmer or looser. (a) the mean over decisions with two or more legal actions, with the targets set again as a quarter of random play under that mean; (b) keep the mean over all decisions. Recommended: (a). Asked 2026-11-12.
 - **C14. Tier of S40's other option** ("in any order"). Recommended: like S14 and S18 in D98: selectable in T0 with the note "agent ni učen s tem pravilom". Asked when the engine gets its toggles.
 
-## Batch 14 — improvements after the longer run (asked 2026-11-24; open)
+## Batch 14 — improvements after the longer run (asked 2026-11-24, answered 2026-11-24: a for all three; see D142)
 
 From the analysis in `docs/specs/015-findings-of-the-longer-run.md`. None of these is a defect; each changes how the training works, so the user decides. The first option is the recommendation.
 
@@ -69,7 +70,7 @@ From the analysis in `docs/specs/015-findings-of-the-longer-run.md`. None of the
 
 Open from before and touched by the run: **C13** (the long run measured 4,948 decisions played per second for the transformer, under option a's 5,000; the smoke run 6,506; decide after spec 015) and **C16** (play has 29% forced decisions; over decisions with a choice its entropy is 0.64 and 0.71).
 
-## Batch 13 — announcements and kontra (asked 2026-11-24; open)
+## Batch 13 — announcements and kontra (asked 2026-11-24, answered 2026-11-24: 1 a, 2 a, 3 b, 4 a, 5 a, 6 a, 7 a; see D141)
 
 The open points of `docs/specs/009-deal-flow-b.md`. Source: pagat.com, Slovenian Tarok, read again on 2026-11-24. Each point is a place where the page is silent or where the user's table decides. The first option is the recommendation.
 

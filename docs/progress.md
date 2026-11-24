@@ -12,6 +12,16 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 **Next:** the next step.
 ```
 
+## 2026-11-24 — Batches 13 and 14 answered; spec 009 approved and handed out; the repo public (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 8)
+
+**Done:** the user answered Batch 13 (D141) and Batch 14 (D142), approved spec 009 (D143), dropped the question before every commit (D144) and ordered the repo public (D145). Spec 009 carries the answers: criterion 17 is now free play (B13-3 b, against the recommendation), and criteria 50 to 52 add the hold flag for aligned updates. The repo was made public with the GitHub CLI after a check for secrets. Spec 009 went to the `engine-core` session on the branch `spec-009` in its own worktree. CI is green on `bb917ce`; spec 014 is done (`7206f9d`).
+**Measurements:** none.
+**Broken or open:**
+- Spec 015 is still in execution in the `train-env` session.
+- The binding module cannot be rebuilt for spec 009 before the GPU work of spec 015 ends; stage (d) of spec 009 waits.
+- Open with the user: C13, C16, the open points A, B and D of spec 014.
+**Next:** the reports of both sessions; verification and review of each; commits without a question (D144); merge of `spec-009`.
+
 ## 2026-11-24 — spec 014 committed; analysis of the run; spec 015 handed out (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 8)
 
 **Done:** spec 014 committed on the user's go-ahead (D139) as `e1a325f`, notes as `bb917ce`, pushed. The user ordered an analysis of the training, proposals, fixes of the problems found and to go on (D140). Analysis by the main session: one checkpoint in one seat against another checkpoint in the three other seats, with a scratch script built on `evaluate.py`. Spec 015 written from it and handed to the `train-env` session: the GPU reading, the transformer's memory, a checkpoint as opponent. The improvements that are not fixes are Batch 14.
