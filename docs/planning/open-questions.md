@@ -42,7 +42,8 @@
 - 2026-11-24, 13:20: the `engine-core` session reported spec 009 built as far as Rust goes (branch `spec-009`, last commit `dd012d9`; 231 engine tests; 52 of 52 planted wrong rules caught; the `engine` workflow green on the branch). Open: criteria 45, 46 and the Python side of 52, which need the module build. Its three questions are Batch 16 below. The `train-env` session reported the twelve comparisons of spec 015 done from committed code and the first memory trial: with a limit of 5,200 MiB on the allocator nothing spills and the update step stays at 4.1 to 4.3 s. Neither report is verified yet.
 - 2026-11-24, 13:25: Batches 15 and 16 answered, a for every item (D146, D147). Specs 016 and 017 are approved. Order of the GPU work: spec 015, then spec 017 on the engine 0.2.0, then the rebuild of the binding for spec 009 and its merge, then spec 016.
 - 2026-11-24, 13:40: the review pass over spec 009 is back: no rule defect; weak tests and two points for the user. Batch 17 below.
-- **Waiting on the user, to decide:** Batch 17 (three items after the review of spec 009); C13 (the new figure of G3; better after spec 015); C16 (which entropy mean the controller steers on); the open points A, B and D of spec 014; later C14.
+- 2026-11-24, 13:50: Batch 17 answered, a for every item (D148). Spec 018 (first runs on flow B) is drafted; Batch 18 below. The timed 200-update run of spec 015 is going since about 13:40.
+- **Waiting on the user, to decide:** Batch 18 (the criteria of spec 018 and its three open points); C13 (the new figure of G3; better after spec 015); C16 (which entropy mean the controller steers on); the open points A, B and D of spec 014; later C14.
 - **Dates:** the repo must be public or shared with the instructor on Mon 23 Nov (R5); it is private on 2026-11-23. The proposal, wireframe and pitch slide were due Wed 18 Nov; the files hold no record that they were handed in.
 - **Waiting on the user:** corrections to the wireframe and `pitch.md`; the proposal format. Later: C13 (the new figure of G3, after the smoke run), C14 (tier of the trula toggle).
 - Next: spec 013 in the `engine-core` session and spec 008 in the `train-env` session; verification, review pass, the user's read of each diff, commit.
@@ -62,7 +63,18 @@ Open:
 - **C16. Which entropy mean the controller steers on.** Now: the mean over all decisions of a phase, forced ones included. In the smoke runs the share of forced decisions in the bidding went from 28% to 0%, so the mean moved without the policy getting firmer or looser. (a) the mean over decisions with two or more legal actions, with the targets set again as a quarter of random play under that mean; (b) keep the mean over all decisions. Recommended: (a). Asked 2026-11-12.
 - **C14. Tier of S40's other option** ("in any order"). Recommended: like S14 and S18 in D98: selectable in T0 with the note "agent ni učen s tem pravilom". Asked when the engine gets its toggles.
 
-## Batch 17 — after the review of spec 009 (asked 2026-11-24; open)
+## Batch 18 — spec 018, first runs on flow B (asked 2026-11-24; open)
+
+Spec 018 follows from D148 (B17-3 a). The first option is the recommendation.
+
+| # | Question | Options | Recommended, and why |
+|---|---|---|---|
+| B18-1 | Spec 018: the 24 acceptance criteria | (a) approve. (b) changes | a |
+| B18-2 | Spec 018 A: the target entropy of the phase "announcements". Today 0.25, a placeholder | (a) a quarter of the measured entropy of random legal play in the round. (b) 0.25 stays | a: the rule approved for the six other phases (D136) |
+| B18-3 | Spec 018 B: when "the flood ends by itself" | (a) over the updates 151 to 200 a valat is announced in under 5% of deals and the mean reward size is under 2. (b) other numbers | a: a good player announces a valat far less often than one deal in twenty; 2 is twice the reward size of flow A |
+| B18-4 | Spec 018 C: the length of the two runs | (a) 200 updates each. (b) 500 | a: as the smoke run of spec 008; about ten minutes for the MLP and under an hour for the transformer, estimated |
+
+## Batch 17 — after the review of spec 009 (asked 2026-11-24, answered 2026-11-24: a for all three; see D148)
 
 From the separate review pass over the branch `spec-009`. The first option is the recommendation.
 

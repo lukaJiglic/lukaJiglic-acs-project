@@ -23,6 +23,7 @@ Inferred from the code, not measured: the trained deals are not a fair sample of
 
 - Spec 009 merged into `main` and the binding rebuilt: `step(actions, hold)`.
 - Spec 015 committed: the memory tags and a checkpoint as the opponent in the evaluation.
+- Spec 018 done (D148): the first runs on flow B come before the measurement here.
 
 ## In scope
 
@@ -69,8 +70,8 @@ Inferred from the code, not measured: the trained deals are not a fair sample of
 14. Holding does not change what a table plays. Test on the mock and on the engine: 64 tables, once without holds and once with random holds; each table's sequence of deals and rewards is the same.
 
 **The measurement** (GPU, the engine as merged with spec 009, seed 8, 200 updates)
-15. Four runs finish: `rolling` and `aligned`, MLP and transformer. The configs are `smoke-a-<network>.toml` for `rolling` and two new files `aligned-<network>.toml`, which differ from them in the name and the collection only. A test checks that.
-16. The loop checks of spec 008 hold in all four runs: no illegal action, the rewards of a deal add up to zero, no logged number is not finite.
+15. Four runs finish: `rolling` and `aligned`, MLP and transformer. The configs are `smoke-b-<network>.toml` of spec 018 for `rolling` (changed with D148; the draft named `smoke-a`) and two new files `aligned-<network>.toml`, which differ from them in the name and the collection only. A test checks that.
+16. The loop checks of spec 008 hold in all four runs: no illegal action, the rewards of a deal add up to zero (within the tolerance of D147), no logged number is not finite.
 17. Reported for both modes, no threshold: decisions played and trained per update, environment steps per update, the mean and the longest number of decisions of a trained seat-deal, the contract shares of the trained deals in update 1 (the weights are the same in both modes there, so a difference is the selection of the rolling mode), the four time shares, the memory tags of spec 015.
 18. Speed of the transformer: the median of the seconds per update over the updates 101 to 200 is at least 10% lower with `aligned` than with `rolling`. The MLP's figure is reported. Estimated before the measurement, not measured: 14% to 23%.
 19. Strength: the update-200 checkpoint of `aligned` is not behind that of `rolling`, for each network. Measured with the evaluation of spec 015, 2,000 deals in four seatings, seed 5151: the interval of one `aligned` seat among three `rolling` seats is not wholly under zero, and the interval of one `rolling` seat among three `aligned` seats is not wholly above zero. Both are reported.
