@@ -12,6 +12,20 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 **Next:** the next step.
 ```
 
+## 2026-11-24 — review pass over spec 009 (separate agent; ordered and read by the main session; ai-log row 8)
+
+**Done:** a separate agent reviewed `719a968..5f198bc` of the branch `spec-009` in an export of its own. Result: no rule defect against the spec in criteria 1 to 44, 50 and 51. It ran `cargo test` (231 passed), `fmt` and `clippy`; computed the examples of criteria 30 and 31 by hand; ran seven scoring cases of its own with hand-computed results (all match); planted 16 wrong rules. The findings went to the `engine-core` session.
+**Findings:**
+- Tests, hidden partner: a wrong rule that makes the true partner public on a non-declarer's re on a bonus fails no named test, only a coverage counter. The no-leak test changes the partner in 50 of 9,352 cases.
+- Tests, scoring: an announced king or pagat played early, and a talon card next to an opponent's announced trula or kralji, are held only by the second scorer on random deals. The second scorer has the same shape as `score.rs`.
+- The bound of 187 actions per deal is argued, not walked by a test.
+- A checkpoint of the engine 0.2.0 passes the trainer's guard on 0.3.0 (Batch 17, item 2).
+- With uniform random legal actions a valat is announced in 19,806 of 20,000 deals; the mean entry of the declarer is 4,462 points (Batch 17, item 3).
+- Three more cases in which the sides follow from what was said (Batch 17, item 1).
+**Not covered by the review:** Python, the binding build, the GPU, the workflows; pagat.com was not read again; 16 wrong rules, not the 30 of criterion 49 (the session's own run has 52).
+**Broken or open:** the review agent's `cargo test` ran while the `train-env` session had a timed run going. The engine session now reads the card before every build.
+**Next:** the engine session closes the weak tests and builds the fifth case of D147. The user's answers to Batch 17.
+
 ## 2026-11-24 — reports on specs 009 and 015; Batches 15 and 16 answered (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 8)
 
 **Done:** the `engine-core` session reported spec 009 built as far as Rust goes on the branch `spec-009` (last commit `dd012d9`). Checked by the main session from the branch: a test exists for each of the criteria 1 to 44, 50 and 51; the `engine` workflow is green on the branch tip; no `unsafe`; the version is 0.3.0. From the session's Results, not checked again: 231 engine tests, 52 of 52 planted wrong rules caught, 87.5 decisions per random deal (56.8 in flow A), 35% of them in the round. The user answered Batches 15 and 16 with a for every item (D146, D147): specs 016 and 017 are approved.
