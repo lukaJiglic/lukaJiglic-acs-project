@@ -38,7 +38,8 @@
 - 2026-11-24, later: the longer run ended at 08:12 (both networks 2,000 updates; +0.619 and +0.617 against random legal play). Verified, reviewed, committed on the user's go-ahead (D139). The user ordered an analysis of the training, proposals for improvements, fixes of the problems found, and to go on with development (D140). The fixes are spec 015. The message does not answer Batch 13.
 - 2026-11-24, later: the analysis of the run is in spec 015. One checkpoint against another shows what random play hid: both networks were still improving at update 2,000 and the transformer is ahead of the MLP. Spec 015 (the GPU reading, the transformer's memory, a checkpoint as opponent) is in the `train-env` session. Batch 14 below holds the improvements that are not fixes.
 - 2026-11-24, later: Batch 13 answered (D141; 3 b against the recommendation: no duty to keep an announced ultimo card), Batch 14 answered (D142, all a), spec 009 approved (D143). Claude no longer asks before every commit (D144). The repo is public (D145).
-- **Waiting on the user, to decide:** C13 (the new figure of G3; better after spec 015); C16 (which entropy mean the controller steers on); the open points A, B and D of spec 014; later C14.
+- 2026-11-24, afternoon: both side sessions stopped at the usage limit and were started again after its reset. Spec 009 has stages (a), (b), (c), (e) and the property tests on the branch `spec-009` (231 engine tests); the wrong-rule run and the Results are left. Spec 015 has parts A and C done; part B found the excess in shared GPU memory, from about 5,400 MiB of allocator size. Specs 016 (aligned updates) and 017 (the trial of the lower entropy limit) are drafted from D142; Batch 15 below.
+- **Waiting on the user, to decide:** Batch 15 (the criteria of specs 016 and 017 and their open points); C13 (the new figure of G3; better after spec 015); C16 (which entropy mean the controller steers on); the open points A, B and D of spec 014; later C14.
 - **Dates:** the repo must be public or shared with the instructor on Mon 23 Nov (R5); it is private on 2026-11-23. The proposal, wireframe and pitch slide were due Wed 18 Nov; the files hold no record that they were handed in.
 - **Waiting on the user:** corrections to the wireframe and `pitch.md`; the proposal format. Later: C13 (the new figure of G3, after the smoke run), C14 (tier of the trula toggle).
 - Next: spec 013 in the `engine-core` session and spec 008 in the `train-env` session; verification, review pass, the user's read of each diff, commit.
@@ -57,6 +58,22 @@ Open:
 - **C13. The new figure of G3** (D128). Measured in spec 008, end to end on this PC with 512 tables and two epochs: transformer 6,506 decisions played per second and 3,194 trained; MLP 34,743 and 17,050. (a) at least 5,000 decisions played per second with the transformer; (b) at least 6,000 played; (c) at least 3,000 trained. Recommended: (a); it is met with a margin of 30%, which flow B's longer sequences will use up in part. Asked 2026-11-12.
 - **C16. Which entropy mean the controller steers on.** Now: the mean over all decisions of a phase, forced ones included. In the smoke runs the share of forced decisions in the bidding went from 28% to 0%, so the mean moved without the policy getting firmer or looser. (a) the mean over decisions with two or more legal actions, with the targets set again as a quarter of random play under that mean; (b) keep the mean over all decisions. Recommended: (a). Asked 2026-11-12.
 - **C14. Tier of S40's other option** ("in any order"). Recommended: like S14 and S18 in D98: selectable in T0 with the note "agent ni učen s tem pravilom". Asked when the engine gets its toggles.
+
+## Batch 15 — specs 016 and 017 (asked 2026-11-24; open)
+
+Both specs follow from D142. Each needs the approval of its acceptance criteria (D73). The first option is the recommendation.
+
+| # | Question | Options | Recommended, and why |
+|---|---|---|---|
+| B15-1 | Spec 016, aligned updates: the 24 acceptance criteria | (a) approve. (b) changes | a |
+| B15-2 | Spec 016 A: the old collection | (a) keep it behind a config key `collection`. (b) remove it | a: the configs of specs 008 and 014 can still be run as they were, and the two modes can be compared |
+| B15-3 | Spec 016 B: the speed gate | (a) the transformer's update is at least 10% faster, else stop and report. (b) no gate, only the report | a: under 10% the change does not pay for a second code path. Estimate before the measurement: 14% to 23% |
+| B15-4 | Spec 017, the trial of the lower limit 0.001: the 18 acceptance criteria | (a) approve. (b) changes | a |
+| B15-5 | Spec 017 A: when the trial runs | (a) right after spec 015, on the installed engine 0.2.0, before the binding is rebuilt for spec 009. (b) after the merge of spec 009, on flow B | a: it compares with the checkpoints of spec 014, and the card is free while spec 009 is verified and reviewed. Cost: if spec 009 is ready first, its rebuild waits up to three and a half hours |
+| B15-6 | Spec 017 B: the seeds | (a) three MLP seeds per arm, one transformer seed. (b) one seed everywhere. (c) two transformer seeds per arm as well | a: the MLP runs take 15 minutes each and show how far two runs with the same settings lie apart; a second transformer pair costs about three more hours |
+| B15-7 | Spec 017 C: what follows when no difference is shown | (a) the limit 0.01 stays. (b) take 0.001 if the entropy of the play came closer to its target | a: no change of a setting without a measured gain |
+
+Noticed while drafting, no decision needed now: the lower limit is one value for all phases, so the trial lowers it for every phase. After spec 009 the engine plays the round of announcements in every deal, so the measurement of spec 016 is the first training on flow B; the look at flow B itself (reward size under kontra) is a spec of its own.
 
 ## Batch 14 — improvements after the longer run (asked 2026-11-24, answered 2026-11-24: a for all three; see D142)
 

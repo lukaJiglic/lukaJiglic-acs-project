@@ -12,6 +12,16 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 **Next:** the next step.
 ```
 
+## 2026-11-24 — after the usage limit: sessions restarted; specs 016 and 017 drafted (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 8)
+
+**Done:** both side sessions had stopped at the usage limit; both were started again after its reset. A review pass over the engine code of spec 009 (commits `719a968..5f198bc` of the branch `spec-009`) was ordered from a separate agent. Specs 016 and 017 drafted from D142 and asked as Batch 15.
+**State of the side sessions, from their notes, not verified:**
+- Spec 009: stages (a), (b), (c), (e) and the property tests of (d) are on the branch `spec-009`, seven commits, 231 engine tests. The wrong-rule run stood at 41 of 52 and the Results section was not in the spec.
+- Spec 015: part A done; part C done on the CPU, its twelve comparisons queued for the card; part B: the excess of the transformer's allocator sits in shared GPU memory and starts at about 5,400 MiB of allocator size, at update 3. About 2 GB of the allocator is cache. Another program of the user's (Blender) took about 500 MiB of the card from update 29 of that measurement; four updates then took 24 to 503 s.
+**Found while drafting (checked in `train.py`):** the trained deals are not a fair sample of the played deals. A deal is stored only when it starts and ends inside one collection, so short deals are stored more often. Not measured; criterion 17 of spec 016 measures it.
+**Broken or open:** after spec 009 the engine plays the round of announcements in every deal. There is no switch back to flow A. Runs after the merge are not comparable with the runs of specs 008 and 014. This sets the order of spec 017 (Batch 15, item 5).
+**Next:** the reports of both sessions; verification, review pass, commits (D144). The user's answers to Batch 15.
+
 ## 2026-11-24 — Batches 13 and 14 answered; spec 009 approved and handed out; the repo public (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 8)
 
 **Done:** the user answered Batch 13 (D141) and Batch 14 (D142), approved spec 009 (D143), dropped the question before every commit (D144) and ordered the repo public (D145). Spec 009 carries the answers: criterion 17 is now free play (B13-3 b, against the recommendation), and criteria 50 to 52 add the hold flag for aligned updates. The repo was made public with the GitHub CLI after a check for secrets. Spec 009 went to the `engine-core` session on the branch `spec-009` in its own worktree. CI is green on `bb917ce`; spec 014 is done (`7206f9d`).
