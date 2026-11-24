@@ -332,13 +332,19 @@ fn c18_rewards_and_parts_are_delivered_once_per_deal() {
             let expected = rewards(&game.score().unwrap());
             assert_eq!(reward, expected.reward);
             assert_eq!(entries, expected.entries);
+            // A reward is a 32-bit number. Since spec 009 an entry can be
+            // thousands of points (a valat under kontra), so the room for
+            // rounding grows with the size of the rewards: 1e-6 for
+            // rewards up to 1, and in proportion above that.
+            let largest = reward.iter().fold(0f32, |most, r| most.max(r.abs()));
+            let room = 1e-6 * largest.max(1.0);
             for seat in 0..4 {
                 let of_seat = &parts[seat * 10..(seat + 1) * 10];
                 assert_eq!(of_seat, expected.parts[seat]);
                 // The ten parts add up to the seat's reward.
                 let sum: f32 = of_seat.iter().sum();
                 assert!(
-                    (sum - reward[seat]).abs() < 1e-6,
+                    (sum - reward[seat]).abs() < room,
                     "{sum} against {}",
                     reward[seat]
                 );
@@ -346,7 +352,7 @@ fn c18_rewards_and_parts_are_delivered_once_per_deal() {
                 assert_eq!(of_seat[8..], [0.0, 0.0]);
             }
             let total: f32 = reward.iter().sum();
-            assert!(total.abs() < 1e-6);
+            assert!(total.abs() < room, "the rewards sum to {total}");
             taken[table].clear();
         }
     }

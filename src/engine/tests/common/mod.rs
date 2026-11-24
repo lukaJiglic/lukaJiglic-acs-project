@@ -5,6 +5,7 @@
 
 #![allow(dead_code)]
 
+pub mod built;
 pub mod encoding;
 pub mod flow;
 pub mod second_scorer;

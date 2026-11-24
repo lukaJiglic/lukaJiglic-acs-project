@@ -134,7 +134,76 @@ pub fn exchange_open(game: &mut Game, taken: u8, discards: &[Card]) {
 /// so the deal goes on as in flow A.
 pub fn exchange(game: &mut Game, taken: u8, discards: &[Card]) {
     exchange_open(game, taken, discards);
-    pass_round(game);
+    speak_or_pass(game);
+}
+
+thread_local! {
+    /// The turns [`with_round`] wants spoken in the next round.
+    static ROUND_SCRIPT: std::cell::RefCell<Vec<(Seat, Vec<Action>)>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// Runs `build` with a script for the round of announcements. Where a
+/// helper would pass the round ([`exchange`], [`exchange_back`] and
+/// everything built on them), the listed turns are spoken instead: every
+/// seat passes until it is the turn of the next listed seat, which takes
+/// its actions and says "done". After the last listed turn all pass.
+///
+/// So a deal built for flow A can be played again with something said:
+/// `with_round(&[(B, &[Action::Kontra(Target::Game)])], || built_deal())`.
+/// The script is for one round: `build` must play exactly one deal.
+pub fn with_round<T>(turns: &[(Seat, &[Action])], build: impl FnOnce() -> T) -> T {
+    let script: Vec<(Seat, Vec<Action>)> = turns
+        .iter()
+        .map(|&(seat, actions)| (seat, actions.to_vec()))
+        .collect();
+    ROUND_SCRIPT.with(|cell| *cell.borrow_mut() = script);
+    let built = build();
+    let left = ROUND_SCRIPT.with(|cell| std::mem::take(&mut *cell.borrow_mut()));
+    assert!(left.is_empty(), "the round script was not used");
+    built
+}
+
+/// Takes the script of [`with_round`], if there is one.
+fn take_round_script() -> Vec<(Seat, Vec<Action>)> {
+    ROUND_SCRIPT.with(|cell| std::mem::take(&mut *cell.borrow_mut()))
+}
+
+/// The next action of a scripted round: the next action of the first
+/// listed turn if its seat is to speak, else "done". A turn whose actions
+/// are all taken ends with "done" and leaves the script.
+fn scripted_round_action(game: &Game, script: &mut Vec<(Seat, Vec<Action>)>) -> Action {
+    match script.first_mut() {
+        Some((seat, actions)) if game.to_act() == Some(*seat) => {
+            if actions.is_empty() {
+                script.remove(0);
+                Action::Done
+            } else {
+                actions.remove(0)
+            }
+        }
+        _ => Action::Done,
+    }
+}
+
+/// Speaks the script of [`with_round`] if there is one, then passes the
+/// round to its end.
+fn speak_or_pass(game: &mut Game) {
+    let mut script = take_round_script();
+    let mut actions = 0;
+    while game.phase() == Phase::Announcements {
+        actions += 1;
+        assert!(actions <= MAX_ACTIONS, "the round does not end");
+        let seat = game.to_act().expect("a seat speaks");
+        let action = scripted_round_action(game, &mut script);
+        act(game, seat, action);
+    }
+    assert!(
+        script.is_empty(),
+        "the round ended before the turn of {:?}",
+        script[0].0
+    );
+    assert_eq!(game.phase(), Phase::Play, "the round is over");
 }
 
 /// The cards of a talon packet.
@@ -263,7 +332,9 @@ pub fn play_scripted(game: &mut Game, scripts: [&[Card]; 4]) {
 /// In the round of announcements every seat passes (spec 009, criterion
 /// 5): the deal is one of flow A. A pass uses no choice, so a seed and its
 /// choices give the cards and the plays they gave before the round
-/// existed. [`play_random_b`] speaks in the round.
+/// existed. Inside [`with_round`] the script is spoken in place of the
+/// passes; the cards and the plays stay the same. [`play_random_b`] speaks
+/// at random in the round.
 ///
 /// `before` sees the game before each action.
 pub fn play_random(seed: u64, dealer: Seat, choices: &[u8], before: impl FnMut(&Game)) -> Game {
@@ -285,6 +356,11 @@ fn play_random_with(
     mut before: impl FnMut(&Game),
 ) -> Game {
     let mut game = Game::from_seed(seed, dealer);
+    let mut script = if speak {
+        Vec::new()
+    } else {
+        take_round_script()
+    };
     let mut step = 0;
     let mut actions = 0;
     while game.phase() != Phase::Over {
@@ -295,7 +371,7 @@ fn play_random_with(
         assert!(!legal.is_empty(), "no legal action in {:?}", game.phase());
         if game.phase() == Phase::Announcements {
             assert!(legal.contains(Action::Done), "done is always legal");
-            let mut action = Action::Done;
+            let mut action = scripted_round_action(&game, &mut script);
             if speak {
                 let choice = u32::from(choices[step % choices.len()]);
                 step += 1;
@@ -320,6 +396,7 @@ fn play_random_with(
         game.apply(action).expect("a legal action is accepted");
         step += 1;
     }
+    assert!(script.is_empty(), "the round script was not used up");
     game
 }
 

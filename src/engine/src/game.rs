@@ -507,6 +507,7 @@ impl Game {
             tricks: self.play.as_ref()?.trick_history(),
             declarer_pile: full.declarer_pile(),
             talon_with_opponents,
+            round: &self.round,
         }))
     }
 

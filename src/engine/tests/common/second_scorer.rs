@@ -3,17 +3,19 @@
 //! It is written from spec 005 criteria 29-44 with the answers of D118 and
 //! from spec 013 (D125: a valat keeps the mondfang; D126: pagat ultimo
 //! follows the side; D133: in a valat the declarer wins the packets not
-//! taken), seat by seat. It does not call the engine's `score`
-//! module or the pile accessors of the full view. It reads the record of a
-//! finished deal: the contract, the declarer, the called king, the talon,
-//! the taken packet and the tricks from the public view; the partner and
-//! the discards from the full view. Card points come from `points::count`
-//! (spec 002) and the winner of the last trick from the tests' own
+//! taken) and from spec 009 criteria 18-29 (announced bonuses, the
+//! announced valat, kontra), seat by seat. It does not call the engine's
+//! `score` module or the pile accessors of the full view. It reads the
+//! record of a finished deal: the contract, the declarer, the called king,
+//! the talon, the taken packet, the tricks and what was said in the round
+//! of announcements from the public view; the partner and the discards
+//! from the full view. Card points come from `points::count` (spec 002)
+//! and the winner of the last trick from the tests' own
 //! `reference_winner`.
 //!
 //! The tests compare it with `Game::score` on random deals.
 
-use tarok_engine::{Card, CardSet, Contract, Game, Seat, Suit, points};
+use tarok_engine::{Bonus, Card, CardSet, Contract, Game, Seat, Suit, Target, points};
 
 use super::{kralj, reference_winner};
 
@@ -146,61 +148,149 @@ pub fn second_score(game: &Game) -> Second {
         mond_loser = Some(declarer);
     }
 
-    // --- What the declarer's side writes (criteria 30-41) ---------------
+    // --- What the declarer's side writes ---------------------------------
+    // Flow A: spec 005 criteria 30-41. Flow B: spec 009 criteria 18-29,
+    // written here a second time, from the criteria.
+    //
+    // What was said in the round. `owner(bonus)` is +1 if the declarer's
+    // side announced the bonus, -1 if an opponent did, and nothing if it
+    // was not announced. `times(target)` is 1, 2, 4, 8 or 16.
+    let owner = |bonus: Bonus| -> Option<i32> {
+        let announcer = public.announced(bonus)?;
+        Some(if with_declarer(announcer) { 1 } else { -1 })
+    };
+    let times =
+        |target: Target| -> i32 { [1, 2, 4, 8, 16][usize::from(public.kontra_level(target))] };
+    // An announced bonus: `amount` for its owner if `declarers_have_it`
+    // says so for the owner's side, else against the owner; times its own
+    // kontra level. From the declarer's side: plus if the owner is that
+    // side and wins, or the owner is the other side and fails.
+    let announced = |sign: i32, owner_wins: bool, amount: i32, target: Target| -> i32 {
+        let for_the_owner = if owner_wins { amount } else { -amount };
+        sign * for_the_owner * times(target)
+    };
+
     let mut side: Parts = [0; 8];
-    if our_tricks == 12 || our_tricks == 0 {
-        // Criterion 41 and answer A: 250 for or against, and none of the
-        // parts of the side. The mondfang is not one of them: it is
-        // written below in every deal (spec 013, D125).
+    if let Some(sign) = owner(Bonus::Valat) {
+        // Criterion 23: 500 for the owner with all twelve tricks, else 500
+        // against it; nothing else is scored. Criterion 29: only the
+        // kontra on the valat itself counts.
+        let owner_tricks = if sign == 1 {
+            our_tricks
+        } else {
+            12 - our_tricks
+        };
+        side[6] = announced(sign, owner_tricks == 12, 500, Target::Valat);
+    } else if our_tricks == 12 || our_tricks == 0 {
+        // Spec 005 criterion 41 and answer A: 250 for or against, and none
+        // of the parts of the side, the announced ones neither (spec 009,
+        // criterion 24). Never multiplied (criteria 28, 29). The mondfang
+        // is not one of the parts: it is written below in every deal
+        // (spec 013, D125).
         side[6] = if our_tricks == 12 { 250 } else { -250 };
     } else {
-        // Game and difference: 36 wins, 35 loses.
+        // Game and difference: 36 wins, 35 loses. A kontra on the game
+        // multiplies both and nothing else (criterion 26).
         let value = game_value(contract);
-        side[0] = if declarer_points >= 36 { value } else { -value };
-        side[1] = nearest_five(declarer_points);
+        side[0] = (if declarer_points >= 36 { value } else { -value }) * times(Target::Game);
+        side[1] = nearest_five(declarer_points) * times(Target::Game);
 
         // Trula: all three with one side. Kralji: all four with one side.
         let trula = [Card::SKIS, Card::MOND, Card::PAGAT];
         let ours_of_trula = trula.iter().filter(|c| ours.contains(c)).count();
-        side[2] = match ours_of_trula {
-            3 => 10,
-            0 => -10,
-            _ => 0,
+        side[2] = match owner(Bonus::Trula) {
+            // Announced (criteria 18, 20): 20 for the owner if its side
+            // has all three, else 20 against it. Every card is in one of
+            // the two piles, so "none with us" is "all with them".
+            Some(sign) => {
+                let owners = if sign == 1 {
+                    ours_of_trula
+                } else {
+                    3 - ours_of_trula
+                };
+                announced(sign, owners == 3, 20, Target::Trula)
+            }
+            None => match ours_of_trula {
+                3 => 10,
+                0 => -10,
+                _ => 0,
+            },
         };
         let kings = [Suit::Srce, Suit::Karo, Suit::Pik, Suit::Kriz].map(kralj);
         let ours_of_kings = kings.iter().filter(|c| ours.contains(c)).count();
-        side[3] = match ours_of_kings {
-            4 => 10,
-            0 => -10,
-            _ => 0,
+        side[3] = match owner(Bonus::Kralji) {
+            Some(sign) => {
+                let owners = if sign == 1 {
+                    ours_of_kings
+                } else {
+                    4 - ours_of_kings
+                };
+                announced(sign, owners == 4, 20, Target::Kralji)
+            }
+            None => match ours_of_kings {
+                4 => 10,
+                0 => -10,
+                _ => 0,
+            },
         };
 
         let last = &tricks[11];
+        let taker = seat_at(last.leader, reference_winner(last.cards));
         // Kralj ultimo: the called king in the last trick; the side that
-        // wins the trick decides the sign (criterion 38, answer C).
-        if let Some(king) = called_king
-            && last.cards.contains(&king)
-        {
-            side[4] = if with_declarer(last.winner) { 10 } else { -10 };
-        }
+        // wins the trick decides the sign (spec 005 criterion 38).
+        let king_in_last = called_king.is_some_and(|king| last.cards.contains(&king));
+        side[4] = match owner(Bonus::KraljUltimo) {
+            // Announced (criterion 21): +20 when the king is played to the
+            // last trick and the declarer's side takes it, -20 in every
+            // other case. Only the holder of the called king announces it,
+            // so the owner is the declarer's side.
+            Some(sign) => {
+                assert_eq!(sign, 1, "kralj ultimo is the declarer's side's");
+                announced(
+                    sign,
+                    king_in_last && with_declarer(taker),
+                    20,
+                    Target::KraljUltimo,
+                )
+            }
+            None if king_in_last => {
+                if with_declarer(last.winner) {
+                    10
+                } else {
+                    -10
+                }
+            }
+            None => 0,
+        };
         // Pagat ultimo: the pagat in the last trick. The side of the
         // pagat's player wins the bonus when one of its seats takes the
         // trick, with the pagat or with another card (spec 013, D126). The
         // seat that takes the trick is found here from the cards.
-        if let Some(position) = last.cards.iter().position(|&c| c == Card::PAGAT) {
-            let own_pagat = with_declarer(seat_at(last.leader, position));
-            let taker = seat_at(last.leader, reference_winner(last.cards));
-            side[5] = match (own_pagat, with_declarer(taker)) {
-                // The declarer's side played it and took the trick.
-                (true, true) => 25,
-                // The declarer's side played it and lost the trick.
-                (true, false) => -25,
-                // An opponent played it and the declarer's side took it.
-                (false, true) => 25,
-                // An opponent played it and the opponents took the trick.
-                (false, false) => -25,
-            };
-        }
+        let pagat_at = last.cards.iter().position(|&c| c == Card::PAGAT);
+        side[5] = match (owner(Bonus::PagatUltimo), pagat_at) {
+            // Announced (criterion 22): 50 for the owner when the pagat is
+            // played to the last trick and the owner's side takes that
+            // trick; 50 against the owner in every other case.
+            (Some(sign), Some(_)) => {
+                let owners_take_it = with_declarer(taker) == (sign == 1);
+                announced(sign, owners_take_it, 50, Target::PagatUltimo)
+            }
+            (Some(sign), None) => announced(sign, false, 50, Target::PagatUltimo),
+            (None, Some(position)) => {
+                let own_pagat = with_declarer(seat_at(last.leader, position));
+                match (own_pagat, with_declarer(taker)) {
+                    // The declarer's side played it and took the trick.
+                    (true, true) => 25,
+                    // The declarer's side played it and lost the trick.
+                    (true, false) => -25,
+                    // An opponent played it and the declarer's side took it.
+                    (false, true) => 25,
+                    // An opponent played it and the opponents took the trick.
+                    (false, false) => -25,
+                }
+            }
+            (None, None) => 0,
+        };
     }
 
     // --- One entry per seat (criteria 35, 42, 43) ------------------------
