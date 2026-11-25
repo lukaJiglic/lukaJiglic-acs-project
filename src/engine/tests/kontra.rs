@@ -838,13 +838,13 @@ fn c15_a_seat_shown_as_an_opponent_by_its_own_kontra() {
     // D knows B's side and is on it: re.
     assert!(may(&game, on_trula), "D knows B's side");
     raise(&mut game, D, Target::Trula);
-    // The engine shows nothing for it. (D is an opponent by this re; that
-    // further case is not built, D150.) Above all it does not show a
-    // partner.
+    // Re on the opponents' bonus is for the opponents to say: D is shown
+    // as an opponent (D151; the pairs of deals are in the next test). It
+    // does not show a partner.
     assert_eq!(game.public().partner(), PublicPartner::NotKnown);
-    assert_eq!(sides(&game), [ours, theirs, None, None]);
+    assert_eq!(sides(&game), [ours, theirs, None, theirs]);
     act(&mut game, D, Action::Done);
-    // Sub by the declarer and mort by D: still nothing.
+    // Sub by the declarer and mort by D: nothing more.
     raise(&mut game, A, Target::Trula);
     act(&mut game, A, Action::Done);
     say(&mut game, B, &[]);
@@ -852,7 +852,7 @@ fn c15_a_seat_shown_as_an_opponent_by_its_own_kontra() {
     raise(&mut game, D, Target::Trula);
     assert_eq!(levels(&game), [1, 4, 0, 0, 0, 0]);
     assert_eq!(game.public().partner(), PublicPartner::NotKnown);
-    assert_eq!(sides(&game), [ours, theirs, None, None]);
+    assert_eq!(sides(&game), [ours, theirs, None, theirs]);
 
     // 2. Kontra on a bonus of the declarer, and sub, show an opponent too.
     // Two seats shown as opponents do not make the third the partner: the
@@ -974,4 +974,376 @@ fn c16_what_all_know_about_the_sides_follows_from_what_was_said() {
     assert!(two_shown >= 100);
     assert!(their_bonus_raised >= 100);
     assert!(alone_by_three >= 20);
+}
+
+/// D151, by hand: the pair-of-deals check of two cases. The same things
+/// are said in deals that differ only in who holds the called king. If the
+/// action in question is legal in all of them, it shows nothing. If it is
+/// legal only where the seat holds the king, it shows the holder. If it is
+/// legal only where the seat does not hold it, it shows an opponent.
+#[test]
+fn c15_the_pairs_of_deals_for_a_bonus_of_a_seat_shown_as_an_opponent() {
+    let on_trula = kontra(Target::Trula);
+    let (ours, theirs) = (Some(true), Some(false));
+    let view = |game: &Game| format!("{:?}", game.public());
+
+    // B says kontra on the game and announces trula. B is shown as an
+    // opponent; its trula is the opponents'. B itself cannot hold the
+    // called king: in such a deal its kontra is not legal.
+    let mut b_holds = round_game(B, Tri);
+    say(&mut b_holds, A, &[]);
+    assert!(!may(&b_holds, kontra(Target::Game)));
+    let at_c = |king: Seat| {
+        let mut game = round_game(king, Tri);
+        say(&mut game, A, &[]);
+        say(
+            &mut game,
+            B,
+            &[kontra(Target::Game), announce(Bonus::Trula)],
+        );
+        assert_eq!(game.to_act(), Some(C));
+        assert_eq!(sides(&game), [ours, theirs, None, None]);
+        game
+    };
+    let (c_holds, a_holds, d_holds) = (at_c(C), at_c(A), at_c(D));
+    assert_eq!(view(&c_holds), view(&a_holds));
+    assert_eq!(view(&c_holds), view(&d_holds));
+
+    // Reading 10 of the Results: C's kontra on B's trula. Legal only
+    // where C holds the called king, so it shows C as the partner.
+    assert!(may(&c_holds, on_trula));
+    assert!(!may(&a_holds, on_trula), "C is an opponent here");
+    assert!(!may(&d_holds, on_trula), "C is an opponent here");
+    let mut c_speaks = c_holds.clone();
+    raise(&mut c_speaks, C, Target::Trula);
+    assert_eq!(c_speaks.public().partner(), PublicPartner::With(C));
+
+    // The declarer's kontra on B's trula, two turns later: legal in all
+    // three deals, so it shows nothing.
+    let at_d = |mut game: Game| {
+        say(&mut game, C, &[]);
+        say(&mut game, D, &[]);
+        assert!(may(&game, on_trula), "the declarer knows B's side");
+        raise(&mut game, A, Target::Trula);
+        assert_eq!(game.public().partner(), PublicPartner::NotKnown);
+        assert_eq!(sides(&game), [ours, theirs, None, None]);
+        act(&mut game, A, Action::Done);
+        say(&mut game, B, &[]);
+        say(&mut game, C, &[]);
+        assert_eq!(game.to_act(), Some(D));
+        game
+    };
+    let (mut c_holds, mut a_holds, d_holds) = (at_d(c_holds), at_d(a_holds), at_d(d_holds));
+    assert_eq!(view(&c_holds), view(&a_holds));
+    assert_eq!(view(&c_holds), view(&d_holds));
+
+    // D151: D's re on B's trula. Legal where D is an opponent, not legal
+    // where D holds the called king. No deal with this history has D as
+    // the holder: D is shown as an opponent. The partner stays hidden,
+    // because C may hold the king or the declarer may.
+    assert!(may(&c_holds, on_trula));
+    assert!(may(&a_holds, on_trula));
+    assert!(!may(&d_holds, on_trula), "re is for the opponents");
+    for game in [&mut c_holds, &mut a_holds] {
+        raise(game, D, Target::Trula);
+        assert_eq!(sides(game), [ours, theirs, None, theirs]);
+        assert_eq!(game.public().partner(), PublicPartner::NotKnown);
+        act(game, D, Action::Done);
+        // The declarer's sub shows nothing.
+        raise(game, A, Target::Trula);
+        assert_eq!(sides(game), [ours, theirs, None, theirs]);
+        act(game, A, Action::Done);
+        // B's mort on its own trula would show nothing new. B passes.
+        assert!(may(game, on_trula));
+        say(game, B, &[]);
+    }
+    assert_eq!(view(&c_holds), view(&a_holds));
+
+    // Mort by C: for the opponents to say. Where C is the partner it may
+    // not. Where the declarer holds the king C says it, and all three
+    // other seats are shown as opponents: the declarer plays alone.
+    assert!(!may(&c_holds, on_trula));
+    raise(&mut a_holds, C, Target::Trula);
+    assert_eq!(sides(&a_holds), [ours, theirs, theirs, theirs]);
+    assert_eq!(a_holds.public().partner(), PublicPartner::Alone);
+
+    // D151, item 2: a private conclusion is not used. Where C holds the
+    // king, B and D are shown as opponents and the declarer does not hold
+    // the king, so the declarer can work out that C is its partner. The
+    // other seats cannot: the declarer may hold the king, as in the other
+    // deal. The engine does not use it: C announces kralji, and to the
+    // declarer the side of C is "not known" (block D1 reads this).
+    act(&mut c_holds, C, announce(Bonus::Kralji));
+    act(&mut c_holds, C, Action::Done);
+    say(&mut c_holds, D, &[]);
+    assert_eq!(c_holds.to_act(), Some(A));
+    assert_eq!(c_holds.public().partner(), PublicPartner::NotKnown);
+    assert_eq!(sides(&c_holds), [ours, theirs, None, theirs]);
+    assert_eq!(c_holds.private(A).knows_side_of(C), None);
+    // The seats that do know: C itself, and nobody else.
+    assert_eq!(c_holds.private(C).knows_side_of(C), Some(true));
+    assert_eq!(c_holds.private(B).knows_side_of(C), None);
+    assert_eq!(c_holds.private(D).knows_side_of(C), None);
+}
+
+/// The seats that can hold the called king after `history`: the true
+/// holder, and every other seat for which there is a deal that looks the
+/// same from outside. Such a deal has the called king and one card of that
+/// seat changed over, and all the actions of `history` are legal in it.
+/// `None` if the king was dealt into the talon.
+fn possible_holders(
+    deal: &Deal,
+    dealer: Seat,
+    history: &[Action],
+    king: Card,
+) -> Option<[bool; 4]> {
+    let hands = deal.hands();
+    let holder = Seat::ALL
+        .into_iter()
+        .find(|&seat| hands[seat.index()].contains(king))?;
+    let replays = |deal: &Deal| {
+        let mut game = Game::new(deal, dealer);
+        history.iter().all(|&action| game.apply(action).is_ok())
+    };
+    Some(Seat::ALL.map(|seat| {
+        seat == holder
+            || hands[seat.index()]
+                .iter()
+                .any(|card| replays(&swapped(deal, (holder, king), (seat, card))))
+    }))
+}
+
+/// What an action of the round is, for the table of the Results: who
+/// takes it and on whose target, as every seat sees it before the action.
+fn kind_of(game: &Game, action: Action) -> String {
+    let public = game.public();
+    let full = game.full();
+    let seat = game.to_act().expect("a seat speaks");
+    let declarer = public.declarer().expect("a declarer");
+    let shown = |seat: Seat| public.side_of(seat) == Some(false);
+    let who = if seat == declarer {
+        if full.partner().is_none() {
+            "the declarer, holding the king"
+        } else {
+            "the declarer, not holding the king"
+        }
+    } else if full.partner() == Some(seat) {
+        "the partner"
+    } else if shown(seat) {
+        "an opponent already shown"
+    } else {
+        "an opponent not yet shown"
+    };
+    let what = match action {
+        Action::Done => "says done".to_string(),
+        Action::Announce(Bonus::KraljUltimo) => "announces kralj ultimo".to_string(),
+        Action::Announce(Bonus::PagatUltimo) => "announces pagat ultimo".to_string(),
+        Action::Announce(_) => "announces trula, kralji or valat".to_string(),
+        Action::Kontra(target) => {
+            let level = ["kontra", "re", "sub", "mort"][usize::from(public.kontra_level(target))];
+            let announcer = target.bonus().and_then(|bonus| public.announced(bonus));
+            let whose = match announcer {
+                None => "the game",
+                Some(announcer) if announcer == declarer => "a bonus of the declarer",
+                Some(announcer) if announcer == seat => "its own bonus",
+                Some(announcer) if shown(announcer) => "a bonus of a seat shown as an opponent",
+                Some(_) => "a bonus of a seat of unknown side",
+            };
+            format!("says {level} on {whose}")
+        }
+        other => panic!("{other:?} in the round"),
+    };
+    format!("{who} {what}")
+}
+
+/// Criterion 16 with D151, the standing rule: the engine shows every fact
+/// about the sides that follows from what was said, and no other. On
+/// random deals of flow B, at every decision of the round and at the first
+/// lead, the possible holders of the called king are found by trying every
+/// other deal that looks the same from outside (`possible_holders`). The
+/// engine must show a seat as the partner, or the declarer as alone,
+/// exactly when one holder is possible, and a seat as an opponent exactly
+/// when it is not a possible holder.
+///
+/// The test also writes the table of the Results: for every kind of
+/// action taken while the sides were hidden, what it showed. A kind of
+/// action shows the same thing every time.
+#[test]
+fn c16_the_engine_shows_what_no_pair_of_deals_can_tell_apart() {
+    use std::collections::BTreeMap;
+    let mut table: BTreeMap<String, BTreeMap<&'static str, u32>> = BTreeMap::new();
+    let mut decisions = 0u32;
+    let mut hidden = 0u32;
+    let mut with_an_opponent_shown = 0u32;
+    for seed in 0..5_000u64 {
+        let deal = Deal::from_seed(seed);
+        let dealer = Seat::ALL[(seed % 4) as usize];
+        // The state before the last action seen, with its possible holders.
+        let mut before: Option<(Game, [bool; 4])> = None;
+        seeded_game_b_with(seed, |game| {
+            let public = game.public();
+            let first_lead = game.phase() == Phase::Play
+                && public.tricks().is_empty()
+                && public.current_trick().is_empty();
+            if game.phase() != Phase::Announcements && !first_lead {
+                return;
+            }
+            // A solo: no king is called and the sides are public.
+            let Some(king) = public.called_king() else {
+                return;
+            };
+            let history: Vec<Action> = game.full().actions().collect();
+            let Some(possible) = possible_holders(&deal, dealer, &history, king) else {
+                // The king lies in the talon: the declarer is alone.
+                assert_eq!(public.partner(), PublicPartner::Alone);
+                return;
+            };
+            decisions += 1;
+            let declarer = public.declarer().expect("a declarer");
+            let count = possible.iter().filter(|&&possible| possible).count();
+            let only = |seat: Seat| Seat::ALL.map(|other| other == seat);
+
+            // The partner: public exactly when one holder is possible.
+            match public.partner() {
+                PublicPartner::With(seat) => {
+                    assert_ne!(seat, declarer);
+                    assert_eq!(possible, only(seat), "seed {seed}");
+                }
+                PublicPartner::Alone => assert_eq!(possible, only(declarer), "seed {seed}"),
+                PublicPartner::NotKnown => {
+                    assert!(count >= 2, "seed {seed}: one holder, not shown");
+                    // Nothing that is said can show that the declarer has
+                    // a partner without showing who it is.
+                    assert!(possible[declarer.index()], "seed {seed}");
+                    hidden += 1;
+                }
+            }
+            // Each other seat: an opponent exactly when it cannot hold the
+            // king; the partner when it alone can; else not known.
+            for seat in Seat::ALL {
+                let expected = if seat == declarer {
+                    Some(true)
+                } else if !possible[seat.index()] {
+                    Some(false)
+                } else if count == 1 {
+                    Some(true)
+                } else {
+                    None
+                };
+                assert_eq!(public.side_of(seat), expected, "seed {seed}, {seat:?}");
+            }
+            if public.partner() == PublicPartner::NotKnown && count < 4 {
+                with_an_opponent_shown += 1;
+            }
+
+            // The table: what the last action showed, if the sides were
+            // hidden before it.
+            if let Some((earlier, possible_before)) = &before
+                && history.len() == earlier.full().actions().count() + 1
+                && possible_before.iter().filter(|&&possible| possible).count() >= 2
+            {
+                let action = *history.last().expect("an action");
+                let seat = earlier.to_act().expect("a seat spoke");
+                let mut without_the_seat = *possible_before;
+                without_the_seat[seat.index()] = false;
+                let showed = if possible == *possible_before {
+                    "nothing"
+                } else if possible == only(seat) {
+                    "it holds the called king"
+                } else if possible == without_the_seat {
+                    "it is an opponent"
+                } else {
+                    panic!("seed {seed}: {possible_before:?} became {possible:?}")
+                };
+                *table
+                    .entry(kind_of(earlier, action))
+                    .or_default()
+                    .entry(showed)
+                    .or_default() += 1;
+            }
+            before = Some((game.clone(), possible));
+        });
+    }
+    println!(
+        "{decisions} decisions with a called king in a hand, {hidden} with the sides hidden, \
+         {with_an_opponent_shown} of them with a seat shown as an opponent"
+    );
+    println!("What each kind of action showed while the sides were hidden:");
+    for (kind, showed) in &table {
+        let listed: Vec<String> = showed
+            .iter()
+            .map(|(what, count)| format!("{what} ({count})"))
+            .collect();
+        println!("  {kind}: {}", listed.join(", "));
+        // A kind of action shows the same thing every time.
+        assert_eq!(showed.len(), 1, "{kind}");
+    }
+    assert!(decisions > 40_000);
+    assert!(hidden > 15_000);
+    assert!(with_an_opponent_shown > 6_000);
+    // The cases of the table that show something have all come up.
+    let showed = |kind: &str| -> &'static str {
+        let showed = table
+            .get(kind)
+            .unwrap_or_else(|| panic!("never seen: {kind}"));
+        showed.keys().next().expect("one outcome")
+    };
+    let holder = "it holds the called king";
+    let opponent = "it is an opponent";
+    for (kind, expected) in [
+        ("the partner announces kralj ultimo", holder),
+        (
+            "the declarer, holding the king announces kralj ultimo",
+            holder,
+        ),
+        ("the partner says re on the game", holder),
+        ("the partner says mort on the game", holder),
+        ("the partner says re on a bonus of the declarer", holder),
+        (
+            "the partner says kontra on a bonus of a seat of unknown side",
+            holder,
+        ),
+        (
+            "the partner says kontra on a bonus of a seat shown as an opponent",
+            holder,
+        ),
+        (
+            "the declarer, holding the king says kontra on a bonus of a seat of unknown side",
+            holder,
+        ),
+        (
+            "an opponent not yet shown says kontra on the game",
+            opponent,
+        ),
+        ("an opponent not yet shown says sub on the game", opponent),
+        (
+            "an opponent not yet shown says kontra on a bonus of the declarer",
+            opponent,
+        ),
+        (
+            "an opponent not yet shown says re on a bonus of a seat shown as an opponent",
+            opponent,
+        ),
+        (
+            "the declarer, holding the king says kontra on a bonus of a seat shown as an opponent",
+            "nothing",
+        ),
+        (
+            "the declarer, not holding the king says kontra on a bonus of a seat shown as an opponent",
+            "nothing",
+        ),
+        (
+            "the declarer, not holding the king says re on the game",
+            "nothing",
+        ),
+        ("an opponent already shown says sub on the game", "nothing"),
+        (
+            "an opponent not yet shown announces trula, kralji or valat",
+            "nothing",
+        ),
+        ("the partner announces trula, kralji or valat", "nothing"),
+        ("the partner says done", "nothing"),
+    ] {
+        assert_eq!(showed(kind), expected, "{kind}");
+    }
 }

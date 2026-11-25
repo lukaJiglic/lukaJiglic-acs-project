@@ -16,8 +16,9 @@ pub struct Known {
     /// or by a kontra only the holder (or only the declarer's side) could
     /// say.
     pub holder: Option<Seat>,
-    /// The seats shown as opponents by their own kontra or sub on the game
-    /// or on a bonus of the declarer (D150).
+    /// The seats shown as opponents by their own raise: kontra or sub on the
+    /// game or on a bonus of the declarer (D150), re or mort on a bonus of a
+    /// seat shown as an opponent (D151).
     pub opponents: [bool; 4],
 }
 
@@ -112,12 +113,11 @@ pub fn known_from_events(game: &Game) -> Known {
                     Some(_) if by_declarer => {}
                     // For the declarer's side, by another seat: the partner.
                     Some(declarers) if declarers == for_the_owner => known.holder = Some(seat),
-                    // Against the declarer's side: an opponent (D150).
-                    Some(true) => known.opponents[seat.index()] = true,
-                    // For the opponents, on a bonus of a seat shown as an
-                    // opponent: the seat is an opponent too, but the
-                    // engine does not record that (not built, D150).
-                    Some(false) => {}
+                    // Against the declarer's side: an opponent. That is
+                    // kontra or sub on the game or on a bonus of the
+                    // declarer (D150), and re or mort on a bonus of a seat
+                    // shown as an opponent (D151).
+                    Some(_) => known.opponents[seat.index()] = true,
                 }
             }
             _ => {}
