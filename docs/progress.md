@@ -12,6 +12,17 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 **Next:** the next step.
 ```
 
+## 2026-11-25 — after a usage-limit stop: D150 built, Batch 20 answered, spec 017's runs ended (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 9)
+
+**Done:** the user answered Batch 19 (D150, evening of 24 November) and Batch 20 (D151). The `engine-core` session built D150 on the branch `spec-009` (`d2e4c1b`; by its report 235 tests, 71 planted wrong rules caught, the `engine` workflow green). While checking it found that case (iii) of D148 was no longer true next to D150 and corrected it, and that "two seats shown as opponents, so the third is the partner" does not follow. A second separate review pass over the code that works out the public sides was ordered. The usage limit stopped the `train-env` session and that review at about 21:00; both are resumed today.
+**Spec 017, state from the files, not yet the Results:** all seven runs reached 500 updates (six MLP runs between 19:14 and 20:45, the transformer run from 20:47), and the evaluations finished.
+**Found:** the program that took 3 to 5 GB of the card in bursts is a headless browser started by a video render of another project of the user's on this PC. A watcher of the main session saw it at 21:15 to 21:21, during the transformer run. It probably also was the "other program" of the runs of spec 014 and of the first measurement of spec 015, which had been put down to Blender.
+**Broken or open:**
+- All six MLP runs of spec 017 are disturbed in speed; their checkpoints are used (criterion 5).
+- The limit of spec 015 does not protect a run against another program on the card.
+- A seat shown as an opponent that has announced nothing is not in the state vector, which is all the MLP control reads. For the training spec of flow B.
+**Next:** the Results of spec 017, verification, review pass, commit. Then the rebuild of the binding (stage (d) of spec 009), the review findings, the merge. Then specs 018 and 016.
+
 ## 2026-11-24 — spec 015 committed; spec 017 started (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log rows 8, 8b, 8d)
 
 **Done:** the `train-env` session fixed the eight points of the review, tests first (23 new tests failed on the code as it was). The defect: one generator per network for the whole evaluation; on the reviewer's recipe the correlation of deal values across chunks fell from +0.72 to −0.005, and `test_c15` now checks the control over 20 seeds. Checked by the main session: the not-slow suite with the GPU on the fixed code, 222 passed; the table of the twelve pairs rerun from the fixed code (all overlap the scratch intervals and those of the code before the fix; the largest correlation across chunks is 0.042). Committed as `65cc565` (code, tests, configs, README, Results) and pushed; `ci`, `engine` and `train` are green on it. Spec 015 is done.
