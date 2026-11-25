@@ -356,9 +356,14 @@ def test_c07_each_deal_is_played_four_times_with_the_agent_in_another_seat():
     by_seat = np.array(result["rewards"])  # (deals, 4): the agent's reward in each seating
     assert by_seat.shape == (24, 4)
     assert np.abs(by_seat).max() > 0.01
-    assert np.abs(by_seat.sum(axis=1)).max() < 1e-5
-    assert np.allclose(result["values"], by_seat.mean(axis=1))
-    assert abs(result["mean"]) < 1e-6
+    # The first legal slot of the round of announcements is an announcement (spec 009), so
+    # these deals end with rewards above 100. A 32-bit reward of that size is exact to about
+    # 1e-5, not to 1e-6: the room grows with the largest reward (D147, 1 a).
+    # Per deal, as in test_c21 of spec 006: the room of a deal is that of its own largest reward.
+    room = 1e-6 * np.maximum(1.0, np.abs(by_seat).max(axis=1))
+    assert (np.abs(by_seat.sum(axis=1)) < 10 * room).all()
+    assert (np.abs(np.asarray(result["values"]) - by_seat.mean(axis=1)) <= room).all()
+    assert abs(result["mean"]) < float(room.mean())
     # Other chunks play other deals.
     assert not np.allclose(by_seat[:12], by_seat[12:])
 
@@ -569,7 +574,10 @@ def test_c12_decisions_and_tokens_per_seat_deal_mean_and_largest(engine_run):
     _, history = engine_run
     for stats in history:
         assert 1 < stats["rollout/tokens_per_seat_deal_mean"] <= stats["rollout/tokens_per_seat_deal_max"] <= C.MAX_TOKENS
-        assert 10 < stats["rollout/decisions_per_seat_deal_mean"] <= stats["rollout/decisions_per_seat_deal_max"] <= 30
+        # A seat decides more often since spec 009: the round of announcements has up to 29
+        # things said and 91 turns. At most 4 calls in the auction, 6 decisions of the declarer
+        # before the round, 29 + 23 in the round and 12 cards: 74. It was 30 in flow A.
+        assert 10 < stats["rollout/decisions_per_seat_deal_mean"] <= stats["rollout/decisions_per_seat_deal_max"] <= 74
 
 
 def test_c13_the_names_of_the_bids_are_those_of_the_contract():
@@ -1239,9 +1247,11 @@ def test_c07_the_interval_is_taken_over_the_deals_not_over_the_single_seatings()
     )
     rewards = np.array(result["rewards"])
     values = rewards.mean(axis=1)
-    assert rewards.shape == (40, 4) and result["values"] == pytest.approx(values.tolist(), abs=1e-6)
+    # The room grows with the largest reward: with kontra a reward can be above 100 (D147, 1 a).
+    room = 1e-6 * max(1.0, float(np.abs(rewards).max()))
+    assert rewards.shape == (40, 4) and result["values"] == pytest.approx(values.tolist(), abs=room)
     mean, low, high = evaluate.interval(values)
-    assert (result["mean"], result["low"], result["high"]) == pytest.approx((mean, low, high), abs=1e-6)
+    assert (result["mean"], result["low"], result["high"]) == pytest.approx((mean, low, high), abs=room)
     # Hand formula: 1.96 standard errors of the 40 deal values.
     half = 1.96 * values.std(ddof=1) / math.sqrt(40)
     assert result["high"] - result["mean"] == pytest.approx(half, abs=1e-6)

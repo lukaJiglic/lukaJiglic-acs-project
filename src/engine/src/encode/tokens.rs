@@ -22,12 +22,17 @@ const KING: usize = 28;
 const TALON_SHOWN: usize = 32;
 const TALON_TAKEN: usize = 86;
 const DISCARD_SHOWN: usize = 92;
+const ANNOUNCE: usize = 146;
+const KONTRA: usize = 151;
 const PLAY: usize = 159;
 
 /// The event id of a public event.
 ///
 /// A bid and a contract use the thirteen values of the bid slots: 0 is the
-/// pass, then the twelve contracts in bidding order.
+/// pass, then the twelve contracts in bidding order. The announcements are
+/// 146 to 150 and the kontra targets 151 to 156, in the order of their
+/// action slots. The ids 157 ("done") and 158 (barvni valat) are never
+/// written: "done" is no event (reading 1 of spec 009).
 pub const fn event_id(kind: EventKind) -> usize {
     match kind {
         EventKind::Start => BOS,
@@ -38,6 +43,8 @@ pub const fn event_id(kind: EventKind) -> usize {
         EventKind::TalonShown(card) => TALON_SHOWN + card.index() as usize,
         EventKind::TalonTaken(packet) => TALON_TAKEN + packet.index(),
         EventKind::DiscardShown(card) => DISCARD_SHOWN + card.index() as usize,
+        EventKind::Announce(bonus) => ANNOUNCE + bonus.index(),
+        EventKind::Kontra(target) => KONTRA + target.index(),
         EventKind::Play(card) => PLAY + card.index() as usize,
     }
 }
@@ -78,6 +85,7 @@ pub fn write_tokens(game: &Game, observer: Seat, out: &mut [i16]) -> usize {
 mod tests {
     use super::*;
     use crate::action::Packet;
+    use crate::announce::{Bonus, Target};
     use crate::card::{Card, Suit};
     use crate::contract::Contract;
     use crate::encode::{EVENT_GROUPS, N_EVENTS};
@@ -126,6 +134,20 @@ mod tests {
             assert_eq!(event_id(EventKind::Play(card)), group("PLAY").0 + index);
             assert!(event_id(EventKind::Play(card)) < N_EVENTS);
         }
+        for (index, bonus) in Bonus::ALL.into_iter().enumerate() {
+            assert_eq!(
+                event_id(EventKind::Announce(bonus)),
+                group("ANNOUNCE").0 + index
+            );
+        }
+        assert_eq!(group("ANNOUNCE").1, Bonus::ALL.len());
+        for (index, target) in Target::ALL.into_iter().enumerate() {
+            assert_eq!(
+                event_id(EventKind::Kontra(target)),
+                group("KONTRA").0 + index
+            );
+        }
+        assert_eq!(group("KONTRA").1, Target::ALL.len());
         // The last id of each group used is inside the group.
         assert_eq!(group("BID").1, 13);
         assert_eq!(group("CONTRACT").1, 13);

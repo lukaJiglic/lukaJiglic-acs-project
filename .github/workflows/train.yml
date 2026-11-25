@@ -1,7 +1,7 @@
 name: train
 
 # CPU-only tests of src/train (spec 003, criterion 9; spec 007, criterion 23;
-# spec 006, criteria 20-22 and 27).
+# spec 006, criteria 20-22 and 27; spec 009, criteria 45, 52 and 53).
 # The runner has no GPU: tests marked "gpu" are skipped by tests/conftest.py.
 # The PyO3 probe is not built here: its tests skip themselves.
 # The engine's Python module (src/train/tarok_env) is built here with maturin

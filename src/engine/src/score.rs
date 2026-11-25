@@ -6,10 +6,24 @@
 //! lost mond (D125), and pagat ultimo follows the side that takes the last
 //! trick (D126).
 //!
+//! Announced bonuses, the announced valat and kontra (spec 009, criteria
+//! 18-29, with the answers of D141):
+//!
+//! - An announced bonus replaces the silent one of its kind. It is won or
+//!   lost for the side of the seat that announced it; the declarer's side
+//!   writes the amount with its sign, the opponents write 0 (S20 a).
+//! - Trula and kralji 20, kralj ultimo 20, pagat ultimo 50, valat 500.
+//! - A valat, announced or silent, removes every other score of the deal
+//!   but a lost mond.
+//! - A kontra multiplies its own target by 2, 4, 8 or 16: game and
+//!   difference together, or one announced bonus. Silent bonuses, the
+//!   silent valat and the mondfang are never multiplied (S21 a).
+//!
 //! The score of a deal is one entry per seat. An entry is the sum of eight
 //! parts, kept apart because the value head of the network predicts them
-//! separately (D15).
+//! separately (D15). A multiplied part holds the multiplied amount.
 
+use crate::announce::{self, Bonus, Round, Target};
 use crate::card::Card;
 use crate::cardset::CardSet;
 use crate::contract::Contract;
@@ -29,6 +43,15 @@ pub const SILENT_PAGAT_ULTIMO: i32 = 25;
 pub const SILENT_VALAT: i32 = 250;
 /// The penalty for losing the mond to the škis (S29 a).
 pub const MONDFANG: i32 = -20;
+/// Announced trula and announced kralji.
+pub const ANNOUNCED_TRULA: i32 = 20;
+pub const ANNOUNCED_KRALJI: i32 = 20;
+/// Announced kralj ultimo.
+pub const ANNOUNCED_KRALJ_ULTIMO: i32 = 20;
+/// Announced pagat ultimo.
+pub const ANNOUNCED_PAGAT_ULTIMO: i32 = 50;
+/// Announced valat.
+pub const ANNOUNCED_VALAT: i32 = 500;
 
 /// The points the declarer's side needs to win: more than half of 70.
 pub const POINTS_TO_WIN: u8 = 36;
@@ -37,16 +60,21 @@ pub const POINTS_TO_WIN: u8 = 36;
 /// mondfang.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct ScoreParts {
-    /// Plus the game value for a win, minus it for a loss.
+    /// Plus the game value for a win, minus it for a loss. Times 2, 4, 8
+    /// or 16 under a kontra on the game.
     pub game: i32,
     /// Card points minus 35, rounded to the nearest 5. Negative in a loss.
+    /// Multiplied with the game.
     pub difference: i32,
+    /// The four bonuses: silent, or announced and then times its own
+    /// kontra.
     pub trula: i32,
     pub kralji: i32,
     pub kralj_ultimo: i32,
     pub pagat_ultimo: i32,
-    /// +250 or -250 when one side took all twelve tricks. Every other part
-    /// is then 0, except the mondfang.
+    /// +250 or -250 when one side took all twelve tricks and no valat was
+    /// announced. +500 or -500 for an announced valat, times its own
+    /// kontra. Every other part is then 0, except the mondfang.
     pub valat: i32,
     /// -20 for the player who lost the mond. Each player's own. Written in
     /// every deal, also next to a valat (D125). A mond in a packet not
@@ -153,6 +181,8 @@ pub(crate) struct Outcome<'a> {
     /// opponents. Empty if the declarer won them: with the called king
     /// (spec 005 criterion 23) or by taking all twelve tricks (D133).
     pub talon_with_opponents: CardSet,
+    /// What was said in the round of announcements.
+    pub round: &'a Round,
 }
 
 /// The seat that played `card` in a trick it is in.
@@ -178,53 +208,113 @@ pub(crate) fn score(outcome: &Outcome<'_>) -> Score {
         .iter()
         .filter(|trick| on_declarer_side(trick.winner))
         .count();
-    let valat = if declarer_tricks == outcome.tricks.len() {
-        SILENT_VALAT
-    } else if declarer_tricks == 0 {
-        -SILENT_VALAT
-    } else {
-        0
+    let all_tricks = declarer_tricks == outcome.tricks.len();
+    let no_trick = declarer_tricks == 0;
+
+    // The round of announcements. `owner(bonus)` is true if the declarer's
+    // side announced the bonus, false if an opponent did, and nothing if
+    // nobody did.
+    let round = outcome.round;
+    let owner = |bonus: Bonus| round.announced(bonus).map(on_declarer_side);
+    // What the declarer's side writes for an announced bonus: `amount` for
+    // the owner if the owner made it, `amount` against the owner if not,
+    // times the kontra level of the bonus (criterion 27).
+    let announced = |declarers_own_it: bool, made: bool, amount: i32, target: Target| {
+        let for_the_owner = if made { amount } else { -amount };
+        let for_the_declarers = if declarers_own_it {
+            for_the_owner
+        } else {
+            -for_the_owner
+        };
+        for_the_declarers * announce::multiplier(round.level(target))
     };
 
-    if valat != 0 {
-        // All twelve tricks to one side: 250 for or against, and no game,
-        // no difference and no other bonus (criterion 41, answer A of
-        // D118). The mondfang is not cancelled: see below.
-        side.valat = valat;
+    if let Some(declarers_own_it) = owner(Bonus::Valat) {
+        // An announced valat (criterion 23; D141, B13-5 a): 500 for the
+        // owner with all twelve tricks, 500 against it with fewer. In both
+        // cases no game, no difference and no other bonus, announced or
+        // silent. Only the kontra on the valat itself counts (criterion
+        // 29). The mondfang is not cancelled: see below.
+        let made = if declarers_own_it {
+            all_tricks
+        } else {
+            no_trick
+        };
+        side.valat = announced(declarers_own_it, made, ANNOUNCED_VALAT, Target::Valat);
+    } else if all_tricks || no_trick {
+        // All twelve tricks to one side, not announced: 250 for or
+        // against, and no game, no difference and no other bonus (spec 005
+        // criterion 41, answer A of D118), the announced ones neither
+        // (spec 009, criterion 24). Never multiplied (S21 a).
+        side.valat = if all_tricks {
+            SILENT_VALAT
+        } else {
+            -SILENT_VALAT
+        };
     } else {
+        // A kontra on the game multiplies the game value and the rounded
+        // difference, and nothing else (criterion 26).
         if let Some((game, difference)) = game_and_difference(outcome.contract, declarer_points) {
-            side.game = game;
-            side.difference = difference;
+            let times = announce::multiplier(round.level(Target::Game));
+            side.game = game * times;
+            side.difference = difference * times;
         }
 
         // Trula and kralji: all cards in one side's pile. The talon the
         // declarer did not take is in the opponents' pile (answer B).
-        let all_in = |cards: CardSet, bonus: i32| {
-            if cards.is_subset(declarer_pile) {
-                bonus
-            } else if cards.is_subset(opponents_pile) {
-                -bonus
-            } else {
-                0
+        // Silent: 10 for the side that has them. Announced (criteria 18 to
+        // 20): 20 for the owner if its side has them, else 20 against the
+        // owner; the silent bonus of that kind is not scored next to it.
+        let in_piles = |cards: CardSet, bonus: Bonus, silent: i32, loud: i32| match owner(bonus) {
+            Some(declarers_own_it) => {
+                let pile = if declarers_own_it {
+                    declarer_pile
+                } else {
+                    opponents_pile
+                };
+                announced(
+                    declarers_own_it,
+                    cards.is_subset(pile),
+                    loud,
+                    Target::of(bonus),
+                )
             }
+            None if cards.is_subset(declarer_pile) => silent,
+            None if cards.is_subset(opponents_pile) => -silent,
+            None => 0,
         };
-        side.trula = all_in(TRULA, SILENT_TRULA);
-        side.kralji = all_in(KINGS, SILENT_KRALJI);
+        side.trula = in_piles(TRULA, Bonus::Trula, SILENT_TRULA, ANNOUNCED_TRULA);
+        side.kralji = in_piles(KINGS, Bonus::Kralji, SILENT_KRALJI, ANNOUNCED_KRALJI);
 
         if let Some(last) = outcome.tricks.last() {
+            let declarers_take_it = on_declarer_side(last.winner);
             // Kralj ultimo: the called king in the last trick. Plus if the
             // declarer's side wins that trick, minus if not. Only when a
             // king was called, so never in a solo (answer C: also when the
             // declarer holds the king).
-            if let Some(king) = outcome.called_king
-                && last.cards.contains(&king)
-            {
-                side.kralj_ultimo = if on_declarer_side(last.winner) {
-                    SILENT_KRALJ_ULTIMO
-                } else {
-                    -SILENT_KRALJ_ULTIMO
-                };
-            }
+            let king_in_it = outcome
+                .called_king
+                .is_some_and(|king| last.cards.contains(&king));
+            side.kralj_ultimo = if owner(Bonus::KraljUltimo).is_some() {
+                // Announced (criterion 21): +20 when the king is played to
+                // the last trick and the declarer's side takes that trick,
+                // -20 in every other case, also when the king was played
+                // earlier (no duty to keep it: D141, B13-3 b). Only the
+                // holder of the called king may announce it, so the bonus
+                // is the declarer's side's.
+                announced(
+                    true,
+                    king_in_it && declarers_take_it,
+                    ANNOUNCED_KRALJ_ULTIMO,
+                    Target::KraljUltimo,
+                )
+            } else if !king_in_it {
+                0
+            } else if declarers_take_it {
+                SILENT_KRALJ_ULTIMO
+            } else {
+                -SILENT_KRALJ_ULTIMO
+            };
             // Pagat ultimo: the pagat in the last trick. The bonus follows
             // the side, as kralj ultimo does (D126): the declarer's side
             // writes plus when it takes the trick, with the pagat or with
@@ -232,19 +322,32 @@ pub(crate) fn score(outcome: &Outcome<'_>) -> Score {
             // played the pagat does not change the sign: the side of the
             // pagat's player wins the bonus exactly when it takes the
             // trick, and the bonus of one side is the loss of the other.
-            if last.cards.contains(&Card::PAGAT) {
-                side.pagat_ultimo = if on_declarer_side(last.winner) {
-                    SILENT_PAGAT_ULTIMO
-                } else {
-                    -SILENT_PAGAT_ULTIMO
-                };
-            }
+            let pagat_in_it = last.cards.contains(&Card::PAGAT);
+            side.pagat_ultimo = if let Some(declarers_own_it) = owner(Bonus::PagatUltimo) {
+                // Announced (criterion 22; D141, B13-4 a): 50 for the
+                // owner when the pagat is played to the last trick and the
+                // owner's side takes that trick, also with another card.
+                // 50 against the owner in every other case.
+                announced(
+                    declarers_own_it,
+                    pagat_in_it && declarers_take_it == declarers_own_it,
+                    ANNOUNCED_PAGAT_ULTIMO,
+                    Target::PagatUltimo,
+                )
+            } else if !pagat_in_it {
+                0
+            } else if declarers_take_it {
+                SILENT_PAGAT_ULTIMO
+            } else {
+                -SILENT_PAGAT_ULTIMO
+            };
         }
     }
 
     // Mondfang: škis and mond in one trick. The mond's player pays, whoever
     // wins the trick, also to the partner's škis and in a trick the pagat
-    // wins (S22 a, S30 a). A valat does not cancel it (D125).
+    // wins (S22 a, S30 a). A valat does not cancel it (D125), and no kontra
+    // multiplies it (spec 009, criterion 28).
     for trick in outcome.tricks {
         if trick.cards.contains(&Card::SKIS)
             && let Some(player) = player_of(trick, Card::MOND)

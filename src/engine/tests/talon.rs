@@ -188,10 +188,13 @@ fn c19_declarer_discards_as_many_cards_one_by_one_never_kings_or_trula() {
             assert!(game.private(A).discards().contains(card));
         }
 
-        // As many discards as cards taken: back to twelve, then the play.
+        // As many discards as cards taken: back to twelve. Then the
+        // round of announcements (spec 009) and after it the play.
         assert_eq!(game.public().discards_made(), size);
         assert_eq!(game.private(A).hand().len(), 12);
         assert_eq!(game.private(A).discards().len() as usize, size);
+        assert_eq!(game.phase(), Phase::Announcements);
+        common::flow::pass_round(&mut game);
         assert_eq!(game.phase(), Phase::Play);
     }
 }
@@ -222,6 +225,8 @@ fn c20_discarded_taroks_are_public_other_discards_hidden() {
     assert_eq!(game.public().shown_discards(), set(&[tarok(10)]));
     act(&mut game, A, Action::Discard(pip(Suit::Karo, 4)));
     act(&mut game, A, Action::Discard(hidden_card));
+    assert_eq!(game.phase(), Phase::Announcements);
+    common::flow::pass_round(&mut game);
     assert_eq!(game.phase(), Phase::Play);
 
     // Everyone sees the tarok and the number of discards, nothing else.

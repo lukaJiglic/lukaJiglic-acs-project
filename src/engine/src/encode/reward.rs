@@ -64,8 +64,11 @@ pub fn rewards(score: &Score) -> Rewards {
         }
     }
     // Each number is rounded to 32 bits on its own, so the ten parts of a
-    // seat may miss its reward by a unit or two in the last place (measured:
-    // at most 2.4e-7 in 40,000 seat-deals). The contract asks for 1e-6.
+    // seat may miss its reward by a unit or two in the last place (measured
+    // in flow A: at most 2.4e-7 in 40,000 seat-deals, against the 1e-6 the
+    // contract asks for). With kontra an entry can be thousands of points
+    // (spec 009): the miss grows in proportion to the reward, and the tests
+    // allow 1e-6 times the largest reward of the deal.
     Rewards {
         entries,
         entry_parts,

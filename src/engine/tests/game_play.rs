@@ -155,7 +155,9 @@ fn c28_called_king_played_makes_the_partner_public() {
             PublicPartner::NotKnown
         };
         assert_eq!(other.public().partner(), expected);
-        let next = other.legal_actions().iter().next().unwrap();
+        // The lowest legal action; a pass in the round of announcements
+        // (spec 009), where a partner could show itself in another way.
+        let next = common::flow::lowest_action(&other);
         other.apply(next).unwrap();
     }
     assert_eq!(other.public().partner(), PublicPartner::With(partner));

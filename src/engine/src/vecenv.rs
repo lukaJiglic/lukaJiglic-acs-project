@@ -18,6 +18,13 @@
 //! **Threads.** The tables are independent and each writes its own rows of
 //! the arrays, so the result is the same for any number of threads.
 //!
+//! **Holding a table (spec 009, D142).** A step can hold some tables: a
+//! held table does not move. Its action is not looked at, it gets no
+//! reward and is not done, and its observation stays as it was. A trainer
+//! that wants every table to start a new deal at the same step holds the
+//! tables whose deal has ended until the others are there. Holding changes
+//! when a table plays, never what it plays.
+//!
 //! The arrays are those of `docs/encoding.md`, one row per table, for the
 //! seat to act (see [`Observations`]).
 
@@ -80,6 +87,9 @@ pub enum VecEnvError {
     NoThreads,
     /// `step` got another number of actions than there are tables.
     WrongActionCount { expected: usize, got: usize },
+    /// A step with hold flags got another number of flags than there are
+    /// tables.
+    WrongHoldCount { expected: usize, got: usize },
     /// The action of a table is not legal there. No table has moved.
     IllegalAction { table: usize, slot: i64 },
     /// A state given to `set_state` does not fit this environment.
@@ -101,6 +111,9 @@ impl fmt::Display for VecEnvError {
             VecEnvError::NoThreads => write!(f, "an environment needs at least one thread"),
             VecEnvError::WrongActionCount { expected, got } => {
                 write!(f, "{got} actions for {expected} tables")
+            }
+            VecEnvError::WrongHoldCount { expected, got } => {
+                write!(f, "{got} hold flags for {expected} tables")
             }
             VecEnvError::IllegalAction { table, slot } => {
                 write!(f, "slot {slot} is not a legal action at table {table}")
@@ -467,6 +480,40 @@ impl Tables {
         observations: ObservationBuffers<'_>,
         result: ResultBuffers<'_>,
     ) -> Result<(), VecEnvError> {
+        self.step_checked(actions, None, observations, result)
+    }
+
+    /// As [`Tables::step_into`], with one hold flag per table (spec 009,
+    /// criteria 50 and 51). A held table does not move: its action is
+    /// ignored and need not be legal, it is not done and gets no reward,
+    /// and its observation is the one it had. The other tables step as
+    /// always. If the action of a table that is not held is not legal, the
+    /// call fails and no table moves.
+    pub fn step_hold_into(
+        &mut self,
+        actions: &[i64],
+        hold: &[bool],
+        observations: ObservationBuffers<'_>,
+        result: ResultBuffers<'_>,
+    ) -> Result<(), VecEnvError> {
+        if hold.len() != self.tables.len() {
+            return Err(VecEnvError::WrongHoldCount {
+                expected: self.tables.len(),
+                got: hold.len(),
+            });
+        }
+        self.step_checked(actions, Some(hold), observations, result)
+    }
+
+    /// One step. `hold`, if given, has one flag per table (checked by the
+    /// caller).
+    fn step_checked(
+        &mut self,
+        actions: &[i64],
+        hold: Option<&[bool]>,
+        observations: ObservationBuffers<'_>,
+        result: ResultBuffers<'_>,
+    ) -> Result<(), VecEnvError> {
         if actions.len() != self.tables.len() {
             return Err(VecEnvError::WrongActionCount {
                 expected: self.tables.len(),
@@ -475,8 +522,12 @@ impl Tables {
         }
         observations.check(self.tables.len())?;
         result.check(self.tables.len())?;
-        // Check every action first.
+        let held = |table: usize| hold.is_some_and(|flags| flags[table]);
+        // Check every action first. A held table's action is not looked at.
         for (index, (table, &slot)) in self.tables.iter().zip(actions).enumerate() {
+            if held(index) {
+                continue;
+            }
             let legal = usize::try_from(slot)
                 .is_ok_and(|slot| table.game.legal_actions().contains_slot(slot));
             if !legal {
@@ -485,6 +536,10 @@ impl Tables {
         }
         self.advance(
             |table| {
+                // No action for a held table: it stays where it is.
+                if held(table.index as usize) {
+                    return None;
+                }
                 usize::try_from(actions[table.index as usize])
                     .ok()
                     .and_then(Action::from_slot)
@@ -546,7 +601,8 @@ impl Tables {
 
     /// Moves every table by the action `choose` gives for it, delivers the
     /// rewards of the deals that end, starts their next deals and writes
-    /// the next observations. The buffers were checked by the caller.
+    /// the next observations. A table for which `choose` gives no action
+    /// does not move: it is held. The buffers were checked by the caller.
     fn advance(
         &mut self,
         choose: impl Fn(&Table) -> Option<Action> + Sync,
@@ -841,6 +897,23 @@ impl VecEnv {
     pub fn step(&mut self, actions: &[i64]) -> Result<&StepResult, VecEnvError> {
         self.tables
             .step_into(actions, self.observations.buffers(), self.result.buffers())?;
+        Ok(&self.result)
+    }
+
+    /// One action and one hold flag per table; see
+    /// [`Tables::step_hold_into`]. A held table does not move. On an error
+    /// nothing changes.
+    pub fn step_hold(
+        &mut self,
+        actions: &[i64],
+        hold: &[bool],
+    ) -> Result<&StepResult, VecEnvError> {
+        self.tables.step_hold_into(
+            actions,
+            hold,
+            self.observations.buffers(),
+            self.result.buffers(),
+        )?;
         Ok(&self.result)
     }
 

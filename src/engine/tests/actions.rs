@@ -69,11 +69,12 @@ fn every_slot_is_one_action_or_reserved() {
                 assert_eq!(action.slot(), slot);
                 actions += 1;
             }
-            // 77-89 are the announcements (flow B), 144-159 are reserved.
-            None => assert!((77..90).contains(&slot) || (144..160).contains(&slot)),
+            // 89 (barvni valat) and 144-159 are reserved.
+            None => assert!(slot == 89 || (144..160).contains(&slot)),
         }
     }
-    assert_eq!(actions, 13 + 4 + 6 + 54 + 54);
+    // With spec 009: five announcements, six kontra targets and "done".
+    assert_eq!(actions, 13 + 4 + 6 + 54 + 5 + 6 + 1 + 54);
     assert_eq!(Action::from_slot(160), None);
     assert_eq!(Action::from_slot(usize::MAX), None);
 }

@@ -1,5 +1,5 @@
 //! A whole deal of a normal contract: bidding, contract choice, king call,
-//! talon exchange, twelve tricks, score.
+//! talon exchange, the round of announcements, twelve tricks, score.
 //!
 //! `Game` is a state machine. At each step one seat is to act
 //! ([`Game::to_act`]), [`Game::legal_actions`] lists what it may do and
@@ -15,12 +15,14 @@
 //!   discards. For tests, for the score and later for the critic. A player
 //!   or an actor network must not read it.
 //!
-//! The rules are those of spec 005 (flow A). Announcements and kontra come
-//! with spec 009; klop, berač and the higher contracts with spec 010.
+//! The rules are those of spec 005 (flow A) and spec 009 (flow B: the
+//! round of announcements and kontra, see [`crate::announce`]). Klop, berač
+//! and the higher contracts come with spec 010.
 
 use std::fmt;
 
 use crate::action::{Action, ActionSet, Packet};
+use crate::announce::{self, Bonus, Round, Target};
 use crate::bidding::{BidEvent, Bidding};
 use crate::card::{Card, Rank, Suit};
 use crate::cardset::CardSet;
@@ -43,6 +45,9 @@ pub enum Phase {
     TalonPick,
     /// The declarer puts cards down, one per action.
     Discard,
+    /// The round of announcements and kontra (spec 009): the declarer
+    /// speaks first, then the seats in order of play.
+    Announcements,
     /// The twelve tricks.
     Play,
     /// The deal is finished and has a score.
@@ -53,14 +58,32 @@ pub enum Phase {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum PublicPartner {
     /// Not known yet: no king is called, or the called king has not been
-    /// played.
+    /// played. Single seats may be known as opponents all the same: see
+    /// [`PublicView::side_of`].
     NotKnown,
     /// The declarer plays alone and all know it: a solo contract, the
-    /// called king in the shown talon, or the declarer played the called
-    /// king.
+    /// called king in the shown talon, the declarer played the called
+    /// king, the round of announcements showed that the declarer holds
+    /// it (D147, D148), or it showed all three other seats as opponents
+    /// (D150).
     Alone,
-    /// The called king was played by this seat.
+    /// This seat is the partner and all know it: it played the called
+    /// king, or the round of announcements showed that it holds it (spec
+    /// 009, criteria 10, 14 and 15).
     With(Seat),
+}
+
+/// What an action of the round of announcements shows every seat about
+/// the seat that takes it. See [`Game::shows`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Shows {
+    Nothing,
+    /// The seat holds the called king: it is the partner, or the declarer
+    /// who plays alone. The sides are public from the action on.
+    HoldsTheKing,
+    /// The seat does not hold the called king and is not the declarer: it
+    /// is an opponent (D150, D151).
+    Opponent,
 }
 
 /// What a public event is. Every event is seen by all four seats.
@@ -81,6 +104,11 @@ pub enum EventKind {
     /// The declarer puts down a tarok, face up (S14 a). Other discards are
     /// hidden and are not events.
     DiscardShown(Card),
+    /// A seat announces a bonus (spec 009).
+    Announce(Bonus),
+    /// A seat raises the kontra level of the game or of a bonus by one.
+    /// "Done" is no event (reading 1 of spec 009).
+    Kontra(Target),
     /// A card is played to a trick.
     Play(Card),
 }
@@ -98,13 +126,26 @@ pub struct Event {
 }
 
 /// Room for the events of a deal: the sequence limit of the encoding
-/// (`docs/encoding.md` section 3). The longest deal of this slice has 71.
+/// (`docs/encoding.md` section 3). Without the round of announcements the
+/// longest deal has 71. The round adds at most 29 ([`announce::MAX_SAID`]);
+/// "done" is no event. No deal has more than 26 events before the round,
+/// so none has more than 26 + 29 + 48 = 103.
 pub const MAX_EVENTS: usize = 128;
 
-/// Room for the actions of a deal. The longest deal of this slice has 64:
-/// 13 calls, the contract, a packet, 1 discard and 48 cards (solo ena
-/// after the longest auction; a test walks every auction).
-pub const MAX_ACTIONS: usize = 96;
+/// Room for the actions of a deal.
+///
+/// Without the round of announcements the longest deal has 64 actions: 13
+/// calls, the contract, a packet, 1 discard and 48 cards (solo ena after
+/// the longest auction; a test walks every auction). With a called king
+/// and three discards it is at most 67.
+///
+/// The round adds at most 29 announcements and kontras
+/// ([`announce::MAX_SAID`]) and one "done" per turn. A round with `n`
+/// turns in which something is said has at most `3 n + 4` turns: three
+/// passes before the first such turn, two between two of them, three at
+/// the end. With `n` = 29 that is 91 turns, so the round has at most 120
+/// actions and a deal at most 187.
+pub const MAX_ACTIONS: usize = 192;
 
 /// Why an action was refused.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -147,6 +188,19 @@ pub struct Game {
     called_king_played: bool,
     taken: Option<Packet>,
     discards: CardSet,
+    /// What was said in the round of announcements. Empty before it.
+    round: Round,
+    /// The round has shown who holds the called king, and so the sides:
+    /// see [`Game::shows`]. A holder that is not the declarer is the
+    /// partner; a declarer who holds it plays alone. Read only where a
+    /// king was called and does not lie in the talon
+    /// ([`PublicView::partner`]).
+    partner_shown: bool,
+    /// By seat: the round has shown this seat as an opponent of the
+    /// declarer, by an action a holder of the called king could not take
+    /// (D150, D151; see [`Game::shows`]). Read only while the partner is
+    /// not public ([`PublicView::side_of`]).
+    shown_opponents: [bool; 4],
     play: Option<PlayState>,
     /// The public events so far. Only the first `n_events` entries count.
     events: [Event; MAX_EVENTS],
@@ -182,6 +236,9 @@ impl Game {
             called_king_played: false,
             taken: None,
             discards: CardSet::EMPTY,
+            round: Round::new(dealer),
+            partner_shown: false,
+            shown_opponents: [false; 4],
             play: None,
             events: [START; MAX_EVENTS],
             n_events: 1,
@@ -206,6 +263,7 @@ impl Game {
             Phase::ContractChoice | Phase::KingCall | Phase::TalonPick | Phase::Discard => {
                 self.declarer
             }
+            Phase::Announcements => Some(self.round.speaker()),
             Phase::Play => self.play.as_ref().map(PlayState::to_move),
             Phase::Over => None,
         }
@@ -253,6 +311,7 @@ impl Game {
                     legal = ActionSet::discards(talon::discardable(self.hand(declarer)));
                 }
             }
+            Phase::Announcements => legal = self.round_actions(),
             Phase::Play => {
                 if let Some(play) = &self.play {
                     legal = ActionSet::plays(play.legal_cards());
@@ -261,6 +320,165 @@ impl Game {
             Phase::Over => {}
         }
         legal
+    }
+
+    /// What the speaker may do in the round of announcements (spec 009,
+    /// criteria 2 and 6 to 16).
+    fn round_actions(&self) -> ActionSet {
+        let seat = self.round.speaker();
+        self.round_actions_of(seat, self.holds_the_called_king(seat))
+    }
+
+    /// True if a king was called and `seat` has it in its hand.
+    fn holds_the_called_king(&self, seat: Seat) -> bool {
+        self.called_king()
+            .is_some_and(|king| self.hand(seat).contains(king))
+    }
+
+    /// What `seat` may do at its turn of the round if it holds the called
+    /// king (`holds_the_king`), or if it does not. Everything here follows
+    /// from what the seat itself knows: whether it holds the called king,
+    /// whether it holds the pagat, and the public state. With the true
+    /// answer this is the legal set. With both answers it says what an
+    /// action shows ([`Game::shows`]).
+    fn round_actions_of(&self, seat: Seat, holds_the_king: bool) -> ActionSet {
+        let mut legal = ActionSet::EMPTY;
+        // "Done" is always legal: alone it is a pass.
+        legal.insert(Action::Done);
+        let hand = self.hand(seat);
+
+        // Each bonus once in a deal, whoever said it (D141, B13-1 a).
+        for bonus in Bonus::ALL {
+            let may = match bonus {
+                // For its side, by every seat.
+                Bonus::Trula | Bonus::Kralji | Bonus::Valat => true,
+                // Only the seat that holds the called king, the declarer
+                // included (D141, B13-7 a). No king is called in a solo,
+                // and nobody holds a king that lies in the talon.
+                Bonus::KraljUltimo => holds_the_king,
+                // Only the seat that holds the pagat.
+                Bonus::PagatUltimo => hand.contains(Card::PAGAT),
+            };
+            if may && self.round.announced(bonus).is_none() {
+                legal.insert(Action::Announce(bonus));
+            }
+        }
+
+        // Kontra: one level up on the game or on an announced bonus. The
+        // seat's own side: the declarer's if it is the declarer or holds
+        // the called king.
+        let own_side = self.declarer == Some(seat) || holds_the_king;
+        for target in Target::ALL {
+            // The side that owns the target, as far as the speaker knows
+            // it. The game is the declarer's. A bonus is its announcer's,
+            // and a seat that does not know the announcer's side may not
+            // raise it (D141, B13-2 a).
+            let owner = match target.bonus() {
+                None => Some(true),
+                Some(bonus) => self
+                    .round
+                    .announced(bonus)
+                    .and_then(|announcer| self.side_known_as(seat, holds_the_king, announcer)),
+            };
+            let Some(owner) = owner else {
+                continue;
+            };
+            let level = self.round.level(target);
+            // Kontra and sub by the other side, re and mort by the owner.
+            let for_the_owner = announce::next_is_for_the_owner(level);
+            if level < announce::MORT && for_the_owner == (own_side == owner) {
+                legal.insert(Action::Kontra(target));
+            }
+        }
+        legal
+    }
+
+    /// True for the declarer and the true partner.
+    fn on_declarer_side(&self, seat: Seat) -> bool {
+        self.declarer == Some(seat) || self.partner == Some(seat)
+    }
+
+    /// What does this action of the round, about to be taken by `seat`,
+    /// show every seat about `seat`?
+    ///
+    /// The standing rule (reading 3 of spec 009, D151): the engine shows
+    /// every fact about the sides that every seat can work out from what
+    /// was said and from who may say what, and no other. Every seat knows
+    /// the rules of the round and the public state, so it can ask the two
+    /// questions asked here: could `seat` take this action if it held the
+    /// called king, and could it if it did not?
+    ///
+    /// - Only if it held the king: it holds it. A seat other than the
+    ///   declarer is then the partner, and a declarer plays alone.
+    /// - Only if it did not: it is an opponent. (For the declarer this
+    ///   cannot come up: holding the king only adds to what it knows.)
+    /// - In both cases: nothing.
+    ///
+    /// This is the one place that says what the round shows. The cases it
+    /// gives are listed in criteria 10, 14 and 15 of the spec and, as a
+    /// table, in its Results: kralj ultimo; re or mort on the game or on
+    /// a bonus of the declarer (the partner); kontra or sub there (an
+    /// opponent, D150); a raise of a bonus whose announcer's side is not
+    /// public (a holder, D148); on a bonus of a seat shown as an
+    /// opponent, kontra or sub by another seat than the declarer (the
+    /// partner) and re or mort by another seat (an opponent, D151).
+    ///
+    /// Nothing asks whether the sides are public already: what an action
+    /// shows then is known already.
+    fn shows(&self, action: Action, seat: Seat) -> Shows {
+        let if_it_holds = self.round_actions_of(seat, true).contains(action);
+        let if_it_does_not = self.round_actions_of(seat, false).contains(action);
+        match (if_it_holds, if_it_does_not) {
+            (true, false) => Shows::HoldsTheKing,
+            (false, true) => Shows::Opponent,
+            _ => Shows::Nothing,
+        }
+    }
+
+    /// Is `other` on the declarer's side? `None` if `observer` cannot know
+    /// it. It knows it (spec 009, criterion 15) when
+    ///
+    /// - every seat knows it ([`PublicView::side_of`]): `other` is the
+    ///   declarer, the partner is public or the declarer is publicly
+    ///   alone, or `other` is shown as an opponent (D150);
+    /// - `other` is `observer` itself;
+    /// - `observer` holds the called king, or held it when it was played:
+    ///   it is the partner, or the declarer who called its own king. For
+    ///   such a seat every other seat but the declarer is an opponent.
+    ///
+    /// Nothing else is used. What one seat could work out from its own
+    /// cards beyond this is left to the network (D151, item 2).
+    fn side_known_to(&self, observer: Seat, other: Seat) -> Option<bool> {
+        let holds_the_king = self.partner == Some(observer)
+            || (self.declarer == Some(observer) && self.partner.is_none());
+        self.side_known_as(observer, holds_the_king, other)
+    }
+
+    /// [`Game::side_known_to`] for an observer that holds the called king
+    /// (`holds_the_king`) or does not.
+    fn side_known_as(&self, observer: Seat, holds_the_king: bool, other: Seat) -> Option<bool> {
+        if let Some(side) = self.public().side_of(other) {
+            return Some(side);
+        }
+        if other == observer {
+            // Its own side. The observer is not the declarer here: the
+            // declarer's side is public.
+            return Some(holds_the_king);
+        }
+        // To a holder of the called king every other seat but the
+        // declarer is an opponent.
+        holds_the_king.then_some(false)
+    }
+
+    /// Records what an action of the round shows, before the action is
+    /// taken: [`Game::shows`] reads the state the action was legal in.
+    fn note_what_is_shown(&mut self, action: Action) {
+        let seat = self.round.speaker();
+        match self.shows(action, seat) {
+            Shows::Nothing => {}
+            Shows::HoldsTheKing => self.partner_shown = true,
+            Shows::Opponent => self.shown_opponents[seat.index()] = true,
+        }
     }
 
     /// The seat to act takes an action. On an error nothing changes.
@@ -324,9 +542,29 @@ impl Game {
                 if card.is_tarok() {
                     self.log(EventKind::DiscardShown(card), seat);
                 }
-                if Some(self.discards.len() as usize) == self.packet_size() {
-                    // Every hand is back to twelve. Forehand leads,
-                    // whoever the declarer is.
+                if Some(self.discards.len() as usize) == self.packet_size()
+                    && let Some(declarer) = self.declarer
+                {
+                    // Every hand is back to twelve. The round of
+                    // announcements starts with the declarer.
+                    self.round = Round::new(declarer);
+                    self.phase = Phase::Announcements;
+                }
+            }
+            (Phase::Announcements, Action::Announce(bonus)) => {
+                self.log(EventKind::Announce(bonus), seat);
+                self.note_what_is_shown(action);
+                self.round.announce(bonus);
+            }
+            (Phase::Announcements, Action::Kontra(target)) => {
+                self.log(EventKind::Kontra(target), seat);
+                self.note_what_is_shown(action);
+                self.round.raise(target);
+            }
+            (Phase::Announcements, Action::Done) => {
+                if self.round.done() {
+                    // Forehand leads, whoever the declarer is and
+                    // whatever was announced.
                     let play = PlayState::new(self.hands, self.dealer.next())
                         .expect("four separate hands of twelve after the exchange");
                     self.play = Some(play);
@@ -376,6 +614,7 @@ impl Game {
             tricks: self.play.as_ref()?.trick_history(),
             declarer_pile: full.declarer_pile(),
             talon_with_opponents,
+            round: &self.round,
         }))
     }
 
@@ -398,7 +637,8 @@ impl Game {
     ///
     /// Reading B12-7 (Batch 12, open): the contract, the called king, the
     /// taken packet and a shown discard carry the declarer's seat. The
-    /// start and the six shown talon cards carry none.
+    /// start and the six shown talon cards carry none. An announcement and
+    /// a kontra carry the seat that said it.
     fn log(&mut self, kind: EventKind, seat: Option<Seat>) {
         self.push_event(Event {
             kind,
@@ -426,7 +666,7 @@ impl Game {
     }
 
     /// No deal of the rules built so far has more than [`MAX_EVENTS`]
-    /// events; a test walks the longest. A rule that adds events (spec 009)
+    /// events; the tests walk the longest. A later rule that adds events
     /// may pass the limit. Then this panics: a log that silently stopped
     /// would give the network a sequence with its end cut off.
     fn push_event(&mut self, event: Event) {
@@ -480,7 +720,7 @@ impl Game {
     fn talon_shown(&self) -> bool {
         matches!(
             self.phase,
-            Phase::TalonPick | Phase::Discard | Phase::Play | Phase::Over
+            Phase::TalonPick | Phase::Discard | Phase::Announcements | Phase::Play | Phase::Over
         )
     }
 
@@ -528,6 +768,12 @@ impl fmt::Debug for PublicView<'_> {
             .field("discards_made", &self.discards_made())
             .field("shown_discards", &self.shown_discards())
             .field("partner", &self.partner())
+            .field("sides", &Seat::ALL.map(|seat| self.side_of(seat)))
+            .field("announced", &Bonus::ALL.map(|bonus| self.announced(bonus)))
+            .field(
+                "kontra_levels",
+                &Target::ALL.map(|target| self.kontra_level(target)),
+            )
             .field("tricks", &self.tricks())
             .field("current_trick", &self.current_trick())
             .field("leader", &self.leader())
@@ -662,13 +908,56 @@ impl<'a> PublicView<'a> {
         if !contract.calls_king() || self.king_in_talon() {
             return PublicPartner::Alone;
         }
-        if !self.game.called_king_played {
-            return PublicPartner::NotKnown;
+        // Reading 3 of spec 009, with D147, D148 and D150: the called
+        // king was played, it lies in the talon (above), or the round of
+        // announcements showed who holds it (`Game::shows`).
+        if !self.game.called_king_played && !self.game.partner_shown {
+            // Or the round showed all three other seats as opponents: no
+            // seat is left to be the partner (D150).
+            let all_three = Seat::ALL.into_iter().all(|seat| {
+                self.game.declarer == Some(seat) || self.game.shown_opponents[seat.index()]
+            });
+            return if all_three {
+                PublicPartner::Alone
+            } else {
+                PublicPartner::NotKnown
+            };
         }
         match self.game.partner {
             Some(partner) => PublicPartner::With(partner),
             None => PublicPartner::Alone,
         }
+    }
+
+    /// What everyone knows about the side of `seat`: `Some(true)` the
+    /// declarer's side, `Some(false)` the opponents', `None` not known.
+    ///
+    /// The declarer's own side is always known. The other seats' sides
+    /// are known once the partner is public or the declarer is publicly
+    /// alone ([`PublicView::partner`]). Before that a single seat can be
+    /// known as an opponent: it said kontra or sub on the game or on a
+    /// bonus the declarer announced (D150), or re or mort on a bonus of a
+    /// seat shown as an opponent (D151). Only an opponent may.
+    pub fn side_of(&self, seat: Seat) -> Option<bool> {
+        if self.game.declarer == Some(seat) {
+            return Some(true);
+        }
+        match self.partner() {
+            PublicPartner::With(partner) => Some(partner == seat),
+            PublicPartner::Alone => Some(false),
+            PublicPartner::NotKnown => self.game.shown_opponents[seat.index()].then_some(false),
+        }
+    }
+
+    /// The seat that announced a bonus in the round of announcements.
+    pub fn announced(&self, bonus: Bonus) -> Option<Seat> {
+        self.game.round.announced(bonus)
+    }
+
+    /// The kontra level of the game or of a bonus: 0 none, 1 kontra, 2 re,
+    /// 3 sub, 4 mort.
+    pub fn kontra_level(&self, target: Target) -> u8 {
+        self.game.round.level(target)
     }
 
     /// The finished tricks, first to last.
@@ -750,6 +1039,14 @@ impl PrivateView<'_> {
     pub fn is_called_partner(&self) -> bool {
         self.game.partner == Some(self.seat)
     }
+
+    /// Is `other` on the declarer's side, as far as this seat knows?
+    /// `None` if it cannot know: the partner is hidden, `other` is neither
+    /// the declarer nor this seat nor shown as an opponent, and this seat
+    /// does not hold the called king (spec 009, criterion 15, D150).
+    pub fn knows_side_of(&self, other: Seat) -> Option<bool> {
+        self.game.side_known_to(self.seat, other)
+    }
 }
 
 /// Everything about the deal, hidden things included. See [`Game::full`].
@@ -783,7 +1080,7 @@ impl FullView<'_> {
 
     /// True for the declarer and the true partner.
     pub fn on_declarer_side(&self, seat: Seat) -> bool {
-        self.game.declarer == Some(seat) || self.game.partner == Some(seat)
+        self.game.on_declarer_side(seat)
     }
 
     /// All discards, the hidden ones too.
@@ -910,7 +1207,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "more than 96 actions")]
+    #[should_panic(expected = "more than 192 actions")]
     fn the_action_history_panics_when_it_is_full() {
         let mut game = fresh();
         for _ in 0..=MAX_ACTIONS {

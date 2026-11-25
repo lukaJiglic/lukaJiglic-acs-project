@@ -3,7 +3,9 @@
 //! Seats as in the spec's examples: A is forehand, then B, C, D in order of
 //! play, and D deals. With seat 3 as the dealer, A is seat 0.
 
-use tarok_engine::{Action, Card, CardSet, Contract, Deal, Game, Packet, Phase, Rank, Seat, Suit};
+use tarok_engine::{
+    Action, Bonus, Card, CardSet, Contract, Deal, Game, Packet, Phase, Rank, Seat, Suit, Target,
+};
 
 use super::{court, kralj, pip, tarok};
 
@@ -15,8 +17,9 @@ pub const D: Seat = Seat::ALL[3];
 /// The dealer of the spec's examples.
 pub const DEALER: Seat = D;
 
-/// No deal has this many actions (the longest has 67). The helpers stop
-/// with a failure instead of running on if a deal does not end.
+/// No deal has this many actions (see `MAX_ACTIONS` in `game.rs`). The
+/// helpers stop with a failure instead of running on if a deal does not
+/// end.
 pub const MAX_ACTIONS: usize = 200;
 
 pub const NORMAL: [Contract; 6] = [
@@ -111,8 +114,10 @@ pub fn declare(game: &mut Game, declarer: Seat, contract: Contract) {
     act(game, declarer, Action::Bid(contract));
 }
 
-/// The declarer takes a packet and discards the listed cards.
-pub fn exchange(game: &mut Game, taken: u8, discards: &[Card]) {
+/// The declarer takes a packet and discards the listed cards. The game is
+/// left in the round of announcements (spec 009), with the declarer to
+/// speak.
+pub fn exchange_open(game: &mut Game, taken: u8, discards: &[Card]) {
     let declarer = game.public().declarer().expect("a declarer");
     assert_eq!(game.phase(), Phase::TalonPick);
     act(game, declarer, Action::TakePacket(packet(taken)));
@@ -120,28 +125,161 @@ pub fn exchange(game: &mut Game, taken: u8, discards: &[Card]) {
         assert_eq!(game.phase(), Phase::Discard);
         act(game, declarer, Action::Discard(card));
     }
-    assert_eq!(game.phase(), Phase::Play, "all discards made");
+    assert_eq!(game.phase(), Phase::Announcements, "all discards made");
+    assert_eq!(game.to_act(), Some(declarer));
+}
+
+/// The declarer takes a packet and discards the listed cards; then all
+/// four seats pass in the round of announcements (spec 009, criterion 5),
+/// so the deal goes on as in flow A.
+pub fn exchange(game: &mut Game, taken: u8, discards: &[Card]) {
+    exchange_open(game, taken, discards);
+    speak_or_pass(game);
+}
+
+thread_local! {
+    /// The turns [`with_round`] wants spoken in the next round.
+    static ROUND_SCRIPT: std::cell::RefCell<Vec<(Seat, Vec<Action>)>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// Runs `build` with a script for the round of announcements. Where a
+/// helper would pass the round ([`exchange`], [`exchange_back`] and
+/// everything built on them), the listed turns are spoken instead: every
+/// seat passes until it is the turn of the next listed seat, which takes
+/// its actions and says "done". After the last listed turn all pass.
+///
+/// So a deal built for flow A can be played again with something said:
+/// `with_round(&[(B, &[Action::Kontra(Target::Game)])], || built_deal())`.
+/// The script is for one round: `build` must play exactly one deal.
+pub fn with_round<T>(turns: &[(Seat, &[Action])], build: impl FnOnce() -> T) -> T {
+    let script: Vec<(Seat, Vec<Action>)> = turns
+        .iter()
+        .map(|&(seat, actions)| (seat, actions.to_vec()))
+        .collect();
+    ROUND_SCRIPT.with(|cell| *cell.borrow_mut() = script);
+    let built = build();
+    let left = ROUND_SCRIPT.with(|cell| std::mem::take(&mut *cell.borrow_mut()));
+    assert!(left.is_empty(), "the round script was not used");
+    built
+}
+
+/// Takes the script of [`with_round`], if there is one.
+fn take_round_script() -> Vec<(Seat, Vec<Action>)> {
+    ROUND_SCRIPT.with(|cell| std::mem::take(&mut *cell.borrow_mut()))
+}
+
+/// The next action of a scripted round: the next action of the first
+/// listed turn if its seat is to speak, else "done". A turn whose actions
+/// are all taken ends with "done" and leaves the script.
+fn scripted_round_action(game: &Game, script: &mut Vec<(Seat, Vec<Action>)>) -> Action {
+    match script.first_mut() {
+        Some((seat, actions)) if game.to_act() == Some(*seat) => {
+            if actions.is_empty() {
+                script.remove(0);
+                Action::Done
+            } else {
+                actions.remove(0)
+            }
+        }
+        _ => Action::Done,
+    }
+}
+
+/// Speaks the script of [`with_round`] if there is one, then passes the
+/// round to its end.
+fn speak_or_pass(game: &mut Game) {
+    let mut script = take_round_script();
+    let mut actions = 0;
+    while game.phase() == Phase::Announcements {
+        actions += 1;
+        assert!(actions <= MAX_ACTIONS, "the round does not end");
+        let seat = game.to_act().expect("a seat speaks");
+        let action = scripted_round_action(game, &mut script);
+        act(game, seat, action);
+    }
+    assert!(
+        script.is_empty(),
+        "the round ended before the turn of {:?}",
+        script[0].0
+    );
+    assert_eq!(game.phase(), Phase::Play, "the round is over");
+}
+
+/// The cards of a talon packet.
+fn packet_cards(game: &Game, taken: u8) -> Vec<Card> {
+    game.public()
+        .packet(packet(taken))
+        .expect("the talon is shown")
+        .to_vec()
 }
 
 /// The declarer takes a packet and discards the same cards again, so the
 /// hand stays as dealt. The packet must hold no king and no trula card.
+/// Then all four pass in the round of announcements.
 pub fn exchange_back(game: &mut Game, taken: u8) {
-    let cards: Vec<Card> = game
-        .public()
-        .packet(packet(taken))
-        .expect("the talon is shown")
-        .to_vec();
+    let cards = packet_cards(game, taken);
     exchange(game, taken, &cards);
 }
 
-/// Takes the lowest legal action (lowest slot) until `stop` holds or the
-/// deal is over.
+/// As [`exchange_back`], but the game is left in the round of
+/// announcements.
+pub fn exchange_back_open(game: &mut Game, taken: u8) {
+    let cards = packet_cards(game, taken);
+    exchange_open(game, taken, &cards);
+}
+
+/// Every seat says "done" and nothing else until the round of
+/// announcements is over. From its start that is four passes.
+pub fn pass_round(game: &mut Game) {
+    let mut turns = 0;
+    while game.phase() == Phase::Announcements {
+        turns += 1;
+        assert!(turns <= MAX_ACTIONS, "the round does not end");
+        game.apply(Action::Done).expect("done is always legal");
+    }
+    assert_eq!(game.phase(), Phase::Play, "the round is over");
+}
+
+/// One turn of the round of announcements: `seat` takes the actions in
+/// order and then says "done". With no actions the turn is a pass.
+pub fn say(game: &mut Game, seat: Seat, actions: &[Action]) {
+    assert_eq!(game.phase(), Phase::Announcements);
+    for &action in actions {
+        act(game, seat, action);
+        assert_eq!(
+            game.to_act(),
+            Some(seat),
+            "the turn goes on after {action:?}"
+        );
+    }
+    act(game, seat, Action::Done);
+}
+
+/// The kontra levels of the six targets: game, trula, kralji, kralj
+/// ultimo, pagat ultimo, valat.
+pub fn levels(game: &Game) -> [u8; 6] {
+    Target::ALL.map(|target| game.public().kontra_level(target))
+}
+
+/// What the helpers of flow A take when they "take the lowest legal
+/// action": the lowest slot, but in the round of announcements "done", so
+/// that every seat passes there (spec 009, criterion 5).
+pub fn lowest_action(game: &Game) -> Action {
+    if game.phase() == Phase::Announcements {
+        return Action::Done;
+    }
+    game.legal_actions().iter().next().expect("a legal action")
+}
+
+/// Takes the lowest legal action (lowest slot; "done" in the round of
+/// announcements) until `stop` holds or the deal is over.
 pub fn run_until(game: &mut Game, stop: impl Fn(&Game) -> bool) {
     let mut actions = 0;
     while game.phase() != Phase::Over && !stop(game) {
         actions += 1;
         assert!(actions <= MAX_ACTIONS, "the deal does not end");
-        let action = game.legal_actions().iter().next().expect("a legal action");
+        let action = lowest_action(game);
         game.apply(action).expect("a legal action is accepted");
     }
 }
@@ -165,7 +303,7 @@ pub fn play_scripted(game: &mut Game, scripts: [&[Card]; 4]) {
                 next[seat.index()] += 1;
                 Action::Play(card)
             }
-            None => game.legal_actions().iter().next().expect("a legal card"),
+            None => lowest_action(game),
         };
         if let Err(error) = game.apply(action) {
             let trick = game.public().tricks().len() + 1;
@@ -191,15 +329,70 @@ pub fn play_scripted(game: &mut Game, scripts: [&[Card]; 4]) {
 /// choices nearly every auction climbs to solo ena and partner games
 /// almost never happen.
 ///
+/// In the round of announcements every seat passes (spec 009, criterion
+/// 5): the deal is one of flow A. A pass uses no choice, so a seed and its
+/// choices give the cards and the plays they gave before the round
+/// existed. Inside [`with_round`] the script is spoken in place of the
+/// passes; the cards and the plays stay the same. [`play_random_b`] speaks
+/// at random in the round.
+///
 /// `before` sees the game before each action.
-pub fn play_random(seed: u64, dealer: Seat, choices: &[u8], mut before: impl FnMut(&Game)) -> Game {
+pub fn play_random(seed: u64, dealer: Seat, choices: &[u8], before: impl FnMut(&Game)) -> Game {
+    play_random_with(seed, dealer, choices, false, before)
+}
+
+/// As [`play_random`], with announcements and kontras (flow B). In the
+/// round a choice that is a multiple of 3 says "done"; any other choice
+/// picks one of the other legal actions, if there is one. A valat is
+/// announced less often than that: see the code.
+pub fn play_random_b(seed: u64, dealer: Seat, choices: &[u8], before: impl FnMut(&Game)) -> Game {
+    play_random_with(seed, dealer, choices, true, before)
+}
+
+fn play_random_with(
+    seed: u64,
+    dealer: Seat,
+    choices: &[u8],
+    speak: bool,
+    mut before: impl FnMut(&Game),
+) -> Game {
     let mut game = Game::from_seed(seed, dealer);
+    let mut script = if speak {
+        Vec::new()
+    } else {
+        take_round_script()
+    };
     let mut step = 0;
+    let mut actions = 0;
     while game.phase() != Phase::Over {
-        assert!(step < MAX_ACTIONS, "the deal does not end");
+        assert!(actions < 2 * MAX_ACTIONS, "the deal does not end");
+        actions += 1;
         before(&game);
         let legal = game.legal_actions();
         assert!(!legal.is_empty(), "no legal action in {:?}", game.phase());
+        if game.phase() == Phase::Announcements {
+            assert!(legal.contains(Action::Done), "done is always legal");
+            let mut action = scripted_round_action(&game, &mut script);
+            if speak {
+                let choice = u32::from(choices[step % choices.len()]);
+                step += 1;
+                // "Done" has the highest slot of the round: the others
+                // come first in slot order.
+                let others = legal.len() - 1;
+                if choice % 3 != 0 && others > 0 {
+                    action = legal.nth((choice / 3) % others).expect("in range");
+                }
+                // A valat is legal for every seat at every turn. Taken at
+                // random it would be announced in nearly every deal, and a
+                // deal with an announced valat scores nothing else. So it
+                // is kept one time in eight.
+                if action == Action::Announce(Bonus::Valat) && (choice / 3) % 8 != 1 {
+                    action = Action::Done;
+                }
+            }
+            game.apply(action).expect("a legal action is accepted");
+            continue;
+        }
         let choice = u32::from(choices[step % choices.len()]);
         let naming = matches!(game.phase(), Phase::Bidding | Phase::ContractChoice);
         let index = match (naming, choice % 4) {
@@ -211,6 +404,7 @@ pub fn play_random(seed: u64, dealer: Seat, choices: &[u8], mut before: impl FnM
         game.apply(action).expect("a legal action is accepted");
         step += 1;
     }
+    assert!(script.is_empty(), "the round script was not used up");
     game
 }
 
@@ -230,6 +424,109 @@ pub fn seeded_game(seed: u64) -> Game {
         .collect();
     let dealer = Seat::ALL[(seed % 4) as usize];
     play_random(seed, dealer, &choices, |_| {})
+}
+
+/// As [`seeded_game`], with announcements and kontras: a random deal of
+/// flow B that depends on one number only.
+pub fn seeded_game_b(seed: u64) -> Game {
+    seeded_game_b_with(seed, |_| {})
+}
+
+/// As [`seeded_game_b`]; `before` sees the game before each action.
+pub fn seeded_game_b_with(seed: u64, before: impl FnMut(&Game)) -> Game {
+    let mut state = seed.wrapping_mul(0x9E37_79B9_7F4A_7C15) | 1;
+    let choices: Vec<u8> = (0..191)
+        .map(|_| {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            (state >> 24) as u8
+        })
+        .collect();
+    let dealer = Seat::ALL[(seed % 4) as usize];
+    play_random_b(seed, dealer, &choices, before)
+}
+
+/// The deal of the tests of the round of announcements (spec 009).
+///
+/// - A: škis, mond, taroks II-XI.
+/// - B: pagat, taroks XII-XX, srce fant, srce kaval.
+/// - C: srce kralj, srce dama; karo 2, 1, fant, kaval, dama, kralj; pik
+///   7, 8, 9, 10.
+/// - D: pik fant, kaval, dama, kralj and the eight križ.
+/// - Talon: srce 4, 3, 2, 1, karo 4, 3.
+///
+/// `king` holds the srce kralj. That is C as listed. For another seat the
+/// king changes places with one card of that seat: the tarok II (A), the
+/// srce kaval (B) or the križ 7 (D).
+pub fn round_deal(king: Seat) -> Deal {
+    let srce = |number| pip(Suit::Srce, number);
+    let talon = [
+        srce(4),
+        srce(3),
+        srce(2),
+        srce(1),
+        pip(Suit::Karo, 4),
+        pip(Suit::Karo, 3),
+    ];
+    let base = deal_with(
+        [
+            &[Card::SKIS, Card::MOND],
+            &[Card::PAGAT],
+            &[kralj(Suit::Srce)],
+            &[],
+        ],
+        &talon,
+    );
+    let mut hands = base.hands();
+    // What the listing above says, so a change of `deal_with` shows here.
+    assert!(hands[A.index()].contains(tarok(2)) && hands[A.index()].contains(tarok(11)));
+    assert!(hands[B.index()].contains(court(Suit::Srce, Rank::Kaval)));
+    assert!(hands[C.index()].contains(kralj(Suit::Karo)));
+    assert!(hands[D.index()].contains(pip(Suit::Kriz, 7)));
+    assert!((hands[C.index()] | hands[D.index()]).is_disjoint(CardSet::TAROKS));
+    let other = match king.index() {
+        0 => Some(tarok(2)),
+        1 => Some(court(Suit::Srce, Rank::Kaval)),
+        3 => Some(pip(Suit::Kriz, 7)),
+        _ => None,
+    };
+    if let Some(card) = other {
+        hands[C.index()].remove(kralj(Suit::Srce));
+        hands[C.index()].insert(card);
+        hands[king.index()].remove(card);
+        hands[king.index()].insert(kralj(Suit::Srce));
+    }
+    Deal::new(hands, talon).expect("a whole deal")
+}
+
+/// A plays `contract` on [`round_deal`]: it calls srce where a king is
+/// called, takes the first packet and puts the same cards down again. The
+/// game is left at the start of the round of announcements, A to speak.
+pub fn round_game(king: Seat, contract: Contract) -> Game {
+    let mut game = game(&round_deal(king));
+    declare(&mut game, A, contract);
+    if game.phase() == Phase::KingCall {
+        act(&mut game, A, Action::CallKing(Suit::Srce));
+    }
+    exchange_back_open(&mut game, 0);
+    game
+}
+
+/// For each seat (A, B, C, D): is `action` legal at that seat's first turn
+/// of the round, when every seat before it passes? `game` is at the start
+/// of the round and is not changed.
+pub fn may_by_seat(game: &Game, action: Action) -> [bool; 4] {
+    let mut game = game.clone();
+    let mut may = [false; 4];
+    for _ in 0..4 {
+        assert_eq!(game.phase(), Phase::Announcements);
+        let seat = game.to_act().expect("a seat speaks");
+        may[seat.index()] = game.legal_actions().contains(action);
+        // The last pass ends the round; the game is a copy.
+        game.apply(Action::Done).expect("done is always legal");
+    }
+    may
 }
 
 /// The srce kralj lies in the first packet of the talon and the mond in the

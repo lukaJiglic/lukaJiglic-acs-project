@@ -1,4 +1,5 @@
-//! Spec 006, criteria 15 to 19: the vectorised environment.
+//! Spec 006, criteria 15 to 19: the vectorised environment. Spec 009,
+//! criteria 50 and 51: the hold flag per table.
 //!
 //! N tables step at once. Every step is one decision per table. A table
 //! plays runs of 24 deals; the dealer moves one seat per deal.
@@ -131,8 +132,10 @@ fn c15_same_seed_and_actions_give_identical_arrays_with_1_and_12_threads() {
         assert_eq!(&result, again.step(&actions).unwrap(), "step {step}");
         deals += result.done.iter().filter(|&&done| done).count();
     }
-    // The comparison ran across the ends of deals.
-    assert!(deals >= 900, "{deals} deals finished");
+    // The comparison ran across the ends of deals. With the round of
+    // announcements (spec 009) a random deal has about 88 decisions, not
+    // about 60: 600 steps at 96 tables finish about 600 deals.
+    assert!(deals >= 500, "{deals} deals finished");
 
     // Another base seed gives other deals.
     let other = VecEnv::new(96, 2027, 1).unwrap();
@@ -212,8 +215,10 @@ fn c17_a_finished_deal_is_followed_by_the_next_with_the_dealer_one_seat_on() {
     let mut deals_done = [0u64; TABLES];
     let mut runs_started = [0u64; TABLES];
 
-    // Enough steps for more than two runs of 24 deals at every table.
-    for _ in 0..(2 * DEALS_PER_RUN + 4) * 68 {
+    // Enough steps for more than two runs of 24 deals at every table. A
+    // random deal with the round of announcements (spec 009) has about 88
+    // decisions.
+    for _ in 0..(2 * DEALS_PER_RUN + 4) * 130 {
         let before = env.observe().clone();
         let dealers: Vec<usize> = (0..TABLES).map(|table| dealer_of(&before, table)).collect();
         let actions = random_actions(&before, &mut choices);
@@ -284,6 +289,98 @@ fn c17_a_finished_deal_is_followed_by_the_next_with_the_dealer_one_seat_on() {
     }
 }
 
+/// Nothing of a deal reaches the next deal of the table (the second review
+/// of spec 009, point 2). At every step, for every table, the observation
+/// of the environment is the one of a fresh game of that deal's seed and
+/// dealer that takes the deal's actions so far: tokens, state, mask and
+/// the critic's features. So a table that kept anything of the deal
+/// before, such as the seats shown as opponents in its round of
+/// announcements, would differ in the deal after.
+#[test]
+fn c17_every_decision_of_a_table_is_that_of_a_fresh_game_of_its_deal() {
+    const TABLES: usize = 4;
+    const BASE: u64 = 1709;
+    let mut env = VecEnv::new(TABLES, BASE, 2).unwrap();
+    let mut choices = Choices(1709);
+    // The actions of each table's deal so far.
+    let mut played: Vec<Vec<Action>> = vec![Vec::new(); TABLES];
+    let mut deals = 0u32;
+    // Decisions with the partner hidden, in a deal that follows a deal in
+    // which a seat was shown as an opponent: there a kept flag would show.
+    let mut after_a_shown_seat = 0u32;
+    let mut shown_now = [false; TABLES];
+    let mut shown_before = [false; TABLES];
+    for _ in 0..12_000 {
+        let before = env.observe().clone();
+        let mut actions = random_actions(&before, &mut choices);
+        for table in 0..TABLES {
+            let (run, deal_in_run, _) = env.position(table).unwrap();
+            let seed = deal_seed(BASE, table as u64, run, u64::from(deal_in_run));
+            let dealer = first_dealer(table as u64, run).plus(deal_in_run as usize);
+            let mut fresh = Game::from_seed(seed, dealer);
+            for &action in &played[table] {
+                fresh.apply(action).expect("legal in a fresh game");
+            }
+            let seat = fresh.to_act().expect("a decision");
+            assert_eq!(before.seat[table], seat.index() as i64);
+            // In the auction the lowest legal action three times out of
+            // four, as `common::flow::play_random` does: drawn uniformly,
+            // nearly every auction ends in a solo and no partner is ever
+            // hidden.
+            if matches!(fresh.phase(), Phase::Bidding | Phase::ContractChoice)
+                && !choices.next().is_multiple_of(4)
+            {
+                let lowest = mask_of(&before, table).iter().position(|&bit| bit);
+                actions[table] = lowest.expect("a legal action") as i64;
+            }
+
+            let own = encode::observe(&fresh, seat);
+            assert_eq!(mask_of(&before, table), &own.mask[..], "table {table}");
+            let state =
+                &before.state[table * encode::STATE_FEATURES..(table + 1) * encode::STATE_FEATURES];
+            assert_eq!(state, &own.state[..], "table {table}");
+            let critic = &before.critic
+                [table * encode::CRITIC_FEATURES..(table + 1) * encode::CRITIC_FEATURES];
+            assert_eq!(critic, &own.critic[..], "table {table}");
+            assert_eq!(before.n_tokens[table] as usize, own.tokens.len());
+            let tokens = &before.tokens[table * 640..(table + 1) * 640];
+            for (row, token) in own.tokens.iter().enumerate() {
+                assert_eq!(&tokens[row * 5..row * 5 + 5], &token[..], "table {table}");
+            }
+
+            let public = fresh.public();
+            let hidden = public.called_king().is_some()
+                && public.partner() == tarok_engine::PublicPartner::NotKnown;
+            if hidden && shown_before[table] {
+                after_a_shown_seat += 1;
+            }
+            shown_now[table] |= hidden
+                && Seat::ALL
+                    .into_iter()
+                    .any(|seat| public.side_of(seat) == Some(false));
+        }
+        let done = env.step(&actions).unwrap().done.clone();
+        for table in 0..TABLES {
+            if done[table] {
+                played[table].clear();
+                deals += 1;
+                shown_before[table] = shown_now[table];
+                shown_now[table] = false;
+            } else {
+                let action = Action::from_slot(actions[table] as usize).expect("a slot");
+                played[table].push(action);
+            }
+        }
+    }
+    println!(
+        "{deals} deals at {TABLES} tables, every decision compared with a fresh game; \
+         {after_a_shown_seat} decisions with the partner hidden in a deal that follows a deal \
+         with a seat shown as an opponent"
+    );
+    assert!(deals >= 400, "{deals} deals");
+    assert!(after_a_shown_seat >= 500, "{after_a_shown_seat}");
+}
+
 #[test]
 fn c18_rewards_and_parts_are_delivered_once_per_deal() {
     const TABLES: usize = 16;
@@ -328,13 +425,19 @@ fn c18_rewards_and_parts_are_delivered_once_per_deal() {
             let expected = rewards(&game.score().unwrap());
             assert_eq!(reward, expected.reward);
             assert_eq!(entries, expected.entries);
+            // A reward is a 32-bit number. Since spec 009 an entry can be
+            // thousands of points (a valat under kontra), so the room for
+            // rounding grows with the size of the rewards: 1e-6 for
+            // rewards up to 1, and in proportion above that.
+            let largest = reward.iter().fold(0f32, |most, r| most.max(r.abs()));
+            let room = 1e-6 * largest.max(1.0);
             for seat in 0..4 {
                 let of_seat = &parts[seat * 10..(seat + 1) * 10];
                 assert_eq!(of_seat, expected.parts[seat]);
                 // The ten parts add up to the seat's reward.
                 let sum: f32 = of_seat.iter().sum();
                 assert!(
-                    (sum - reward[seat]).abs() < 1e-6,
+                    (sum - reward[seat]).abs() < room,
                     "{sum} against {}",
                     reward[seat]
                 );
@@ -342,11 +445,13 @@ fn c18_rewards_and_parts_are_delivered_once_per_deal() {
                 assert_eq!(of_seat[8..], [0.0, 0.0]);
             }
             let total: f32 = reward.iter().sum();
-            assert!(total.abs() < 1e-6);
+            assert!(total.abs() < room, "the rewards sum to {total}");
             taken[table].clear();
         }
     }
-    assert!(finished >= 400, "{finished} deals finished");
+    // About 88 decisions per random deal since spec 009: 2,000 steps at
+    // 16 tables finish about 350 deals.
+    assert!(finished >= 300, "{finished} deals finished");
 }
 
 #[test]
@@ -568,7 +673,8 @@ fn random_runs_do_not_depend_on_the_thread_count() {
     let first = one.run_random(700, 5).unwrap();
     assert_eq!(first, many.run_random(700, 5).unwrap());
     assert_eq!(first.decisions, 700 * 40);
-    assert!(first.deals >= 400, "{} deals", first.deals);
+    // About 88 decisions per random deal since spec 009.
+    assert!(first.deals >= 250, "{} deals", first.deals);
     assert_eq!(one.observe(), many.observe());
     assert_eq!(one.state(), many.state());
     // Another seed plays other cards.
@@ -676,4 +782,254 @@ fn tables_write_into_arrays_of_the_caller_and_check_their_sizes() {
         (tables.len(), tables.threads(), tables.base_seed()),
         (3, 2, 24)
     );
+}
+
+// ---------------------------------------------------------------------
+// Spec 009, criteria 50 and 51: the hold flag (D142, B14-1 a)
+// ---------------------------------------------------------------------
+
+/// Everything the environment shows for one table, as text: the seat to
+/// act, the deal number, the tokens, the state, the hidden features, the
+/// mask and the two targets.
+fn table_view(observations: &Observations, table: usize) -> String {
+    format!(
+        "{:?}",
+        (
+            observations.seat[table],
+            observations.deal[table],
+            observations.n_tokens[table],
+            &observations.tokens[table * 640..(table + 1) * 640],
+            &observations.state[table * 1382..(table + 1) * 1382],
+            &observations.critic[table * 1656..(table + 1) * 1656],
+            mask_of(observations, table),
+            observations.partner_target[table],
+            &observations.card_target[table * 54..(table + 1) * 54],
+        )
+    )
+}
+
+#[test]
+fn c50_a_held_table_does_not_move() {
+    const TABLES: usize = 12;
+    let mut env = VecEnv::new(TABLES, 50, 3).unwrap();
+    let mut choices = Choices(50);
+    // Actions a held table may be handed: none of them is looked at.
+    let junk: [i64; 6] = [-1, 89, 159, 1_000, i64::MAX, i64::MIN];
+    let mut held_steps = 0;
+    let mut held_with_a_legal_action = 0;
+    let mut finished = 0;
+
+    for step in 0..1_500 {
+        let before = env.observe().clone();
+        let state_before = env.state();
+        let mut actions = random_actions(&before, &mut choices);
+        // In the first steps no table is held, so the tables spread out.
+        let hold: Vec<bool> = (0..TABLES)
+            .map(|_| step >= 30 && choices.next().is_multiple_of(3))
+            .collect();
+        for table in 0..TABLES {
+            if hold[table] {
+                held_steps += 1;
+                // Mostly junk; sometimes the legal action stays, and is
+                // ignored all the same.
+                if choices.next().is_multiple_of(4) {
+                    held_with_a_legal_action += 1;
+                } else {
+                    actions[table] = junk[(choices.next() % 6) as usize];
+                }
+            }
+        }
+        let result = env.step_hold(&actions, &hold).unwrap().clone();
+        let after = env.observe();
+        let state_after = env.state();
+        for (table, &is_held) in hold.iter().enumerate() {
+            let reward = &result.reward[table * 4..(table + 1) * 4];
+            let parts = &result.parts[table * 40..(table + 1) * 40];
+            let entries = &result.entries[table * 4..(table + 1) * 4];
+            let row = |state: &EnvState| {
+                (
+                    state.run[table],
+                    state.deal_in_run[table],
+                    state.deals_done[table],
+                    state.n_actions[table],
+                )
+            };
+            if is_held {
+                // The same observation and the same seat to act.
+                assert!(
+                    table_view(&before, table) == table_view(after, table),
+                    "step {step}, table {table}: a held table shows something else"
+                );
+                // No reward, not done.
+                assert!(!result.done[table]);
+                assert_eq!(reward, [0.0; 4]);
+                assert_eq!(parts, [0.0; 40]);
+                assert_eq!(entries, [0; 4]);
+                // Nothing was played.
+                assert_eq!(row(&state_before), row(&state_after));
+            } else {
+                // The table took its action: one action more in its deal,
+                // or the deal ended and the next one started.
+                let (run, deal, done, n) = row(&state_before);
+                if result.done[table] {
+                    finished += 1;
+                    assert_eq!(state_after.deals_done[table], done + 1);
+                    assert_eq!(state_after.n_actions[table], 0);
+                } else {
+                    assert_eq!(row(&state_after), (run, deal, done, n + 1));
+                }
+            }
+        }
+    }
+    assert!(held_steps > 3_000, "{held_steps} held table-steps");
+    assert!(held_with_a_legal_action > 500);
+    assert!(
+        finished > 50,
+        "{finished} deals finished next to held tables"
+    );
+
+    // Every table held: nothing moves at all.
+    let before = (env.observe().clone(), env.state());
+    let result = env
+        .step_hold(&[-7; TABLES], &[true; TABLES])
+        .unwrap()
+        .clone();
+    assert_eq!(before, (env.observe().clone(), env.state()));
+    assert!(result.done.iter().all(|&done| !done));
+    assert!(result.reward.iter().all(|&reward| reward == 0.0));
+
+    // No table held: the same as a plain step.
+    let mut plain = VecEnv::new(TABLES, 50, 3).unwrap();
+    plain.set_state(&env.state()).unwrap();
+    let actions = random_actions(env.observe(), &mut choices);
+    let with_flags = env.step_hold(&actions, &[false; TABLES]).unwrap().clone();
+    assert_eq!(&with_flags, plain.step(&actions).unwrap());
+    assert_eq!(env.observe(), plain.observe());
+    assert_eq!(env.state(), plain.state());
+
+    // An action that is not legal at a table that is not held is an error,
+    // and no table moves: not the held ones, not the others.
+    let before = (env.observe().clone(), env.state());
+    let mut actions = random_actions(env.observe(), &mut choices);
+    actions[3] = 89;
+    actions[5] = 89;
+    let mut hold = [false; TABLES];
+    hold[5] = true;
+    assert_eq!(
+        env.step_hold(&actions, &hold).unwrap_err(),
+        VecEnvError::IllegalAction { table: 3, slot: 89 }
+    );
+    assert_eq!(before, (env.observe().clone(), env.state()));
+    // One flag per table.
+    assert_eq!(
+        env.step_hold(&actions, &hold[..TABLES - 1]).unwrap_err(),
+        VecEnvError::WrongHoldCount {
+            expected: TABLES,
+            got: TABLES - 1
+        }
+    );
+    assert_eq!(before, (env.observe().clone(), env.state()));
+}
+
+/// What a table played in one deal: its actions, the entries and rewards
+/// the environment delivered, and the record of the deal as text.
+type PlayedDeal = (Vec<i64>, Vec<i32>, Vec<f32>, String);
+
+/// `TABLES` tables play `steps` steps. The action of a table depends on
+/// the table and on how many decisions it has taken, on nothing else: so
+/// a table that waits takes the same action later. With `holds` every
+/// table is held at random, about one step in three.
+fn play_with_holds(steps: usize, holds: bool) -> Vec<Vec<PlayedDeal>> {
+    const TABLES: usize = 200;
+    const BASE: u64 = 51;
+    let mut env = VecEnv::new(TABLES, BASE, 4).unwrap();
+    let mut held = Choices(5_100);
+    let mut decisions = [0u64; TABLES];
+    let mut current: Vec<Vec<i64>> = vec![Vec::new(); TABLES];
+    let mut played: Vec<Vec<PlayedDeal>> = vec![Vec::new(); TABLES];
+
+    for _ in 0..steps {
+        let observations = env.observe().clone();
+        let hold: Vec<bool> = (0..TABLES)
+            .map(|_| holds && held.next().is_multiple_of(3))
+            .collect();
+        let actions: Vec<i64> = (0..TABLES)
+            .map(|table| {
+                if hold[table] {
+                    // Not looked at.
+                    return 89;
+                }
+                let legal: Vec<usize> = mask_of(&observations, table)
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, bit)| **bit)
+                    .map(|(slot, _)| slot)
+                    .collect();
+                // The choice of this table at this decision of its own.
+                let mut choice = Choices((table as u64) << 32 | decisions[table]);
+                legal[(choice.next() % legal.len() as u64) as usize] as i64
+            })
+            .collect();
+        let result = if holds {
+            env.step_hold(&actions, &hold).unwrap().clone()
+        } else {
+            env.step(&actions).unwrap().clone()
+        };
+        for table in 0..TABLES {
+            if hold[table] {
+                assert!(!result.done[table]);
+                continue;
+            }
+            decisions[table] += 1;
+            current[table].push(actions[table]);
+            if !result.done[table] {
+                continue;
+            }
+            // The deal again, outside the environment, for its record.
+            let number = played[table].len() as u64;
+            let (run, deal_in_run) = (number / DEALS_PER_RUN as u64, number % DEALS_PER_RUN as u64);
+            let seed = deal_seed(BASE, table as u64, run, deal_in_run);
+            let dealer = first_dealer(table as u64, run).plus(deal_in_run as usize);
+            let mut game = Game::from_seed(seed, dealer);
+            for &slot in &current[table] {
+                game.apply(Action::from_slot(slot as usize).unwrap())
+                    .unwrap();
+            }
+            let record = tarok_engine::record::Record::of_game(seed, &game).unwrap();
+            assert_eq!(
+                record.entries[..],
+                result.entries[table * 4..(table + 1) * 4]
+            );
+            played[table].push((
+                std::mem::take(&mut current[table]),
+                result.entries[table * 4..(table + 1) * 4].to_vec(),
+                result.reward[table * 4..(table + 1) * 4].to_vec(),
+                record.to_json(),
+            ));
+        }
+    }
+    played
+}
+
+#[test]
+fn c51_holding_never_changes_what_a_table_plays() {
+    let plain = play_with_holds(500, false);
+    // With a third of the steps held, 750 steps move a table as far as 500
+    // steps do without holds; 900 is some more.
+    let held = play_with_holds(900, true);
+    assert_eq!(plain.len(), 200);
+    let mut compared = 0;
+    for (table, (without, with)) in plain.iter().zip(&held).enumerate() {
+        // The deals both runs finished at this table: the same actions,
+        // the same entries, the same rewards, the same records, in the
+        // same order.
+        let both = without.len().min(with.len());
+        assert!(both >= 2, "table {table}: {both} deals in both runs");
+        assert_eq!(without[..both], with[..both], "table {table}");
+        compared += both;
+    }
+    assert!(compared >= 800, "{compared} deals compared");
+    // The run with holds did wait: it needed more steps for its deals.
+    let deals = |played: &[Vec<PlayedDeal>]| played.iter().map(Vec::len).sum::<usize>();
+    assert!(deals(&held) * 500 < deals(&plain) * 900);
 }

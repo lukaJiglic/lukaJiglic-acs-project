@@ -138,7 +138,10 @@ pub fn knowledge(game: &Game, observer: Seat) -> Knowledge {
     let voids = shown_voids(game);
     let declarer = public.declarer();
     let i_am_declarer = declarer == Some(observer);
-    let discards_done = matches!(public.phase(), Phase::Play | Phase::Over);
+    let discards_done = matches!(
+        public.phase(),
+        Phase::Announcements | Phase::Play | Phase::Over
+    );
     let hidden_discards = public.discards_made() - shown_discards.len() as usize;
 
     // Cards no other seat holds, whoever it is.

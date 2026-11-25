@@ -221,7 +221,17 @@ impl Tables {
     /// One action per table. Writes the next observations and, where a deal
     /// ended, its rewards. If an action is not legal, nothing changes and a
     /// `ValueError` is raised. The GIL is released while the tables step.
+    ///
+    /// `hold`, if given, is one flag per table (spec 009, criterion 52). A
+    /// held table does not move: its action is ignored and need not be
+    /// legal, it is not done and gets no reward, and its rows of the
+    /// observation arrays stay as they were. Without `hold` every table
+    /// steps, as before.
     #[allow(clippy::too_many_arguments)]
+    #[pyo3(signature = (
+        actions, seat, deal, tokens, n_tokens, state, mask, critic, partner_target,
+        card_target, done, reward, parts, entries, hold=None
+    ))]
     fn step_into(
         &mut self,
         py: Python<'_>,
@@ -239,9 +249,14 @@ impl Tables {
         mut reward: PyReadwriteArray2<'_, f32>,
         mut parts: PyReadwriteArray3<'_, f32>,
         mut entries: PyReadwriteArray2<'_, i32>,
+        hold: Option<PyReadonlyArray1<'_, bool>>,
     ) -> PyResult<()> {
         let n = self.inner.len();
         let actions = readable("actions", &actions, &[n])?;
+        let hold = match &hold {
+            Some(flags) => Some(readable("hold", flags, &[n])?),
+            None => None,
+        };
         let observations = observation_buffers(
             n,
             &mut seat,
@@ -256,8 +271,11 @@ impl Tables {
         )?;
         let result = result_buffers(n, &mut done, &mut reward, &mut parts, &mut entries)?;
         let inner = &mut self.inner;
-        py.detach(|| inner.step_into(actions, observations, result))
-            .map_err(env_error)
+        py.detach(|| match hold {
+            Some(flags) => inner.step_hold_into(actions, flags, observations, result),
+            None => inner.step_into(actions, observations, result),
+        })
+        .map_err(env_error)
     }
 
     /// `steps` steps with a random legal action at every table, chosen in

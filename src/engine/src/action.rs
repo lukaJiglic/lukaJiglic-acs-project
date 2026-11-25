@@ -10,12 +10,16 @@
 //! | 13-16 | `CallKing(suit)`: srce, karo, pik, križ |
 //! | 17-22 | `TakePacket(packet)`: packet index 0-5 |
 //! | 23-76 | `Discard(card)`: 23 + card index |
-//! | 77-89 | announcements and kontra (spec 009): no action yet |
+//! | 77-81 | `Announce(bonus)`: trula, kralji, kralj ultimo, pagat ultimo, valat |
+//! | 82-87 | `Kontra(target)`: game, trula, kralji, kralj ultimo, pagat ultimo, valat. One level up |
+//! | 88 | `Done`: the seat ends its turn in the round of announcements |
+//! | 89 | reserved (barvni valat): no action |
 //! | 90-143 | `Play(card)`: 90 + card index |
 //! | 144-159 | reserved |
 
 use std::fmt;
 
+use crate::announce::{Bonus, Target};
 use crate::card::{Card, Suit};
 use crate::cardset::CardSet;
 use crate::contract::Contract;
@@ -32,6 +36,12 @@ pub mod slots {
     pub const PACKETS: Range<usize> = 17..23;
     /// A discard of each card.
     pub const DISCARDS: Range<usize> = 23..77;
+    /// The five announcements.
+    pub const ANNOUNCEMENTS: Range<usize> = 77..82;
+    /// A kontra on each of the six targets.
+    pub const KONTRAS: Range<usize> = 82..88;
+    /// "Done": the end of a turn in the round of announcements.
+    pub const DONE: usize = 88;
     /// A play of each card.
     pub const PLAYS: Range<usize> = 90..144;
 }
@@ -74,6 +84,14 @@ pub enum Action {
     TakePacket(Packet),
     /// The declarer puts one card down.
     Discard(Card),
+    /// A seat announces a bonus for its side.
+    Announce(Bonus),
+    /// A seat raises the kontra level of the game or of an announced bonus
+    /// by one: kontra, re, sub, mort.
+    Kontra(Target),
+    /// A seat ends its turn in the round of announcements. Alone, it is a
+    /// pass.
+    Done,
     /// A card played to a trick.
     Play(Card),
 }
@@ -90,12 +108,15 @@ impl Action {
             Action::CallKing(suit) => slots::KINGS.start + suit.index() as usize,
             Action::TakePacket(packet) => slots::PACKETS.start + packet.index(),
             Action::Discard(card) => slots::DISCARDS.start + card.index() as usize,
+            Action::Announce(bonus) => slots::ANNOUNCEMENTS.start + bonus.index(),
+            Action::Kontra(target) => slots::KONTRAS.start + target.index(),
+            Action::Done => slots::DONE,
             Action::Play(card) => slots::PLAYS.start + card.index() as usize,
         }
     }
 
-    /// The action of a slot. `None` for the slots that have no action yet
-    /// (77-89 and 144-159) and for numbers above 159.
+    /// The action of a slot. `None` for the slots that have no action (89
+    /// and 144-159) and for numbers above 159.
     pub fn from_slot(slot: usize) -> Option<Action> {
         // The ranges are checked first, so the narrowing casts cannot lose
         // anything.
@@ -109,6 +130,14 @@ impl Action {
             Packet::new((slot - slots::PACKETS.start) as u8).map(Action::TakePacket)
         } else if slots::DISCARDS.contains(&slot) {
             Card::from_index((slot - slots::DISCARDS.start) as u8).map(Action::Discard)
+        } else if slots::ANNOUNCEMENTS.contains(&slot) {
+            Some(Action::Announce(
+                Bonus::ALL[slot - slots::ANNOUNCEMENTS.start],
+            ))
+        } else if slots::KONTRAS.contains(&slot) {
+            Some(Action::Kontra(Target::ALL[slot - slots::KONTRAS.start]))
+        } else if slot == slots::DONE {
+            Some(Action::Done)
         } else if slots::PLAYS.contains(&slot) {
             Card::from_index((slot - slots::PLAYS.start) as u8).map(Action::Play)
         } else {

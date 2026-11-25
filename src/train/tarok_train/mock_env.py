@@ -99,6 +99,8 @@ STATE_ARRAYS = ("deal", "rounds", "t", "first", "tok", "n_tok", "score", "cue", 
 
 
 class MockEnv:
+    engine_version = None  # no engine plays these deals: a checkpoint of a mock run names none
+
     def __init__(
         self,
         n_tables: int,

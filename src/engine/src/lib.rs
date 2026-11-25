@@ -8,24 +8,31 @@
 //! - Spec 005 (flow A): a whole deal of the six normal contracts ([`Game`]):
 //!   bidding, choice of the contract, king call, talon exchange, twelve
 //!   tricks and the score with its parts.
+//! - Spec 006: the encoding ([`encode`]), the vectorised environment and
+//!   the game record ([`record`]).
+//! - Spec 009 (flow B): the round of announcements and kontra between the
+//!   talon exchange and the first lead ([`announce`]).
 //!
-//! Announcements, kontra, klop, berač and the higher contracts, the
-//! encoding and the bindings come with later specs.
+//! Klop, berač and the higher contracts come with spec 010.
 //!
 //! Card names are Slovenian without diacritics: `Kralj`, `Dama`, `Kaval`,
 //! `Fant`; `PAGAT` (tarok I), `MOND` (tarok XXI), `SKIS`; `Srce`, `Karo`,
 //! `Pik`, `Kriz`.
 //!
-//! A whole deal with the lowest legal action at every step:
+//! A whole deal with the lowest legal action at every step. In the round
+//! of announcements every seat passes:
 //!
 //! ```
-//! use tarok_engine::{Game, Phase, Seat};
+//! use tarok_engine::{Action, Game, Phase, Seat};
 //!
 //! // Seat 3 deals, so seat 0 is forehand.
 //! let mut game = Game::from_seed(7, Seat::ALL[3]);
 //! while game.phase() != Phase::Over {
 //!     let seat = game.to_act().unwrap();
-//!     let action = game.legal_actions().iter().next().unwrap();
+//!     let mut action = game.legal_actions().iter().next().unwrap();
+//!     if game.phase() == Phase::Announcements {
+//!         action = Action::Done;
+//!     }
 //!     // What the seat may look at: the public state and its own view.
 //!     assert!(game.private(seat).hand().len() <= 15);
 //!     game.apply(action).unwrap();
@@ -57,6 +64,7 @@
 #![forbid(unsafe_code)]
 
 pub mod action;
+pub mod announce;
 pub mod bidding;
 pub mod card;
 pub mod cardset;
@@ -77,6 +85,7 @@ pub mod vecenv;
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub use action::{Action, ActionSet, Packet};
+pub use announce::{Bonus, Target};
 pub use bidding::{BidEvent, Bidding};
 pub use card::{Card, Face, Rank, Suit};
 pub use cardset::CardSet;

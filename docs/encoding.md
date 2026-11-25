@@ -58,13 +58,15 @@ Event vocabulary (288 ids):
 | 92–145 | 54 | `DISCARD_SHOWN_card` | a discarded tarok, shown to all (S14) |
 | 146–150 | 5 | `ANNOUNCE_x` | trula, kralji, kralj ultimo, pagat ultimo, valat |
 | 151–156 | 6 | `KONTRA_target` | raises the kontra level by one on: game, trula, kralji, kralj ultimo, pagat ultimo, valat |
-| 157 | 1 | `ANNOUNCE_DONE` | a seat ends its announcements |
+| 157 | 1 | `ANNOUNCE_DONE` | never written: "done" is an action, not an event (section 4b, spec 009) |
 | 158 | 1 | `ANNOUNCE_BARVNI_VALAT`* | reserved (S7 a) |
 | 159–212 | 54 | `PLAY_card` | a card played to a trick |
 | 213–266 | 54 | `KLOP_TALON_card` | a talon card added to a trick in klop |
 | 267–287 | 21 | reserved | for later toggles |
 
 Longest sequence, counted by hand: 1 start + up to about 24 bids + 1 contract + 1 king + 6 talon cards + 1 packet + up to 3 shown discards + up to about 16 announcement events + 48 plays + 6 klop talon cards. The limit is 128. An engine test must confirm that no legal deal exceeds it.
+
+Counted again with the rules as built (spec 009): at most 13 calls, so at most 26 tokens before the round of announcements; at most 29 in the round (5 announcements, 24 kontras); 48 plays. 103 in all. The engine's tests walk the longest auction, build the longest round and play 10,000 random deals.
 
 ## 4. State token (1382 features)
 
@@ -142,6 +144,21 @@ Spec 006 found places where sections 3 to 7 left a detail open. The user fixed e
 - **Hidden discards.** A hidden discard is no token. Between the declarer's discard decisions the token sequence is the same; only the state token differs.
 - **Seeds.** The record stores the seed as a decimal string. The seed of a deal is a SplitMix64 mixing of base seed, table, run and deal. The first dealer of run r at table t is (t + r) mod 4.
 
+## 4b. Readings fixed on 2026-11-24 (spec 009, D141, D143)
+
+Deal flow B (announcements and kontra) fills slots, ids and features that were reserved. No size and no id changes. The first two are readings of Claude that the user did not object to.
+
+- **"Done" writes no token.** An announcement and a kontra write one token each, with the seat that said it. `ANNOUNCE_DONE` (id 157) stays unused. With a token per "done" a legal deal could pass the limit of 128. What a seat did not say is not in the tokens.
+- **D1, unknown side.** An announcement is shown on the side of the seat that made it, as far as the observing seat knows that side. It knows it when the announcer is the declarer or the observer itself, when the partner is public (or the declarer is publicly alone), when the announcer is shown as an opponent (D150), or when the observer holds the called king. Otherwise both sides' bits are set. They become one bit when the partner becomes public or the announcer is shown as an opponent.
+- **D2 is a one-hot per target.** Six targets in the order of the kontra slots (game, trula, kralji, kralj ultimo, pagat ultimo, valat), five entries each: none, kontra, re, sub, mort. One entry is always set; before the round and for a bonus nobody announced it is "none".
+- **B1.** The phase "announcements" is entry 5: after the last discard, before the first lead.
+- **B6, B7.** The partner is public when the called king is played, when it lies in the shown talon, and when the round of announcements shows who holds it (D147, D148): kralj ultimo by any seat; re or mort on the game or on a bonus of the declarer by another seat than the declarer; a raise of a bonus of another seat than the declarer by a seat that is not its announcer, while the partner is hidden. A holder that is not the declarer is the partner (B6). A declarer who holds the king plays alone ("declarer is publicly alone" in B7). The engine works out nothing else from what is said.
+- **A seat shown as an opponent (D150, D151).** A seat that says kontra or sub on the game, or on a bonus the declarer announced, is an opponent, and every seat knows it from that action on. So is a seat that says re or mort on a bonus of another seat that is shown as an opponent (D151). No feature holds this fact by itself. It shows in three places: block D1 puts that seat's announcements on the opponents' side for every observer; the legal mask lets a seat raise a bonus of such a seat; and when all three other seats are shown as opponents, "declarer is publicly alone" is set in B7. The kontra token carries the seat, so the fact can be read from the tokens. With D150, the last case of the bullet above holds for a bonus of a seat that is not shown as an opponent; on a bonus of a seat that is, kontra and sub by another seat than the declarer show the partner and the declarer's own show nothing.
+- **The rule (D151).** The engine shows every fact about the sides that every seat can work out from what was said and from who may say what, and no other. An action shows that its seat holds the called king when a seat without it could not take the action; it shows an opponent when a holder could not. What only one seat can work out from its own cards is not used, neither in the legal mask nor in the state. Example: a declarer without the called king who sees two seats shown as opponents knows that the third is its partner; block D1 still shows that seat's announcements on both sides to the declarer. The legal mask would be the same with it: a bonus of a hidden partner stays at level 0 until the sides are public, since no opponent knows whose it is.
+- **Actions.** The declarer speaks first, then the seats in order of play. A turn is any number of announcements and kontras, one per action, then `ANNOUNCE_DONE` (slot 88), which is always legal in the round. The round ends when every seat has had a turn and the last three turns were "done" alone. Slot 89 stays never legal.
+- **Score parts.** An announced bonus is in the part of its kind, in place of the silent one. A kontra multiplies its own target: parts 0 and 1 together (game), or one of parts 2 to 6. A multiplied part holds the multiplied amount. Part 7 (mondfang) is never multiplied.
+- **Reward size.** The scale of 50 is unchanged. A deal's reward can be large: mort on a won solo ena with full difference is 16 x 95 = 1,520 points, a reward of about 30; mort on an announced valat is 8,000 points. Rewards are 32-bit numbers: the four rewards of a deal sum to zero, and the ten parts of a seat to its reward, within 1e-6 times the largest reward of the deal (1e-6 for rewards up to 1).
+
 ## 5. Actions (160 slots)
 
 One output vector for all phases (D19). The engine's `mask` marks the legal slots; the learner masks the logits before sampling and in the loss (research/05 C3).
@@ -161,7 +178,7 @@ One output vector for all phases (D19). The engine's `mask` marks the legal slot
 
 Notes:
 - Discards are single-card decisions, repeated. Kings and trula are never legal discards.
-- In the announcement phase a seat may take several actions (announce, kontra) and then `ANNOUNCE_DONE`. The exact turn order is fixed in the announcements spec.
+- In the announcement phase a seat may take several actions (announce, kontra) and then `ANNOUNCE_DONE`. The turn order is in section 4b.
 - "Klop" as a bid is legal only for forehand after three passes, like "tri" (baseline).
 
 ## 6. Critic input (training only)
@@ -217,6 +234,7 @@ Kontra and radelc doubling multiply the parts they apply to. The engine emits `r
 - Adding a meaning to a reserved slot keeps the version. Moving or resizing anything raises it.
 - Amended on 2026-11-11, before any model was trained on it: ten score parts and the `reward_parts` array (D121). The version stays 1.
 - Amended on 2026-11-12, before any model was trained on it: the readings of section 4a (D130) and the valat row of section 8 (D125). The version stays 1.
+- Amended on 2026-11-24 with deal flow B (spec 009): the readings of section 4b. Tokens 146 to 156, slots 77 to 88, the phase entry 5 and block D1 and D2 are in use. The version stays 1.
 - The Rust engine exports the sizes (288, 1382, 160, 128, and 10 score parts) as constants; a test on each side checks them against this file.
 
 ## 10. Answers to the open points (D117)

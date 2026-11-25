@@ -1,14 +1,16 @@
-//! Spec 005, criterion 45: three whole deals written out by hand.
+//! Spec 005, criterion 45: three whole deals written out by hand. Spec
+//! 009, criterion 33: the same deals with announcements and kontra.
 //!
 //! The deals, the plays and the paper arithmetic are in
 //! `tests/common/written.rs`.
 
 mod common;
 
-use common::flow::{A, B, C, D};
+use common::flow::{A, B, C, D, with_round};
+use common::second_scorer::assert_scores_agree;
 use common::written::{Expected, deal_1_partner, deal_2_solo, deal_3_king_in_talon};
 use tarok_engine::Contract::{Dve, Ena, SoloTri, Tri};
-use tarok_engine::{Card, Game, Phase, PublicPartner, Seat, Suit};
+use tarok_engine::{Action, Bonus, Card, Game, Phase, PublicPartner, Seat, Suit, Target};
 
 /// The checks every written deal shares.
 fn check(game: &Game, expected: &Expected) {
@@ -109,4 +111,79 @@ fn c45_written_deal_3_called_king_in_the_talon() {
     assert_eq!((b.game, b.difference, b.kralji, b.mondfang), (0, 0, 0, -20));
     assert_eq!(score.parts(A).entry(), 0);
     assert_eq!(score.parts(C).entry(), 0);
+}
+
+/// Spec 009, criterion 33: the three written deals played again with
+/// something said in the round of announcements. The cards and the plays
+/// are those of `tests/common/written.rs`; the entries are worked out here
+/// by hand from the counts written there.
+#[test]
+fn c33_three_written_deals_with_announcements_and_kontra() {
+    let trula = Action::Announce(Bonus::Trula);
+    let kralji = Action::Announce(Bonus::Kralji);
+    let valat = Action::Announce(Bonus::Valat);
+
+    // Deal 1, an announced bonus under kontra. A plays tri with C and wins
+    // with 52: 10 + 15. A announces trula and makes it; B, an opponent,
+    // says kontra on it: 20 x 2 = 40. A and C write 10 + 15 + 40 = 65.
+    let (game, expected) = with_round(
+        &[(A, &[trula]), (B, &[Action::Kontra(Target::Trula)])],
+        deal_1_partner,
+    );
+    // The same tricks and the same counts as in the silent deal.
+    let winners: Vec<Seat> = game.public().tricks().iter().map(|t| t.winner).collect();
+    assert_eq!(winners, expected.winners.to_vec());
+    assert_eq!(game.public().announced(Bonus::Trula), Some(A));
+    assert_eq!(game.public().kontra_level(Target::Trula), 1);
+    assert_scores_agree(&game);
+    let score = game.score().unwrap();
+    assert_eq!(score.declarer_points(), 52);
+    let a = score.parts(A);
+    assert_eq!((a.game, a.difference, a.trula), (10, 15, 40));
+    assert_eq!((a.kralji, a.kralj_ultimo, a.pagat_ultimo), (0, 0, 0));
+    assert_eq!((a.valat, a.mondfang), (0, 0));
+    assert_eq!(score.parts(C), a);
+    assert_eq!(score.entries(), [65, 0, 65, 0]);
+
+    // Deal 2, an announced valat that fails. B plays solo tri alone and
+    // announces valat. B loses with 31 points and has the silent trula;
+    // none of that is scored: -500.
+    let (game, expected) = with_round(&[(B, &[valat])], deal_2_solo);
+    let winners: Vec<Seat> = game.public().tricks().iter().map(|t| t.winner).collect();
+    assert_eq!(winners, expected.winners.to_vec());
+    assert_eq!(game.public().announced(Bonus::Valat), Some(B));
+    assert_scores_agree(&game);
+    let score = game.score().unwrap();
+    assert_eq!(score.declarer_points(), 31);
+    let b = score.parts(B);
+    assert_eq!((b.game, b.difference, b.trula, b.kralji), (0, 0, 0, 0));
+    assert_eq!((b.kralj_ultimo, b.pagat_ultimo, b.mondfang), (0, 0, 0));
+    assert_eq!(b.valat, -500);
+    assert_eq!(score.entries(), [0, -500, 0, 0]);
+
+    // Deal 3, an announcement by the opponents. D plays dve alone (the
+    // called king lay in the talon) and wins with 54: 20 + 20. A, an
+    // opponent, announces kralji; D has the four kings, so the opponents
+    // lose 20 and D writes +20 in place of the silent 10. C says kontra on
+    // the game: (20 + 20) x 2 = 80. D writes 80 + 20 = 100. B's mond was
+    // captured: -20, not multiplied.
+    let (game, expected) = with_round(
+        &[(A, &[kralji]), (C, &[Action::Kontra(Target::Game)])],
+        deal_3_king_in_talon,
+    );
+    let winners: Vec<Seat> = game.public().tricks().iter().map(|t| t.winner).collect();
+    assert_eq!(winners, expected.winners.to_vec());
+    assert_eq!(game.public().announced(Bonus::Kralji), Some(A));
+    assert_eq!(game.public().kontra_level(Target::Game), 1);
+    assert_scores_agree(&game);
+    let score = game.score().unwrap();
+    assert_eq!(score.declarer_points(), 54);
+    let d = score.parts(D);
+    assert_eq!((d.game, d.difference, d.trula, d.kralji), (40, 40, 0, 20));
+    assert_eq!(
+        (d.kralj_ultimo, d.pagat_ultimo, d.valat, d.mondfang),
+        (0, 0, 0, 0)
+    );
+    assert_eq!(score.parts(B).mondfang, -20);
+    assert_eq!(score.entries(), [0, -20, 0, 100]);
 }
