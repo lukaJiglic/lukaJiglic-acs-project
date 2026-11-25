@@ -1,6 +1,6 @@
 # 009 — Deal flow B: announcements and kontra
 
-Status: **approved** (2026-11-24, D143), with the answers to Batch 13 (D141) and the wait of D142 written in. Executed on 2026-11-24 in the `engine-core` session on the branch `spec-009` as far as Rust goes: stages (a), (b), (c), (e) and the property tests of (d) are committed there, and so are the answers of D147, D148, D150 and D151 and the points of the review pass. Criteria 45, 46 and 53 and the Python side of 52 wait for the binding module; see "Results". Not merged. Needs specs 005, 006 and 013 (done).
+Status: **approved** (2026-11-24, D143), with the answers to Batch 13 (D141) and the wait of D142 written in. Executed on 2026-11-24 in the `engine-core` session on the branch `spec-009` as far as Rust goes: stages (a), (b), (c), (e) and the property tests of (d) are committed there, and so are the answers of D147, D148, D150 and D151 and the points of the review pass. Stage (d) is built too (2026-11-25): the Python side of criteria 45, 52 and 53 and the numbers of 46; see "Results". Not merged. Needs specs 005, 006 and 013 (done).
 
 Build-plan row 009. Tool and model: Claude Code 2.1.306, `claude-fable-5-2`.
 
@@ -209,9 +209,9 @@ The Results asked three questions. The user answered on 2026-11-24.
 
 ## Results
 
-Executed on 2026-11-24 by the session `engine-core` (Claude Code 2.1.306, `claude-fable-5-2`) on the branch `spec-009`, in the worktree `.worktrees/spec-009`. Nothing is on `main`.
+Executed on 2026-11-24 and 2026-11-25 by the session `engine-core` (Claude Code 2.1.306) on the branch `spec-009`, in the worktree `.worktrees/spec-009`. Nothing is on `main`. The model: `claude-fable-5-2` for every commit up to `ee0ff45`; `claude-opus-5-5` from `f24389c` on (D152). The commit table says it per commit.
 
-**State: stages (a), (b), (c) and (e) are built and committed; of stage (d) the property tests are. The answers of D147, D148, D150 and D151 and the points of the two review passes are built and committed. Open: criteria 45, 46 and 53 and the Python side of 52. They need the binding module built again, which waits for the main session's word that the runs of spec 017 have ended (D146).**
+**State: all five stages are built and committed, with the answers of D147, D148, D150 and D151 and the points of the two review passes. Every criterion is met but 47 in part: the `train` workflow runs on the pull request of this branch. Open with the user: the declarer's private conclusion (D151, item 2; not built).**
 
 | Commit | Stage | Holds |
 |---|---|---|
@@ -230,7 +230,11 @@ Executed on 2026-11-24 by the session `engine-core` (Claude Code 2.1.306, `claud
 | `d2e4c1b` | | this section, third version |
 | `208857a` | | D151: the public sides by the standing rule (criteria 15, 16) |
 | `1e8292f` | | the second review: tests only (the four-world search, the next deal of a table, the private conclusion) |
-| the commit after it | | this section, fourth version, with every wrong rule run again on the final code |
+| `e6cbd2d` | | this section, fourth version, with every wrong rule run again on the final code |
+| `f76a46c` | (d) | a merge of `main` (at `fd2d841`, spec 015 and the plan up to D151) into the branch, before the Python side |
+| `ee0ff45` | (d) | the Python side: `EngineEnv.step(actions, hold)`, the engine version in checkpoints, the tests of criteria 45, 52 and 53, the earlier Python tests that changed |
+| `f24389c` | (d) | the width of an interval in a GPU test of spec 015 on flow B. First commit on `claude-opus-5-5` |
+| the commit after it | | this section, fifth version, on `claude-opus-5-5` |
 
 Tests were written from the criteria before the code of each stage. Where the old code could compile them they were run against it first: 14 of the 15 tests of `scoring_b.rs` failed before the scoring change (the fifteenth, `c24`, tests a silent valat, which ignores what is said before and after).
 
@@ -293,15 +297,15 @@ Tests were written from the criteria before the code of each stage. Where the ol
 | 42 | The second scorer agrees | met | `c42_the_second_scorer_agrees_on_random_deals_of_flow_b` |
 | 43 | Declarer and partner equal; an opponent 0 or −20 | met | `c43_declarer_and_partner_write_the_same_and_an_opponent_0_or_minus_20` |
 | 44 | Coverage with fixed seeds | met | `c44_fixed_seeds_cover_the_rules_of_flow_b` |
-| 45 | The module builds, pytest, the smoke config | **not done** | waits for the module build |
-| 46 | Reported numbers | part | the counts are measured (below); the deals per second were measured next to other jobs and are to be measured again |
-| 47 | fmt, clippy, no `unsafe`, workflows green | part | local: met for the engine and the binding crate. `engine` on the branch: green on `6bce5d8` (run 45403601333), on `5f198bc` (run 45368097231) and on `42a2001` before it. The run on the D150 commits is reported by the session after the push. `train` runs on `main` and on pull requests only |
+| 45 | The module builds, pytest, the smoke config | met | the module builds into the worktree's own venv (engine 0.3.0). `pytest` in `src\train`: 228 tests pass (slow tests included). One timing test, `test_spec006.py` `test_c20_a_python_thread_keeps_running_during_a_long_step`, failed once while the smoke run used the CPU at the same time, and passed in 3 of 3 runs alone; it is not changed on the CPU (slow tests included), 14 of 14 with the GPU tests. `smoke-a-ci.toml` runs; `entropy/announcements` is logged (1.031 after the first update, 0.954 after the second). Tests: `test_c45_the_round_is_in_play_and_its_entropy_is_logged`, `test_c45_the_slots_of_the_round_are_legal_only_in_the_round_and_block_d_is_filled` |
+| 46 | Reported numbers | met | measured on a quiet machine on the final code; see "Measured" |
+| 47 | fmt, clippy, no `unsafe`, workflows green | part | local: met for the engine and the binding crate. `engine` on the branch: green on `6bce5d8` (run 45403601333), on `5f198bc` (run 45368097231) and on `42a2001` before it. The run on the D150 commits is reported by the session after the push. `train` runs on `main` and on pull requests only. The `train` workflow: on the pull request of this branch, see the session's report |
 | 48 | Every earlier test passes; changes listed | met | list below |
 | 49 | At least 30 wrong rules | met | 75 planted, 75 caught, all of them run on the final code; table below |
 | 50 | A held table does not move | met | `c50_a_held_table_does_not_move` |
 | 51 | Holding never changes what a table plays | met | `c51_holding_never_changes_what_a_table_plays` |
-| 52 | The binding passes the flag through | part | the binding's Rust takes `hold` and compiles (`cargo clippy`, `cargo test` of the crate). `EngineEnv.step(actions, hold)` in `env.py` and its test are not written: they cannot be run before the module is built |
-| 53 | A guard by engine version for checkpoints (D148) | **not done** | stage (d): Python tests first, then the trainer and the evaluation; waits for the module build |
+| 52 | The binding passes the flag through | met | `test_c52_step_without_hold_works_as_before_and_no_table_held_is_the_same`, `test_c52_a_held_table_does_not_move_and_its_action_need_not_be_legal`, `test_c52_holding_never_changes_what_a_table_plays`, `test_c52_a_hold_of_another_shape_or_type_is_refused_and_nothing_moves` (`src/train/tests/test_spec009.py`) |
+| 53 | A guard by engine version for checkpoints (D148) | met | `test_c53_a_checkpoint_holds_the_engine_version_and_the_encoding_version_stays_1`, `test_c53_a_checkpoint_of_another_engine_version_or_of_none_is_not_resumed` (two cases), `test_c53_a_checkpoint_of_the_mock_environment_names_no_engine_and_is_resumed`, `test_c53_the_evaluation_refuses_such_a_checkpoint_as_agent_and_as_opponent` (two cases), `test_c53_with_the_flag_the_evaluation_takes_it_and_prints_a_warning` |
 
 The tests are in `src/engine/tests/`: `announcements.rs` (c01 to c10, c17), `kontra.rs` (c11 to c16), `scoring_b.rs` (c18 to c32), `written_deals.rs` (c33), `encode.rs` (c34 to c38), `no_leak.rs` (c38), `record.rs` (c39, c40), `whole_games.rs` (c41 to c44), `vecenv.rs` (c50, c51). 53 named tests: the 47 of the first execution, `c14_what_is_said_and_shows_no_partner` and `c41_the_longest_round_has_91_turns` from the review pass, and `c15_a_seat_shown_as_an_opponent_by_its_own_kontra` and `c16_what_all_know_about_the_sides_follows_from_what_was_said` from D150, and `c15_the_pairs_of_deals_for_a_bonus_of_a_seat_shown_as_an_opponent` and `c16_the_engine_shows_what_no_pair_of_deals_can_tell_apart` from D151. `tests/common/sides.rs` is the second reading of what all know. From the second review: the three `c16_four_worlds_…` tests of `tests/worlds.rs` and `c17_every_decision_of_a_table_is_that_of_a_fresh_game_of_its_deal` in `tests/vecenv.rs` (numbered by spec 006, criterion 17). The engine has 241 tests (182 before this spec).
 
@@ -332,6 +336,21 @@ Every test of specs 002, 005, 006 and 013 passes. These had to change, each for 
 **Because an entry can be thousands of points**
 
 - `tests/vecenv.rs` `c18_rewards_and_parts_are_delivered_once_per_deal`: "the four rewards sum to zero" and "the ten parts sum to the reward" held within 1e-6. Rewards are 32-bit numbers; with a valat under kontra a reward is above 100 and its last place is about 1e-5. The room is now 1e-6 times the largest reward of the deal, and 1e-6 for rewards up to 1. See question 1.
+
+**The Python tests that changed with engine 0.3.0 (stage (d))**
+
+Run in the worktree's own venv, with `tarok_env` 0.3.0 built from the branch and `tarok_train` from the worktree. Six tests failed on the new engine before stage (d); each is changed with a comment that gives the reason. No expected entry or count changed in kind.
+
+- `test_spec006.py` `test_c20_an_array_of_another_shape_or_memory_order_is_refused`: the message names the shape `(192, 4)` of the actions of a deal; it was `(96, 4)` (reading 4).
+- `test_spec006.py` `test_c21_parity_of_1000_deals_driven_from_python_with_a_pure_rust_run`: the reward against the entries within 1e-6 times the largest reward of the deal, and 1e-6 for rewards up to 1. A reward was 160 there; its last place in 32 bits is about 1e-5 (D147, 1 a).
+- `test_spec006.py` `test_c22_step_gives_done_reward_and_parts_once_per_deal`: 700 steps where 400 gave 30 deals at six tables (a random deal has about 88 decisions, it had 57); the parts against the reward with the same growing room.
+- `test_spec008.py` `test_c07_each_deal_is_played_four_times_with_the_agent_in_another_seat`: the same growing room. The first legal slot in the round is an announcement, so a fixed "first legal" rule announces and these deals end with large rewards.
+- `test_spec008.py` `test_c07_the_interval_is_taken_over_the_deals_not_over_the_single_seatings`: the same growing room.
+- `test_spec008.py` `test_c12_decisions_and_tokens_per_seat_deal_mean_and_largest`: a seat decides at most 74 times in a deal (it was 30): 4 calls in the auction, 6 of the declarer before the round, 29 + 23 in the round, 12 cards.
+- `test_spec015.py` `test_c15_a_checkpoint_against_itself_on_2000_deals_has_an_interval_that_includes_zero` (GPU): the width of the interval below 4.0, where it was 0.2. On flow B a network after two updates announces and doubles at random, and the values of 2,000 deals spread about 14 times as far: the width is 2.8 at seed 5151. Its other checks are unchanged and pass.
+- One test of stage (d) itself was first written against a key in the opponent's record of the evaluation; `test_spec015.py` `test_c12_…` pins that record exactly. The opponent's engine version went to a key of its own (`opponent_engine_version`), and `test_c12_…` did not change.
+
+Nothing in the Python tests expected block D to be zero, the phase entry 5 never to be set, or the slots 77 to 88 never to be legal.
 
 **Moved, not changed**
 
@@ -448,14 +467,16 @@ The scripts and their outputs are in the session's scratch folder: this run `mut
 
 - **Tokens.** The longest of 10,000 random deals of flow B has 94 tokens (seed 66). The built round with everything said (5 announcements, 24 kontras) gives a deal of 91, in the fewest turns (`c37`) and in the most (`c41_the_longest_round_has_91_turns`: 43 events before the first card). No deal can have more than 26 + 29 + 48 = 103. The limit is 128.
 - **Actions.** The longest of those random deals has 130 actions. The built round of 91 turns gives a deal of 178: 10 before the round, 120 in it, 48 cards. The bound is 187; `MAX_ACTIONS` is 192.
-- **Counts of `bench_game`** (200,000 deals, every action drawn uniformly from the legal ones), on the final code: 87.6 decisions per deal (largest 123), 21.9 per seat and deal (largest 41), 79.2 tokens per deal (largest 94), 35.1 % of the decisions in the round. The means did not move with D150. Before D147 and D148: 87.5 (largest 125), 79.1 tokens, 35.0 %. In flow A a random deal had 56.8.
-- **Deals per second:** 164,918 on one thread on the final code, in one run after the wrong-rule run had ended; the training session may have used the machine. Earlier: 148,895 after D150, 140,695 after D148 and 192,231 in the first execution, all next to other jobs. None is a clean number: to be measured again on a quiet machine (criterion 46). Spec 005 measured about 350,000 for flow A, with 56.8 actions per deal.
+- **Counts of `bench_game`** (200,000 deals, every action drawn uniformly from the legal ones), on the final code: 87.6 decisions per deal (largest 123), 21.9 per seat and deal (largest 41), 79.2 tokens per deal (largest 94), 35.1 % of the decisions in the round. Before D147 and D148: 87.5 (largest 125), 79.1 tokens, 35.0 %. In flow A a random deal had 56.8.
+- **Deals per second:** 188,226 on one thread on the final code, on a quiet machine (no training run, the card at 222 MiB and 0 %, the CPU at 3 %). Four runs: 180,578, 188,175, 188,802, 188,226. A deal has 87.6 decisions, so that is 16.5 million actions per second. Spec 005 measured about 350,000 deals per second for flow A with 56.8 actions per deal, about 19.9 million actions per second. So one action of flow B costs about 17 % more. That is read from the two numbers, not measured apart: what an announcement or a kontra shows is worked out from the speaker's legal set twice more (D151), and the round's legal set is longer. Earlier numbers of this spec were taken next to other jobs: 164,918 after D151, 148,895 after D150, 140,695 after D148, 192,231 in the first execution.
 - **No leak.** 120,000 cases of flow B; 20,439 pairs of worlds compared: two hands 13,750, a hand and the hidden discards 2,613, a hand and the unshown talon 415, which card the declarer hid 1,838, the called king in another hand 1,823. 16,052 of them after something was said, 2,776 with the partner still hidden. In 1,903 the partner is another seat in the other world (or there is none there): the 1,823 of the fifth kind, 1,088 of them after something was said, and 80 by chance. 4,004 changes of the fifth kind were not a legal deal: what was said is not legal with the king in the other hand. 1,524 pairs have a seat shown as an opponent while the partner is hidden, 516 of them of the fifth kind. No difference in tokens, state or mask, in the public partner or in the public side of a seat. The first execution compared 9,352 pairs, 50 of them with another partner.
 - **Coverage of the 10,000 seeded deals (`c44`), on the final code.** Announced by the declarer, the partner, an opponent: trula 3,608 / 547 / 4,562; kralji 3,652 / 517 / 4,531; kralj ultimo 757 / 1,949 / 0; pagat ultimo 1,526 / 376 / 3,601; valat 1,195 / 326 / 2,548. The game at kontra, re, sub, mort: 3,560 / 736 / 1,339 / 2,055. Announced valats won 97, lost 3,972. An announced pagat played before the last trick 5,354 times, an announced king 2,367 times. Announced pagat ultimos won 48, lost 2,159; announced kralj ultimos won 70. The numbers move a little with each of D147, D148, D150 and D151: more kontras are legal, so the same choices give other deals.
 - **What all know, on 2,000 random deals (`c16`, D150).** 42,462 decisions in the round: 3,466 with a seat shown as an opponent and the partner hidden, 689 of them with two such seats, 529 with a raised bonus of such a seat; 1,658 with the declarer alone because all three other seats are shown (1,190 before D151).
 - **The pairs of deals, on 5,000 random deals (`c16`, D151).** 56,440 decisions with a called king in a hand, 20,316 with the sides hidden, 9,600 of them with a seat shown as an opponent. The table of what each kind of action showed is in "The public sides by the standing rule" below.
 - **The four-world search (`tests/worlds.rs`, the second review).** Every order of four things said with all five bonuses: 527,190 nodes, 97,805 of them with the sides hidden and a seat shown as an opponent. Six things with trula and kralj ultimo: 1,009,555 nodes. A declarer who is not forehand (B, dve) and another contract (C, ena), four things with three bonuses: 128,000 nodes each. About 2 seconds in all.
 - **The next deal of a table (`c17`, the second review).** 525 deals at four tables, every decision compared with a fresh game; 1,003 decisions with a hidden partner in a deal that follows a deal with a seat shown as an opponent.
+- **The environment from Python** (`python -m tarok_train.env`, criterion 46): 1,024 tables, 5 seconds per number, 3 repeats, median (lowest to highest), a step is one decision at one table. 1 thread: 499,015 steps/s with the random policy in Python (497,272 to 508,621), 706,347 in the engine (694,514 to 713,971). 12 threads: 1,212,632 in Python (1,194,489 to 1,224,478), 4,689,878 in the engine (4,428,668 to 4,695,290). Spec 006 measured these on flow A on a machine that was not quiet; the numbers are not compared here.
+- **The smoke run** (`smoke-a-ci.toml`, 2 updates on the CPU, criterion 45): 0 illegal actions, 0 numbers that are not finite of 190, largest sum of a deal's four rewards 3.8e-06; 3,863 decisions played per second; 20.0 decisions per seat-deal (largest 33), 72.8 tokens (largest 87). Entropy in the round of announcements 1.031 and 0.954, over the decisions with two or more legal slots 1.250 and 1.205, one legal slot in 17.5 % and 20.9 %. Every deal was solo ena: an untrained network bids high. The checkpoint holds `engine_version` 0.3.0 and `encoding_version` 1.
 - **Seeds used in `c30` and `c31`,** found by trying seeds, with what they must give written by hand: 167 (tri, 43 points), 367 (tri, 21 points), 476 (dve, 35 points, the declarer plays its pagat to trick 7), 3185 (solo tri, 51 points, the trula with the declarer). The third example of the source is built by hand (`source_example_ena`): 43 points.
 
 ### Command output (trimmed)
@@ -506,9 +527,9 @@ cargo 1.94.1 (29ea6fb6a 2026-03-24)
 > cargo run --release --bin bench_game -- 200000
 deals:              200000
 actions:            17510286
-seconds:            1.213
-deals per second:   164918
-actions per second: 14438769
+seconds:            1.063
+deals per second:   188226
+actions per second: 16479427
 
 counted on 200000 deals, not timed:
 decisions per deal:      mean 87.6, largest 123
@@ -517,7 +538,7 @@ tokens per deal:         mean 79.2, largest 94 (the limit is 128)
 decisions in the round of announcements: 35.1 % of all
 ```
 
-Binding crate, run from `src\train\tarok_env` in the worktree. Nothing was installed and no module was built:
+Binding crate, run from `src\train\tarok_env` in the worktree. The module was built into the worktree's own venv only:
 
 ```
 > cargo fmt --check
@@ -526,6 +547,19 @@ Binding crate, run from `src\train\tarok_env` in the worktree. Nothing was insta
     Finished `dev` profile [unoptimized + debuginfo] target(s)
 > cargo test --locked
 test result: ok. 0 passed; 0 failed
+```
+
+The worktree's own venv (stage (d)). The shared `.venv` at the repo root was not touched: the main checkout went on with engine 0.2.0. The venv in the worktree was made from the same Python 3.12, with a `.pth` file that names the shared venv's `Lib\site-packages`, so torch, numpy, maturin and pytest come from there. Its own site-packages come first, so the `tarok_env` built into it wins. Before every test run:
+
+```
+> .venv\Scripts\python -c "import tarok_env, tarok_train; print(tarok_env.__file__, tarok_env.ENGINE_VERSION, tarok_train.__file__)"
+...\.worktrees\spec-009\.venv\Lib\site-packages\tarok_env\__init__.py 0.3.0 ...\.worktrees\spec-009\src\train\tarok_train\__init__.py
+> maturin develop --release        (in src\train\tarok_env, with VIRTUAL_ENV set to the worktree's venv)
+🛠 Installed tarok-env-0.1.0
+> python -m pytest -m "not gpu"     (in src\train)
+1 failed, 227 passed, 14 deselected in 749.99s   (the timing test above; alone: 1 passed, 3 times)
+> python -m pytest -m gpu
+14 passed, 228 deselected in 171.44s
 ```
 
 ### Readings and deviations
@@ -540,6 +574,10 @@ test result: ok. 0 passed; 0 failed
 8. **Stage (d) is split.** Its property tests are Rust only and are committed. Criterion 49 needs them.
 9. **The built deals moved** to `tests/common/built.rs`, and the helpers can speak a script in the round of a built or seeded deal (`with_round`). So the scoring tests of flow B are the forced deals of flow A with something said, and the play is the same card for card.
 10. **Case (i) of D148 is kept on a bonus of a seat shown as an opponent (D150).** D150 does not say what a kontra on such a bonus shows. A seat other than the declarer that says kontra or sub on it acts for the declarer's side, so it is the partner: the sentence of D148 (i) is still true there, and the engine shows the partner. The declarer's own kontra there shows nothing, because case (iii) is no longer true there. Both are in criterion 15 as reworded, and in `c15_a_seat_shown_as_an_opponent_by_its_own_kontra`. D151 let it stand, with the pair-of-deals check written down; see "The public sides by the standing rule" below.
+11. **A checkpoint of the mock environment names no engine** (criterion 53). Its `engine_version` is None, and a resume of it is not checked: its deals hold no rules of the engine. The criterion speaks of runs on the engine.
+12. **`--other-engine` is one flag for both checkpoints** of an evaluation (criterion 53). The warning names which one, the agent's or the opponent's. The result file holds `engine_version` (the engine that played), `checkpoint_engine_version` and `opponent_engine_version`.
+13. **A resume from the command line is refused before anything is built** (criterion 53): one line with both versions, exit code 2, no file written. `Trainer.load` raises `EngineVersionError` with the same text.
+14. **Merge, not rebase** (stage (d)). `main` was merged into the branch (`f76a46c`), since the branch is pushed and its commits are named in this section. No conflict.
 
 ### The sides that follow from what was said (D147, D148)
 
@@ -725,19 +763,11 @@ Not looked at by this pass, as its report says: the scoring tests of `c651848`, 
 
 ### Open issues
 
-1. **Criteria 45, 46 and 53 and the Python side of 52 are not done.** They need the binding module built from these sources, which waits for the main session's word that the runs of spec 017 have ended (D146). What that stage has to do, as far as it can be seen from the Rust side:
-   - Build the module from the worktree (`maturin develop --release` in `src	rain	arok_env`). The module in the shared `.venv` then is engine 0.3.0, and the check of the shared checkout against its own engine sources (0.2.0) will refuse it. So this cannot happen while the runs of specs 015 and 017 use that environment, or it needs a virtual environment of its own for the worktree.
-   - `EngineEnv.step(actions, hold=None)` in `tarok_train/env.py`, and a test in `src/train/tests` that a held table does not move and that `step(actions)` works as before (criterion 52). The binding's `step_into` already takes `hold` as an optional last argument.
-   - `test_spec006.py`: one message names the shape `(96, 4)`, which is `(192, 4)` now; two checks use the absolute 1e-6 of question 1. Any Python test that expects block D to be zero, the phase entry 5 never to be set, or the slots 77 to 88 never to be legal has to change, and is to be listed here.
-   - The environment state the trainer saves has 192 columns of actions, not 96: a checkpoint of an earlier run does not load its environment state (reading 4).
-   - `pytest` on the CPU and with the GPU tests; a run of `smoke-a-ci.toml` with the round in play; the entropy of the phase "announcements" in its log (criterion 45).
-   - `bench_game` and the environment benchmark (`python -m tarok_train.env`) on a quiet machine (criterion 46).
-   - Criterion 53 (D148, B17-2 a): the trainer writes the engine version into every checkpoint; resuming a checkpoint of another engine version, or of none, is refused with an error that names both versions; the evaluation takes such a checkpoint as agent or as opponent only with a flag and prints a warning. Tests first, in the Python tests of this spec. `encoding_version` stays 1.
-   - The `train` workflow, which runs on a pull request or on `main`.
-2. **The `train` workflow has not run on this branch.** It runs on `main` and on pull requests.
+1. **Stage (d) is done.** What it needed is in the criteria table, the list of Python tests above and "Measured". One thing follows for later runs: a checkpoint made before 2026-11-25 is not resumed on engine 0.3.0 (criterion 53), and its saved environment state has 96 columns of actions where the engine has 192 now (reading 4). An evaluation takes it with `--other-engine`.
+2. **The `train` workflow** runs on the pull request of this branch to `main`. The session that opens it reports the run.
 3. **Block F on deals of flow B has no soundness test of its own.** `tests/inference.rs` plays deals in which all pass. Block F does not read the round, so nothing changed for it; a test would be needed with question 3.
 4. **A reward can be above 100.** Mort on an announced valat is 8,000 points, a reward of 160 for the declarer. The scale is unchanged (reading 4 of the spec). The training spec for flow B has to look at it.
-5. **The deals per second are not a clean number yet** (see "Measured").
+5. **The smoke run of stage (d) bid solo ena in every deal.** An untrained network bids high; no king was called and no partner was hidden, so the sides-are-public cases of the round were not in play there. The tests of the round in `src/engine/tests` and the GPU-free `test_spec009.py` cover them; the first training spec of flow B (spec 018) is where they come up in a run.
 6. **The private conclusion of the declarer (D151, item 2) waits for the user's second answer.** It is not built. If the answer is to build it, the change is one line in `side_known_as`, the three tests that pin it and the note in `docs/encoding.md`.
 
 ### Questions for the user
