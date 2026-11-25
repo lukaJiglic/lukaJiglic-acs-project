@@ -1079,7 +1079,12 @@ def test_c15_a_checkpoint_against_itself_on_2000_deals_has_an_interval_that_incl
     assert evaluate.main([*base, "--seed", "5151", "--records", "20"]) == 0
     result = result_of(path)
     assert result["deals"] == 2000 and result["device"] == "cuda" and result["tables"] == 500
-    assert result["high"] - result["low"] < 0.2  # an interval that says something
+    # An interval that says something. With deal flow B (spec 009) a network after two updates
+    # still plays nearly at random, and in the round of announcements that means valats and
+    # kontras up to mort: a deal is worth thousands of points and the deal values spread about
+    # 14 times as far as in flow A. The same 2,000 deals gave a width under 0.2 there and give
+    # about 2.8 here.
+    assert result["high"] - result["low"] < 4.0
     assert result["records_exported"] == result["records_replayed_equal"] == 20
     # One seed proves little: a right interval misses zero in one of 20 cases, and before the review fix
     # this recipe missed it in 8 of 20 (the same random numbers in every chunk). So: 20 seeds.
