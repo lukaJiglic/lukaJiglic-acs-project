@@ -12,6 +12,13 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 **Next:** the next step.
 ```
 
+## 2026-11-25 — spec 009, stage (d) done on the branch; its Fable review (session 3, Claude Code 2.1.306, claude-opus-5-5; ai-log rows 10, 10a, 10b)
+
+**Done:** the `engine-core` session finished stage (d) of spec 009 in its own virtual environment in the worktree: the hold flag in `EngineEnv.step`, the engine version in checkpoints with the guard of criterion 53, the earlier Python tests that had to change, a smoke run of `smoke-a-ci.toml` with the round in play, benchmarks on a quiet machine. Branch `spec-009` at `8c41543`, pull request 1 to `main`, not merged. Two of its commits were made on Fable 5.2, two on Opus 5.5 (D152). The user answered Batch 21 and confirmed B20-2 (D153).
+**Review** (separate agent on Fable 5.2, over `208857a`, `1e8292f`, `f76a46c`, `ee0ff45`, `f24389c`): no rule defect and no blocking defect. A merge of the branch into `main` at `97a3807` in a scratch clone is clean; `cargo test` on it 241 passed; the PR's `train` run on the merge ref 242 passed. Findings sent to the `engine-core` session to fix before the merge: a widened bound in a GPU test of spec 015 that no longer guards anything; every existing config trains flow B after the merge with no word, and run files do not name the engine version; results of the two engine versions can be mixed in two places; the Results text of criteria 45 to 47; two loosened assertions; the checkpoint guard reads the version string only.
+**Found, for later specs:** on flow B, 2,000 deals give a 95% interval about 2.8 wide for a network against itself (under 0.2 on flow A): near-random networks cannot be told apart with that many deals. For spec 018. The mock environment has no hold flag: spec 016, criterion 12.
+**Next:** the fixes on the branch, the PR's checks, the user's word on the merge.
+
 ## 2026-11-25 — spec 017, the trial of the lower entropy limit: run log (session `train-env`; verified by the main session; ai-log rows 8b, 10, 10a)
 
 **Configs:** `src/train/configs/trial-floor-base-mlp.toml`, `-s15`, `-s16` (lower limit 0.01), `trial-floor-low-mlp.toml`, `-s15`, `-s16` and `trial-floor-low-transformer.toml` (0.001; the transformer with `gpu_memory_limit_mib = 5000`, D150). Each differs from its `long-a-*.toml` only in name, seed, updates (500), time limit and the two keys named (checked key by key by a test and by the review). The transformer's base arm is checkpoint 500 of `long-a-transformer-20261124-011623` (spec 014, commit `67c425b`, no memory limit).
