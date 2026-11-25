@@ -203,6 +203,26 @@ def made_with(data: dict) -> str:
     return f"engine version {version}"
 
 
+def warn_if_other_sources(data: dict, who: str = "the checkpoint") -> None:
+    """Print a warning if a checkpoint of this engine version was made from other engine sources.
+
+    The version is raised when the rules change for a release, but a fix of the rules can
+    land between two versions: D148, D150 and D151 changed which kontras are legal under
+    0.3.0. So the hash of the sources is kept as well. Another hash is not refused (the
+    sources change with every fix); it is named. A checkpoint without the hash says nothing.
+    """
+    saved = data.get("engine_sources")
+    if saved is None or data["config"]["env"]["kind"] != "engine":
+        return
+    import tarok_env
+
+    if saved != tarok_env.SOURCE_HASH:
+        print(
+            f"warning: {who} was made from engine sources {saved}, this module from {tarok_env.SOURCE_HASH} "
+            f"(the same engine version {tarok_env.ENGINE_VERSION}). Rules fixed between the two are not in its training."
+        )
+
+
 def check_engine_version(data: dict) -> None:
     """Raise EngineVersionError if a checkpoint of an engine run was made with another engine (spec 009, criterion 53).
 
@@ -675,6 +695,8 @@ class Trainer:
                 "encoding_version": C.ENCODING_VERSION,
                 # The version of the engine's rules; None for a run on the mock environment.
                 "engine_version": self.env.engine_version,
+                # The hash of the engine sources the module was built from (None on the mock).
+                "engine_sources": getattr(self.env, "source_hash", None),
                 "config": self.cfg,
                 "network": self.kind,
                 "updates": self.updates,
@@ -716,6 +738,7 @@ class Trainer:
                 f"encoding version {C.ENCODING_VERSION} (docs/encoding.md). It cannot be loaded."
             )
         check_engine_version(data)
+        warn_if_other_sources(data)
         cfg = with_later_keys(data["config"])
         if gpu_memory_limit_mib is not None:
             cfg["run"]["gpu_memory_limit_mib"] = gpu_memory_limit_mib
@@ -900,6 +923,8 @@ def main(argv=None) -> int:
         "device": device,
         "gpu_before": gpu_before,
         "engine_sources": getattr(trainer.env, "source_hash", None),
+        # The version of the engine's rules (spec 009): 0.2.0 was deal flow A, 0.3.0 is deal flow B.
+        "engine_version": trainer.env.engine_version,
         "parameters": trainer.parameter_counts,
     }
     print(f"commit {info['commit']}; uncommitted changes: {'yes' if info['git_status_short'] else 'no'}")
@@ -928,6 +953,7 @@ def main(argv=None) -> int:
         summary = {
             "run": name,
             "environment": kind,
+            "engine_version": trainer.env.engine_version,
             "network": cfg["run"]["network"],
             "device": device,
             # Updates done and logged. An update that failed its check of the logged numbers is not counted.

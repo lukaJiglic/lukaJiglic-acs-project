@@ -57,6 +57,10 @@ def paired(one: dict, other: dict) -> dict:
     for key in ("seed", "deals", "tables"):
         if one.get(key) != other.get(key):
             raise ValueError(f"the two files are not the same deals: {key} is {one.get(key)} in one and {other.get(key)} in the other")
+    # The same game too (spec 009): a file without the key was written on engine 0.2.0.
+    engines = [result.get("engine_version", "0.2.0") for result in (one, other)]
+    if engines[0] != engines[1]:
+        raise ValueError(f"the two files are not the same game: engine version {engines[0]} in one and {engines[1]} in the other")
     a, b = np.asarray(one["values"], dtype=np.float64), np.asarray(other["values"], dtype=np.float64)
     if len(a) != len(b):
         raise ValueError(f"the two files are not the same deals: {len(a)} and {len(b)} values")

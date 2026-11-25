@@ -352,3 +352,151 @@ def test_c45_the_slots_of_the_round_are_legal_only_in_the_round_and_block_d_is_f
         env.step(with_partner_games(obs))
     assert seen_in_round[slots].all(), "every slot of the round was legal at some decision"
     assert announced > 1000
+
+
+# --------------------------------------------------------------------------
+# The review of stage (d), points 2, 3 and 6. Tests named test_r<n>_ belong to
+# point n (see the section on that review in the spec's Results).
+# --------------------------------------------------------------------------
+
+CONFIGS = CI_TOML.parent
+
+
+def test_r2_run_info_and_summary_name_the_engine_version(tmp_path):
+    engine()
+    import json
+
+    assert train.main(["--config", str(CI_TOML), "--out-dir", str(tmp_path), "--updates", "1"]) == 0
+    folder = tmp_path / "smoke-a-ci-mlp"
+    for name in ("run-info.json", "summary.json"):
+        data = json.loads((folder / name).read_text(encoding="utf-8"))
+        assert data["engine_version"] == engine_version(), name
+
+
+def test_r2_a_mock_run_names_no_engine_in_run_info_and_summary(tmp_path):
+    import json
+
+    from test_spec007 import MOCK_TOML
+
+    assert train.main(["--config", str(MOCK_TOML), "--out-dir", str(tmp_path), "--updates", "1", "--tables", "8", "--seat-deals", "16"]) == 0
+    (folder,) = [path for path in tmp_path.iterdir() if path.is_dir()]
+    for name in ("run-info.json", "summary.json"):
+        assert json.loads((folder / name).read_text(encoding="utf-8"))["engine_version"] is None, name
+
+
+def test_r2_no_config_says_that_the_engine_has_no_announcements():
+    engine_configs = 0
+    for path in sorted(CONFIGS.glob("*.toml")):
+        text = path.read_text(encoding="utf-8")
+        assert "deal flow A has no announcements" not in text, path.name
+        if 'kind = "engine"' not in text:
+            continue  # the mock environment has its own phases (mock.toml)
+        engine_configs += 1
+        for line in text.splitlines():
+            if line.startswith("kind = \"engine\""):
+                assert "deal flow B" in line and "0.3.0" in line, path.name
+            if line.startswith("announcements ="):
+                assert "D149" in line and "spec 018" in line, path.name
+    assert engine_configs == 12
+
+
+def test_r2_the_readme_says_which_engine_the_runs_of_flow_a_were_made_on():
+    text = (CONFIGS.parent / "README.md").read_text(encoding="utf-8")
+    assert "The run is on deal flow A only" not in text and "The trial is on deal flow A." not in text
+    assert text.count("engine 0.2.0") >= 2
+
+
+def fake_evaluation(path, **keys):
+    import json
+
+    data = {"mean": 0.0, "low": -1.0, "high": 1.0, "values": [0.0], "seed": 5, "deals": 24, "tables": 12, **keys}
+    path.write_text(json.dumps(data), encoding="utf-8")
+    return path.read_text(encoding="utf-8")
+
+
+def test_r3_with_another_engine_the_file_against_random_play_is_replaced_only_with_overwrite(tmp_path, capsys):
+    engine()
+    b = trained_checkpoint(tmp_path, "b", seed=9)
+    with_engine_version(b, "0.2.0")
+    # The file an evaluation on engine 0.2.0 wrote: it names no engine version.
+    earlier = fake_evaluation(b.parent / "evaluation-000001.json")
+    capsys.readouterr()
+    assert run_evaluation("--checkpoint", b, "--deals", 24, "--tables", 12, "--seed", 5, "--other-engine") == 2
+    out = capsys.readouterr().out
+    assert "evaluation-000001.json" in out and "--overwrite" in out
+    assert (b.parent / "evaluation-000001.json").read_text(encoding="utf-8") == earlier
+    assert run_evaluation("--checkpoint", b, "--deals", 24, "--tables", 12, "--seed", 5, "--other-engine", "--overwrite") == 0
+    assert result_of(b.parent / "evaluation-000001.json")["engine_version"] == engine_version()
+
+
+def test_r3_a_file_of_another_engine_is_not_replaced_without_overwrite_and_one_of_this_engine_is(tmp_path, capsys):
+    engine()
+    a = trained_checkpoint(tmp_path, "a", seed=8)
+    path = a.parent / "evaluation-000001.json"
+    earlier = fake_evaluation(path, engine_version="0.2.0")
+    capsys.readouterr()
+    assert run_evaluation("--checkpoint", a, "--deals", 24, "--tables", 12, "--seed", 5) == 2
+    assert "--overwrite" in capsys.readouterr().out and path.read_text(encoding="utf-8") == earlier
+    # A file of this engine: an evaluation against random play replaces it, as before.
+    fake_evaluation(path, engine_version=engine_version())
+    assert run_evaluation("--checkpoint", a, "--deals", 24, "--tables", 12, "--seed", 5) == 0
+    assert result_of(path)["deals"] == 24 and len(result_of(path)["values"]) == 24
+
+
+def test_r3_the_two_directions_of_a_comparison_must_name_one_engine():
+    from tarok_train import trial_compare
+    from test_spec017 import evaluation
+
+    one, other = evaluation([0.1, -0.1]), evaluation([0.2, 0.0])
+    # Files without the key were written on engine 0.2.0.
+    trial_compare.paired(one, other)
+    trial_compare.paired({**one, "engine_version": "0.2.0"}, other)
+    trial_compare.paired({**one, "engine_version": "0.3.0"}, {**other, "engine_version": "0.3.0"})
+    for a, b in ((one, {**other, "engine_version": "0.3.0"}), ({**one, "engine_version": "0.3.0"}, {**other, "engine_version": "0.4.0"})):
+        with pytest.raises(ValueError, match="engine"):
+            trial_compare.paired(a, b)
+
+
+def with_sources(path, sources, keep=True):
+    data = torch.load(path, map_location="cpu", weights_only=True)
+    if keep:
+        data["engine_sources"] = sources
+    else:
+        del data["engine_sources"]
+    torch.save(data, path)
+
+
+def test_r6_a_checkpoint_holds_the_hash_of_the_engine_sources_and_another_hash_gives_a_warning(tmp_path, capsys):
+    engine()
+    import tarok_env
+
+    checkpoint = ci_checkpoint(tmp_path)
+    assert torch.load(checkpoint, map_location="cpu", weights_only=True)["engine_sources"] == tarok_env.SOURCE_HASH
+    capsys.readouterr()
+    train.Trainer.load(checkpoint, CPU).close()
+    assert "warning" not in capsys.readouterr().out.lower()
+    # The same version, other sources: a warning that names both hashes, and the run goes on.
+    with_sources(checkpoint, "0123456789abcdef")
+    train.Trainer.load(checkpoint, CPU).close()
+    out = capsys.readouterr().out
+    assert "warning" in out.lower() and "0123456789abcdef" in out and tarok_env.SOURCE_HASH in out
+    # The evaluation says the same.
+    assert run_evaluation("--checkpoint", checkpoint, "--deals", 24, "--tables", 12, "--seed", 5) == 0
+    out = capsys.readouterr().out
+    assert "warning" in out.lower() and "0123456789abcdef" in out
+    # Without the hash (a checkpoint from before it was kept): no warning.
+    with_sources(checkpoint, None, keep=False)
+    train.Trainer.load(checkpoint, CPU).close()
+    assert "warning" not in capsys.readouterr().out.lower()
+
+
+def test_r6_a_mock_checkpoint_holds_no_hash():
+    trainer = train.Trainer(small(), CPU)
+    import tempfile
+    from pathlib import Path
+
+    with tempfile.TemporaryDirectory() as folder:
+        path = Path(folder) / "mock.pt"
+        trainer.save(path)
+        trainer.close()
+        assert torch.load(path, map_location="cpu", weights_only=True)["engine_sources"] is None

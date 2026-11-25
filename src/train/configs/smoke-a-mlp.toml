@@ -20,7 +20,7 @@ fault = "none"            # spec 008, criterion 8: the control run sets "rewards
 gpu_memory_limit_mib = 0  # spec 015: limit of PyTorch's allocator on the GPU in MiB, 0 = no limit; the key was added later, this run (2026-11-12) had no limit
 
 [env]
-kind = "engine"           # spec 008: the Rust engine through tarok_train/env.py (spec 006), deal flow A
+kind = "engine"           # spec 008: the Rust engine through tarok_train/env.py (spec 006); its rules are those of the built engine: deal flow A on 0.2.0, deal flow B from 0.3.0 (spec 009)
 tables = 512              # D124 B; spec 007: the acting cache of 1,024 tables does not fit in 6 GB
 threads = 6               # Claude's choice: one per core of the training PC (speed only; the deals do not depend on it)
 
@@ -85,5 +85,5 @@ bidding = 0.2             # D136 (random play: 0.87)
 "king call" = 0.35        # D136 (random play: 1.39, four kings)
 "talon pick" = 0.45       # D136 (random play: 1.74)
 discard = 0.6             # D136 (random play: 2.43)
-announcements = 0.25      # Claude's choice, as play: deal flow A has no announcements, but every phase needs a target
+announcements = 0.25      # Claude's placeholder, as play, set when the engine (0.2.0) had no round of announcements; spec 018 sets the target for deal flow B (D149)
 play = 0.25               # D136 (random play: 0.95)

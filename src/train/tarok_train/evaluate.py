@@ -56,6 +56,7 @@ import tarok_env
 
 from . import contract as C
 from .env import EngineEnv
+from .train import warn_if_other_sources
 from .model import Actor, build_network
 
 SEATS = 4
@@ -314,6 +315,8 @@ def load_checkpoint(path: Path, who: str, other_engine: bool = False):
             f"warning: {who} was made with {made}; this code runs engine version {tarok_env.ENGINE_VERSION}. "
             "It plays a game it was not trained on."
         )
+    else:
+        warn_if_other_sources(data, who)
     return data
 
 
@@ -351,7 +354,8 @@ def main(argv=None) -> int:
     parser.add_argument(
         "--overwrite",
         action="store_true",
-        help="with --opponent: replace the result file of an earlier call for the same pair of checkpoints",
+        help="replace the result file of an earlier call: for the same pair of checkpoints with --opponent; "
+        "against random play when the earlier file or the checkpoint belongs to another engine version (spec 009)",
     )
     parser.add_argument(
         "--other-engine",
@@ -394,6 +398,19 @@ def main(argv=None) -> int:
             # Seed, deals and tables are not in the name: another call for this pair would replace the file.
             print(f"{existing.name} exists next to the checkpoint: it is replaced only with --overwrite")
             return 2
+    else:
+        # Against random play the file of an earlier call is replaced, as before, with one exception
+        # (spec 009): the earlier file, or this checkpoint, belongs to another engine version. Results
+        # of two engines must not mix without a word. A file without the key was written on 0.2.0.
+        existing = path.parent / f"evaluation-{label}.json"
+        if existing.exists() and not args.overwrite:
+            earlier = json.loads(existing.read_text(encoding="utf-8")).get("engine_version", "0.2.0")
+            if args.other_engine or earlier != tarok_env.ENGINE_VERSION:
+                print(
+                    f"{existing.name} exists next to the checkpoint, written on engine version {earlier}; this call "
+                    f"plays on {tarok_env.ENGINE_VERSION}. It is replaced only with --overwrite"
+                )
+                return 2
     device = args.device
     if device == "auto":
         device = "cuda" if torch.cuda.is_available() else "cpu"

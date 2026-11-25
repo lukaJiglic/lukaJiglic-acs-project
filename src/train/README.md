@@ -261,7 +261,7 @@ Evaluate several checkpoints on the same deals: one call per checkpoint with the
 python -m tarok_train.evaluate --checkpoint src\train\runs\<run folder>\checkpoint-000500.pt --deals 2000 --seed 2008
 ```
 
-The run is on deal flow A only (six normal contracts, no announcements, no klop). Its evaluation is against random legal play and says nothing more about playing strength.
+The runs of spec 014 were made on engine 0.2.0: deal flow A only (six normal contracts, no announcements, no klop). The same configs on engine 0.3.0 train deal flow B, with the round of announcements in play (spec 009); `run-info.json`, `summary.json` and every checkpoint name the engine version. Its evaluation is against random legal play and says nothing more about playing strength.
 
 ## The trial of the entropy controller's lower limit (spec 017; cmd, venv active, from the repo root)
 
@@ -304,4 +304,4 @@ python -m tarok_train.trial_compare src\train\runs\<run X> src\train\runs\<run Y
 
 Between two different runs the single seat tends to lose in both directions (spec 017, Results). Half the difference is a lead of X only if that handicap is the same in both directions.
 
-The trial is on deal flow A. Its results compare checkpoints of these runs with each other; they say nothing more about playing strength.
+The trial was run on engine 0.2.0, deal flow A. On engine 0.3.0 the same configs train deal flow B (spec 009); `trial_compare` refuses two files that name different engines (a file without the key counts as 0.2.0). Its results compare checkpoints of these runs with each other; they say nothing more about playing strength.

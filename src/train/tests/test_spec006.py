@@ -129,13 +129,17 @@ def test_c20_a_python_thread_keeps_running_during_a_long_step():
                 time.sleep(0)  # let the main thread take the GIL back when the call returns
         counted.append(n)
 
-    # How fast the counter runs alone, as a reference.
+    # How fast the counter runs alone, as a reference. Over the time it really ran: the main thread
+    # asks for the GIL back after its sleep and may wait for it far longer than the 0.2 s it slept
+    # (up to about 2 s on the training PC, 2026-11-25). Divided by the nominal 0.2 s the reference
+    # came out up to ten times too fast, and the test failed or passed by chance.
     worker = threading.Thread(target=count)
+    alone_started = time.perf_counter()
     worker.start()
     time.sleep(0.2)
     stop.set()
     worker.join()
-    alone_per_second = counted.pop() / 0.2
+    alone_per_second = counted.pop() / (time.perf_counter() - alone_started)
 
     stop.clear()
     worker = threading.Thread(target=count)
@@ -407,9 +411,12 @@ def test_c22_step_gives_done_reward_and_parts_once_per_deal(kind):
         assert reward.shape == (n, 4) and reward.dtype == np.float32
         assert parts.shape == (n, 4, C.N_SCORE_PARTS) and parts.dtype == np.float32
         # Zero where the deal goes on; the parts of a seat add up to its reward. The room
-        # grows with the reward: a reward can be above 100 with kontra (D147, 1 a).
+        # grows with the largest reward of each deal: a reward can be above 100 with kontra
+        # (D147, 1 a). Per table, as in test_c21: a large reward at one table widens nothing
+        # at another.
         assert not reward[~done].any() and not parts[~done].any()
-        assert np.abs(parts.sum(axis=-1) - reward).max() < 1e-5 * max(1.0, float(np.abs(reward).max()))
+        room = 1e-5 * np.maximum(1.0, np.abs(reward).max(axis=1))
+        assert (np.abs(parts.sum(axis=-1) - reward).max(axis=1) < room).all()
         assert not parts[..., C.SCORE_PARTS.index("klop")].any()
         assert not parts[..., C.SCORE_PARTS.index("radelc")].any()
         # A finished table starts its next deal at once: the deal counter moves there and only there.

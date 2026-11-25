@@ -359,10 +359,11 @@ def test_c07_each_deal_is_played_four_times_with_the_agent_in_another_seat():
     # The first legal slot of the round of announcements is an announcement (spec 009), so
     # these deals end with rewards above 100. A 32-bit reward of that size is exact to about
     # 1e-5, not to 1e-6: the room grows with the largest reward (D147, 1 a).
-    room = 1e-6 * max(1.0, float(np.abs(by_seat).max()))
-    assert np.abs(by_seat.sum(axis=1)).max() < 10 * room
-    assert np.allclose(result["values"], by_seat.mean(axis=1), rtol=0, atol=room)
-    assert abs(result["mean"]) < room
+    # Per deal, as in test_c21 of spec 006: the room of a deal is that of its own largest reward.
+    room = 1e-6 * np.maximum(1.0, np.abs(by_seat).max(axis=1))
+    assert (np.abs(by_seat.sum(axis=1)) < 10 * room).all()
+    assert (np.abs(np.asarray(result["values"]) - by_seat.mean(axis=1)) <= room).all()
+    assert abs(result["mean"]) < float(room.mean())
     # Other chunks play other deals.
     assert not np.allclose(by_seat[:12], by_seat[12:])
 

@@ -1066,6 +1066,24 @@ def test_c12_the_report_names_the_opponent_and_does_not_say_beats_random(tmp_pat
     assert "The whole interval is above zero" in text
 
 
+def bounded_statistics(values) -> dict:
+    """Two statistics of the deal values whose spread does not grow with the size of a deal.
+
+    sign: the share of deals with a positive value minus the share with a negative one, with its
+    95% interval (the values -1, 0, +1; 1.96 standard errors, as for a binomial share). clipped: the
+    mean of the values clipped at -2 and +2, with its interval. Each interval is at most 0.09 (sign)
+    and 0.18 (clipped) wide on 2,000 deals, however wide the plain interval is, and a bias of the
+    single seat shows in them. Their expected value against itself is zero only if the deal values
+    are symmetric about zero; the plain mean is zero by the symmetry of the seats (the four rewards
+    of a play add up to zero), but a skewed spread of the values moves the share and the clipped
+    mean a little. So they are bounded in size, not asked to hold zero in their interval.
+    """
+    from tarok_train import evaluate
+
+    values = np.asarray(values, dtype=np.float64)
+    return {"sign": evaluate.interval(np.sign(values)), "clipped": evaluate.interval(np.clip(values, -2.0, 2.0))}
+
+
 @pytest.mark.slow
 @pytest.mark.gpu
 def test_c15_a_checkpoint_against_itself_on_2000_deals_has_an_interval_that_includes_zero(tmp_path):
@@ -1079,24 +1097,48 @@ def test_c15_a_checkpoint_against_itself_on_2000_deals_has_an_interval_that_incl
     assert evaluate.main([*base, "--seed", "5151", "--records", "20"]) == 0
     result = result_of(path)
     assert result["deals"] == 2000 and result["device"] == "cuda" and result["tables"] == 500
-    # An interval that says something. With deal flow B (spec 009) a network after two updates
-    # still plays nearly at random, and in the round of announcements that means valats and
-    # kontras up to mort: a deal is worth thousands of points and the deal values spread about
-    # 14 times as far as in flow A. The same 2,000 deals gave a width under 0.2 there and give
-    # about 2.8 here.
-    assert result["high"] - result["low"] < 4.0
     assert result["records_exported"] == result["records_replayed_equal"] == 20
+    # The plain interval is measured, not bounded. On deal flow A it was under 0.2 wide. On deal flow
+    # B (spec 009) a network after two updates announces and doubles nearly at random: a deal can be
+    # worth thousands of points, and the interval of 2,000 deals is about 2.8 wide. It cannot resolve
+    # a bias of the single seat of 1 reward. So the bound is on two statistics that stay small.
+    # The bounds. Against itself on flow B the measured sizes over these 21 runs were at most 0.095
+    # (clipped) and 0.048 (sign); pooled over the 42,000 deals +0.049 and +0.027, the offset of a
+    # skewed spread (spec 009, Results). A bias of the single seat of about 1 reward would move
+    # both by more than the bounds (inferred, not measured: no biased network was built).
+    bounds = {"sign": 0.12, "clipped": 0.25}
+    sizes = {name: [] for name in bounds}
+
+    def bounded(values, seed):
+        for name, (mean, low, high) in bounded_statistics(values).items():
+            assert high - low < 2 * bounds[name], (seed, name, high - low)
+            sizes[name].append(mean)
+
+    bounded(result["values"], 5151)
     # One seed proves little: a right interval misses zero in one of 20 cases, and before the review fix
-    # this recipe missed it in 8 of 20 (the same random numbers in every chunk). So: 20 seeds.
+    # of spec 015 this recipe missed it in 8 of 20 (the same random numbers in every chunk). So: 20 seeds.
     # With a right interval more than 3 of 20 miss in under 2% of the cases; with the old code 3 or
-    # fewer missed in under 2%.
-    outside = []
+    # fewer missed in under 2%. The same count for the two bounded statistics.
+    outside = {"plain": [], "sign": [], "clipped": []}  # sign and clipped: measured, not asserted
+    widths = []
     correlations = []
     for seed in range(6000, 6400, 20):  # no chunk holds the training seed 8
         assert evaluate.main([*base, "--seed", str(seed), "--overwrite"]) == 0
         result = result_of(path)
-        outside.append(not (result["low"] <= 0.0 <= result["high"]))
+        outside["plain"].append(not (result["low"] <= 0.0 <= result["high"]))
+        for name, (_, low, high) in bounded_statistics(result["values"]).items():
+            outside[name].append(not (low <= 0.0 <= high))
+        bounded(result["values"], seed)
+        widths.append(result["high"] - result["low"])
         correlations.append(chunk_correlation(result["values"], chunks=4))
         assert result["above_zero"] == (result["low"] > 0) and result["below_zero"] == (result["high"] < 0)
-    assert sum(outside) <= 3, outside
+    print(
+        "20 seeds, zero outside the interval: "
+        + ", ".join(f"{name} {sum(flags)}" for name, flags in outside.items())
+        + f"; plain width {min(widths):.3f} to {max(widths):.3f}; chunk correlation {np.mean(correlations):+.4f}; "
+        + "; ".join(f"{name} from {min(v):+.4f} to {max(v):+.4f}, mean {np.mean(v):+.4f}" for name, v in sizes.items())
+    )
+    assert sum(outside["plain"]) <= 3, outside["plain"]
+    for name, values in sizes.items():
+        assert max(abs(v) for v in values) < bounds[name], (name, values)
     assert abs(float(np.mean(correlations))) < 0.1, correlations
