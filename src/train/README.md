@@ -23,7 +23,9 @@ Built so far: the pinned environment, the GPU check, a PyO3 probe and a throughp
 | `tarok_train/train.py` | The loop on the mock or the engine, config check, checkpoints, TensorBoard logs, `run-info.json` and `summary.json` per run. |
 | `tarok_train/evaluate.py` | A checkpoint on seeded deals, against random legal play or against another checkpoint (`--opponent`, spec 015), with a 95% interval; exports game records. |
 | `tarok_train/smoke_report.py` | Reads the files of a run folder and prints the numbers of spec 008 as Markdown. |
-| `configs/` | One TOML file per run (D79). Every hyperparameter is in the file; the code has no defaults. `mock.toml` (spec 007), `smoke-a-mlp.toml`, `smoke-a-transformer.toml` and the small `smoke-a-ci.toml` for the tests (spec 008). `long-a-mlp.toml` and `long-a-transformer.toml`: the same runs with 2,000 updates (spec 014). |
+| `tarok_train/trial_report.py` | Reads the files of a run folder and prints the numbers of spec 017 as Markdown: the entropy of the play and its weight over the run, every phase beside its target, the phases whose weight went under 0.01, means over the last 100 updates, the dips under the band. |
+| `tarok_train/trial_compare.py` | Reads the two evaluation files of a pair of checkpoints (one seat against three, both ways) and prints both, with half their sum and half their difference, paired over the deals (spec 017). |
+| `configs/` | One TOML file per run (D79). Every hyperparameter is in the file; the code has no defaults. `mock.toml` (spec 007), `smoke-a-mlp.toml`, `smoke-a-transformer.toml` and the small `smoke-a-ci.toml` for the tests (spec 008). `long-a-mlp.toml` and `long-a-transformer.toml`: the same runs with 2,000 updates (spec 014). `trial-floor-*.toml`: the seven runs of the trial of the entropy controller's lower limit (spec 017). |
 | `runs/` | Checkpoints and TensorBoard files of local runs. Not tracked by git. |
 | `pyo3_probe/` | Throwaway Rust crate: fills an array on 12 threads with the GIL released, returns NumPy arrays. |
 | `bench_results/` | Raw rows of each benchmark run, JSON. Numbers only: no process names, no paths. |
@@ -260,3 +262,46 @@ python -m tarok_train.evaluate --checkpoint src\train\runs\<run folder>\checkpoi
 ```
 
 The run is on deal flow A only (six normal contracts, no announcements, no klop). Its evaluation is against random legal play and says nothing more about playing strength.
+
+## The trial of the entropy controller's lower limit (spec 017; cmd, venv active, from the repo root)
+
+Two arms, each the config of the longer run with 500 updates. The base arm keeps `[entropy_control] min_weight = 0.01`; the trial arm has 0.001. `min_weight` is one value for all phases. The MLP runs with three seeds per arm, one config file per run. The transformer runs the trial arm once; its base arm is the checkpoint of update 500 of the run of spec 014.
+
+| File | Arm | Seed |
+|------|-----|------|
+| `trial-floor-base-mlp.toml`, `-s15.toml`, `-s16.toml` | base, lower limit 0.01 | 14, 15, 16 |
+| `trial-floor-low-mlp.toml`, `-s15.toml`, `-s16.toml` | trial, lower limit 0.001 | 14, 15, 16 |
+| `trial-floor-low-transformer.toml` | trial, lower limit 0.001 | 14 |
+
+`tests\test_spec017.py` compares each file with its `long-a` file key by key. The run name holds the arm and the seed (`trial-floor-low-s15`), and the run folder holds the config as it ran.
+
+```bat
+python -m tarok_train.train --config src\train\configs\trial-floor-base-mlp.toml
+python -m tarok_train.train --config src\train\configs\trial-floor-low-mlp-s15.toml
+python -m tarok_train.train --config src\train\configs\trial-floor-low-transformer.toml
+```
+
+The numbers of a run (the play at updates 100 to 500, every phase beside its target, the phases whose weight went under 0.01, contracts, the loop checks). `--at 500` reads a longer run as if it had ended at update 500:
+
+```bat
+python -m tarok_train.trial_report src\train\runs\<run folder>
+python -m tarok_train.trial_report --at 500 src\train\runs\long-a-transformer-20261124-011623
+```
+
+The comparison of two checkpoints, one seat against three and the other way round:
+
+```bat
+python -m tarok_train.evaluate --checkpoint src\train\runs\<trial run>\checkpoint-000500.pt --opponent src\train\runs\<base run>\checkpoint-000500.pt --deals 2000 --seed 5151
+python -m tarok_train.evaluate --checkpoint src\train\runs\<base run>\checkpoint-000500.pt --opponent src\train\runs\<trial run>\checkpoint-000500.pt --deals 2000 --seed 5151
+```
+
+Both directions of a pair at once, with half their sum (what the single seat gets whichever of the two it is) and half their difference, each with an interval paired over the deals:
+
+```bat
+python -m tarok_train.trial_compare src\train\runs\<trial run> src\train\runs\<base run>
+python -m tarok_train.trial_compare src\train\runs\<run X> src\train\runs\<run Y> --updates 2000 --updates-y 200
+```
+
+Between two different runs the single seat tends to lose in both directions (spec 017, Results). Half the difference is a lead of X only if that handicap is the same in both directions.
+
+The trial is on deal flow A. Its results compare checkpoints of these runs with each other; they say nothing more about playing strength.

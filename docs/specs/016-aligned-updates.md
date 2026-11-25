@@ -65,7 +65,7 @@ Inferred from the code, not measured: the trained deals are not a fair sample of
 11. A run that is stopped and resumed from a checkpoint gives the same statistics as the run that was not stopped (mock environment, CPU). A checkpoint resumes in the mode of its own config.
 
 **The hold flag on the Python side**
-12. The mock environment takes `step(actions, hold)` with the meaning of criterion 50 of spec 009: a held table does not move, gives no reward, is not done, and its action is ignored.
+12. (Found by the review of spec 009, stage (d): the mock has no hold flag yet.) The mock environment takes `step(actions, hold)` with the meaning of criterion 50 of spec 009: a held table does not move, gives no reward, is not done, and its action is ignored.
 13. The wrapper `tarok_train/env.py` passes the flag to the binding. `step(actions)` works as before.
 14. Holding does not change what a table plays. Test on the mock and on the engine: 64 tables, once without holds and once with random holds; each table's sequence of deals and rewards is the same.
 
