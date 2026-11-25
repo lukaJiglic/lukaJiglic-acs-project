@@ -3,6 +3,7 @@
     env = EngineEnv(n_tables=1024, seed=3, threads=12)
     obs = env.observe()                  # the acting seat of every table
     done, reward, parts = env.step(a)    # a finished table starts its next deal at once
+    env.step(a, hold)                    # tables with hold[i] true do not move (spec 009)
     state = env.get_state()              # for a checkpoint; env.set_state(state) restores it
 
 The arrays are those of docs/encoding.md, one row per table:
@@ -198,6 +199,8 @@ class EngineEnv:
         _check_contract()
         check_module_is_current()
         self.source_hash = tarok_env.SOURCE_HASH  # the fingerprint of the sources the module was built from
+        # The version of the engine's rules. A checkpoint holds it (spec 009, criterion 53).
+        self.engine_version = tarok_env.ENGINE_VERSION
         self.n = n_tables
         self.seed = seed
         self.threads = threads
@@ -216,13 +219,19 @@ class EngineEnv:
         with self._lock:
             return self._obs
 
-    def step(self, actions: np.ndarray):
+    def step(self, actions: np.ndarray, hold=None):
         """Apply one action (a slot number) per table.
 
         Returns done (N,) bool, reward (N, 4) and parts (N, 4, parts) by absolute seat.
         An illegal action is an error: a ValueError is raised and no table has moved.
         Actions must be whole numbers (any integer type), one per table: a float array
         is a TypeError, another count a ValueError. Neither counts as an illegal action.
+
+        `hold` (spec 009, criterion 52): one bool per table, or None for "no table is
+        held". A held table does not move: its action is ignored and need not be legal,
+        it is not done and gets no reward, and its rows of the observation stay as they
+        were. Holding never changes what a table plays. A `hold` that is not bool is a
+        TypeError, another count a ValueError.
         """
         actions = np.asarray(actions)
         if not np.issubdtype(actions.dtype, np.integer):
@@ -232,9 +241,16 @@ class EngineEnv:
                 f"step needs one action per table: shape ({self.n},), not {actions.shape}"
             )
         actions = np.ascontiguousarray(actions, dtype=np.int64)
+        if hold is not None:
+            hold = np.asarray(hold)
+            if hold.dtype != np.bool_:
+                raise TypeError(f"hold must be bool, one flag per table, not {hold.dtype}")
+            if hold.shape != (self.n,):
+                raise ValueError(f"hold needs one flag per table: shape ({self.n},), not {hold.shape}")
+            hold = np.ascontiguousarray(hold)
         with self._lock:
             try:
-                self._tables.step_into(actions, *self._all_arrays)
+                self._tables.step_into(actions, *self._all_arrays, hold)
             except ValueError as error:
                 self.illegal_actions += 1
                 raise ValueError(f"an illegal action reached the environment: {error}") from error

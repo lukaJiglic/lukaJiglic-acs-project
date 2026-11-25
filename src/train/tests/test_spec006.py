@@ -224,7 +224,8 @@ def test_c20_an_array_of_another_shape_or_memory_order_is_refused():
     tables.set_state(state["base_seed"], *[state[name] for name in names])
     swapped = dict(state)
     swapped["actions"] = np.ascontiguousarray(state["actions"].T)
-    with pytest.raises(ValueError, match=r"actions.*\(96, 4\).*\(4, 96\)"):
+    # 192 places for the actions of a deal since spec 009 (the round of announcements); 96 before.
+    with pytest.raises(ValueError, match=r"actions.*\(192, 4\).*\(4, 192\)"):
         tables.set_state(state["base_seed"], *[swapped[name] for name in names])
     fortran_state = dict(state)
     fortran_state["actions"] = np.asfortranarray(state["actions"])
@@ -311,8 +312,12 @@ def test_c21_parity_of_1000_deals_driven_from_python_with_a_pure_rust_run():
             # The reward follows from the same entries.
             e = np.array(rust_entries, dtype=np.float64)
             expected = (e - (e.sum() - e) / 3.0) / C.REWARD_SCALE
-            assert np.abs(reward[t] - expected).max() < 1e-6
-            assert np.abs(parts[t].sum(axis=-1) - reward[t]).max() < 1e-6
+            # Rewards are 32-bit numbers. With kontra (spec 009) a reward can be above 100, where
+            # its last place is about 1e-5: the room grows with the largest reward of the deal
+            # (D147, 1 a). For rewards up to 1 it is the 1e-6 it was.
+            room = 1e-6 * max(1.0, float(np.abs(expected).max()))
+            assert np.abs(reward[t] - expected).max() < room
+            assert np.abs(parts[t].sum(axis=-1) - reward[t]).max() < room
             nonzero += int(any(rust_entries))
             compared += 1
             choices[t] = []
@@ -392,16 +397,19 @@ def test_c22_step_gives_done_reward_and_parts_once_per_deal(kind):
     env = make_env(kind, n, seed=23)
     rng = np.random.default_rng(23)
     finished = 0
-    for _ in range(400):
+    # A random deal of the engine has about 88 decisions since spec 009 (57 before): 700 steps
+    # for at least 30 deals at six tables, where 400 were enough.
+    for _ in range(700):
         obs = env.observe()
         deal_before = obs["deal"].copy()
         done, reward, parts = env.step(random_legal(obs["mask"], rng))
         assert done.shape == (n,) and done.dtype == np.bool_
         assert reward.shape == (n, 4) and reward.dtype == np.float32
         assert parts.shape == (n, 4, C.N_SCORE_PARTS) and parts.dtype == np.float32
-        # Zero where the deal goes on; the parts of a seat add up to its reward.
+        # Zero where the deal goes on; the parts of a seat add up to its reward. The room
+        # grows with the reward: a reward can be above 100 with kontra (D147, 1 a).
         assert not reward[~done].any() and not parts[~done].any()
-        assert np.abs(parts.sum(axis=-1) - reward).max() < 1e-5
+        assert np.abs(parts.sum(axis=-1) - reward).max() < 1e-5 * max(1.0, float(np.abs(reward).max()))
         assert not parts[..., C.SCORE_PARTS.index("klop")].any()
         assert not parts[..., C.SCORE_PARTS.index("radelc")].any()
         # A finished table starts its next deal at once: the deal counter moves there and only there.

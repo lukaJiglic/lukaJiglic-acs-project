@@ -272,8 +272,13 @@ def evaluate(
 CHECKPOINT_KEYS = ("config", "network", "updates", "model", "encoding_version")
 
 
-def load_checkpoint(path: Path, who: str):
-    """The data of a checkpoint of a run on the engine, or None with one printed line that says why not."""
+def load_checkpoint(path: Path, who: str, other_engine: bool = False):
+    """The data of a checkpoint of a run on the engine, or None with one printed line that says why not.
+
+    A checkpoint made with another version of the engine, or before checkpoints held the
+    engine's version, was trained on another game (spec 009, criterion 53). It is refused
+    unless `other_engine` is set; then one line of warning is printed and it is taken.
+    """
     if not path.is_file():
         print(f"{who} cannot be read: there is no file {path}")
         return None
@@ -293,6 +298,22 @@ def load_checkpoint(path: Path, who: str):
         # The mock environment has the same array sizes and another game: its network would play, and mean nothing.
         print(f"{who} ({path}) comes from a run on the {kind} environment: only checkpoints of runs on the engine are evaluated")
         return None
+    if data.get("engine_version") != tarok_env.ENGINE_VERSION:
+        made = (
+            "no engine version recorded (it was made before checkpoints held one)"
+            if data.get("engine_version") is None
+            else f"engine version {data['engine_version']}"
+        )
+        if not other_engine:
+            print(
+                f"{who} was made with {made}; this code runs engine version {tarok_env.ENGINE_VERSION}. "
+                "It was trained on another game. To evaluate it all the same, add --other-engine"
+            )
+            return None
+        print(
+            f"warning: {who} was made with {made}; this code runs engine version {tarok_env.ENGINE_VERSION}. "
+            "It plays a game it was not trained on."
+        )
     return data
 
 
@@ -332,10 +353,15 @@ def main(argv=None) -> int:
         action="store_true",
         help="with --opponent: replace the result file of an earlier call for the same pair of checkpoints",
     )
+    parser.add_argument(
+        "--other-engine",
+        action="store_true",
+        help="take a checkpoint made with another version of the engine, or before checkpoints held one (spec 009); a warning is printed",
+    )
     args = parser.parse_args(argv)
 
     path = Path(args.checkpoint)
-    data = load_checkpoint(path, "the checkpoint")
+    data = load_checkpoint(path, "the checkpoint", args.other_engine)
     if data is None:
         return 2
     cfg = data["config"]
@@ -349,7 +375,7 @@ def main(argv=None) -> int:
     opponent_path = opponent_data = None
     if args.opponent is not None:
         opponent_path = Path(args.opponent)
-        opponent_data = load_checkpoint(opponent_path, "the opponent's checkpoint")
+        opponent_data = load_checkpoint(opponent_path, "the opponent's checkpoint", args.other_engine)
         if opponent_data is None:
             return 2
         if opponent_data["config"]["run"]["seed"] in seeds:
@@ -438,6 +464,11 @@ def main(argv=None) -> int:
             "threads": args.threads,
             "device": device,
             "engine_sources": tarok_env.SOURCE_HASH,
+            # The engine that played these deals, and the one the agent's checkpoint was made with
+            # and the opponent's (None: before checkpoints held it, or no opponent). They differ only with --other-engine.
+            "engine_version": tarok_env.ENGINE_VERSION,
+            "checkpoint_engine_version": data.get("engine_version"),
+            "opponent_engine_version": None if opponent_data is None else opponent_data.get("engine_version"),
         }
     )
     (path.parent / f"evaluation-{label}.json").write_text(json.dumps(result, indent=1), encoding="utf-8")

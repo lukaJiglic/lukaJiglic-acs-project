@@ -68,7 +68,10 @@ from tarok_train.env import EngineEnv
 env = EngineEnv(n_tables=1024, seed=3, threads=12)
 obs = env.observe()                 # dict of NumPy arrays, one row per table
 done, reward, parts = env.step(actions)
+done, reward, parts = env.step(actions, hold)   # hold: one bool per table (spec 009)
 ```
+
+With `hold`, a table whose flag is true does not move: its action is ignored and need not be legal, it is not done and gets no reward, and its rows of the observation stay as they were. Holding never changes what a table plays. `step(actions)` holds no table.
 
 The observation arrays are written in place by the engine; the next `step` overwrites them. The docstring of `tarok_train/env.py` lists every array.
 
@@ -137,7 +140,9 @@ Training options (each overrides a value of the config file; the checkpoint reco
 
 How an update collects its data: the tables play until enough seat-deals have finished that began under the current weights. Deals that straddle an update are played but not trained on. `rollout/decision_age_max` in the logs must be 0 and `ppo/behaviour_mismatch` about 1e-6; anything else is a bug in the pipeline.
 
-A checkpoint holds the config, the encoding version, the step counts, the weights, the optimiser, the pool of past checkpoints, the random generators and the environment's state. Loading a checkpoint of another encoding version fails with a message.
+A checkpoint holds the config, the encoding version, the engine version, the step counts, the weights, the optimiser, the pool of past checkpoints, the random generators and the environment's state. Loading a checkpoint of another encoding version fails with a message.
+
+The engine version (spec 009). A checkpoint of a run on the engine holds `engine_version`, the version of the engine's rules (`tarok_env.ENGINE_VERSION`). The rules change with it while the encoding version stays 1: deal flow B (announcements and kontra) came with 0.3.0. `--resume` refuses a checkpoint made with another engine version, or with none (made before 2026-11-25), with one line that names both versions and exit code 2: the run would go on in another game. The evaluation takes such a checkpoint, as the agent or as `--opponent`, only with `--other-engine`; it prints a warning, and the result file holds the versions (`engine_version` of the engine that played, `checkpoint_engine_version`, `opponent_engine_version`). A checkpoint of the mock environment names no engine and is not checked.
 
 ## Train on the engine: the smoke run (spec 008; cmd, venv active, from the repo root)
 

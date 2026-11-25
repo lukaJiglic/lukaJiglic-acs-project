@@ -182,6 +182,47 @@ class EncodingVersionError(RuntimeError):
     """A checkpoint was made for another version of docs/encoding.md."""
 
 
+class EngineVersionError(RuntimeError):
+    """A checkpoint of a run on the engine was made with another version of the engine."""
+
+
+def engine_version_of(cfg: dict):
+    """The version of the engine a run with this config plays on. None on the mock environment."""
+    if cfg["env"]["kind"] != "engine":
+        return None
+    import tarok_env  # needs the built module, as the engine environment does
+
+    return tarok_env.ENGINE_VERSION
+
+
+def made_with(data: dict) -> str:
+    """How a message names the engine a checkpoint was made with."""
+    version = data.get("engine_version")
+    if version is None:
+        return "no engine version recorded (it was made before checkpoints held one)"
+    return f"engine version {version}"
+
+
+def check_engine_version(data: dict) -> None:
+    """Raise EngineVersionError if a checkpoint of an engine run was made with another engine (spec 009, criterion 53).
+
+    The rules of the game change with the engine's version (deal flow B came with
+    0.3.0), and so do the shapes of the environment's saved state. A network that
+    goes on training would do so on another game than the one its weights, its
+    optimizer and its pool of past versions come from. The encoding version does not
+    show this: it stays 1 as long as the arrays keep their layout. A checkpoint of
+    the mock environment names no engine and is not checked.
+    """
+    running = engine_version_of(data["config"])
+    if running is None or data.get("engine_version") == running:
+        return
+    raise EngineVersionError(
+        f"the checkpoint was made with {made_with(data)}; this code runs engine version {running}. "
+        "The game is not the same, so the run cannot go on from it. Start a new run, or evaluate the "
+        "checkpoint with: python -m tarok_train.evaluate ... --other-engine"
+    )
+
+
 def validate_config(cfg: dict) -> None:
     for section, keys in SCHEMA.items():
         if section not in cfg:
@@ -632,6 +673,8 @@ class Trainer:
         torch.save(
             {
                 "encoding_version": C.ENCODING_VERSION,
+                # The version of the engine's rules; None for a run on the mock environment.
+                "engine_version": self.env.engine_version,
                 "config": self.cfg,
                 "network": self.kind,
                 "updates": self.updates,
@@ -672,6 +715,7 @@ class Trainer:
                 f"the checkpoint was made for encoding version {version}; this code reads "
                 f"encoding version {C.ENCODING_VERSION} (docs/encoding.md). It cannot be loaded."
             )
+        check_engine_version(data)
         cfg = with_later_keys(data["config"])
         if gpu_memory_limit_mib is not None:
             cfg["run"]["gpu_memory_limit_mib"] = gpu_memory_limit_mib
@@ -787,7 +831,15 @@ def main(argv=None) -> int:
             if getattr(args, name) is not None:
                 parser.error(f"--{name.replace('_', '-')} cannot change on --resume: the checkpoint's config is used")
         resume = Path(args.resume)
-        cfg = with_later_keys(torch.load(resume, map_location="cpu", weights_only=True)["config"])
+        saved = torch.load(resume, map_location="cpu", weights_only=True)
+        try:
+            # Before anything is printed, built or written.
+            check_engine_version(saved)
+        except EngineVersionError as error:
+            print(f"{resume.name} cannot be resumed: {error}")
+            return 2
+        cfg = with_later_keys(saved["config"])
+        del saved
     else:
         cfg = load_config(args.config)
     # Overrides go into the config, so the checkpoint records what really ran.
