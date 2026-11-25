@@ -50,7 +50,8 @@
 - 2026-11-24, 21:00: the `engine-core` session built D150 (branch `spec-009` at `d2e4c1b`, 235 tests, 71 wrong rules caught, the `engine` workflow green; its report, not verified). While checking it found that case (iii) of D148 was no longer true next to D150 and corrected it. It found two more conclusions of the same kind and did not build them: Batch 20. A second review pass, over the code that works out the public sides, is ordered. Spec 017: the six MLP runs are done; all six count as disturbed in speed, because a headless browser (`chrome-headless-shell`, Playwright) took 3 to 5 GB of the card in bursts. What starts it is not known.
 - 2026-11-25, 15:10: Batch 20 answered, a for both (D151). The usage limit stopped the `train-env` session and the second review pass on the evening of 24 November; both are resumed. All seven runs of spec 017 and their evaluations had finished before; the Results are not written yet. The headless browser is a video render (Remotion) of another project of the user's on this PC; it ran during the transformer run of spec 017 too.
 - 2026-11-25, evening: the work switched to Opus 5.5 (D152). Spec 017 is committed (`931d7d4`): no difference shown. Batch 21 below. Batch 20, item 2 is asked again: the reason given for it was wrong (see its row).
-- **Waiting on the user, to decide:** Batch 21 (three items after spec 017); Batch 20, item 2 again; C13 (the new figure of G3; better after spec 015); C16 (which entropy mean the controller steers on); the open points A, B and D of spec 014; later C14.
+- 2026-11-25, evening: Batch 21 answered and B20-2 confirmed, a for every item (D153). Spec 009 is complete on the branch (pull request 1, not merged); a Fable review of its last parts is running.
+- **Waiting on the user, to decide:** C13 (the new figure of G3; better after spec 015); C16 (which entropy mean the controller steers on); the open points A, B and D of spec 014; later C14.
 - **Dates:** the repo must be public or shared with the instructor on Mon 23 Nov (R5); it is private on 2026-11-23. The proposal, wireframe and pitch slide were due Wed 18 Nov; the files hold no record that they were handed in.
 - **Waiting on the user:** corrections to the wireframe and `pitch.md`; the proposal format. Later: C13 (the new figure of G3, after the smoke run), C14 (tier of the trula toggle).
 - Next: spec 013 in the `engine-core` session and spec 008 in the `train-env` session; verification, review pass, the user's read of each diff, commit.
@@ -70,7 +71,7 @@ Open:
 - **C16. Which entropy mean the controller steers on.** Now: the mean over all decisions of a phase, forced ones included. In the smoke runs the share of forced decisions in the bidding went from 28% to 0%, so the mean moved without the policy getting firmer or looser. (a) the mean over decisions with two or more legal actions, with the targets set again as a quarter of random play under that mean; (b) keep the mean over all decisions. Recommended: (a). Asked 2026-11-12.
 - **C14. Tier of S40's other option** ("in any order"). Recommended: like S14 and S18 in D98: selectable in T0 with the note "agent ni učen s tem pravilom". Asked when the engine gets its toggles.
 
-## Batch 21 — after the trial of spec 017 (asked 2026-11-25; open)
+## Batch 21 — after the trial of spec 017 (asked 2026-11-25, answered 2026-11-25: a for all three; see D153)
 
 From the Results of spec 017. The first option is the recommendation.
 

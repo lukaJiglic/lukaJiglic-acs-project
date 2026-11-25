@@ -1,6 +1,6 @@
 # 017 — Trial: the entropy controller's lower limit at 0.001
 
-Status: **done** (2026-11-25). Committed as `931d7d4` after the main session's check of the numbers and a separate review pass, whose fourteen points are fixed (see "Review fixes"). Approved 2026-11-24 (D146); executed on 2026-11-24 and 25 in the `train-env` session on the installed engine 0.2.0, before the binding was rebuilt for spec 009. The recommendation of criterion 15 (0.01 stays) is the user's to decide: Batch 21.
+Status: **done** (2026-11-25). Committed as `931d7d4` after the main session's check of the numbers and a separate review pass, whose fourteen points are fixed (see "Review fixes"). Approved 2026-11-24 (D146); executed on 2026-11-24 and 25 in the `train-env` session on the installed engine 0.2.0, before the binding was rebuilt for spec 009. The user took the recommendation of criterion 15: 0.01 stays (D153).
 
 Tool and model: Claude Code. Drafted by the main session with claude-fable-5-2; executed in the `train-env` session with claude-fable-5-2; the review fixes of 2026-11-25 with claude-opus-5-5 (D152).
 
