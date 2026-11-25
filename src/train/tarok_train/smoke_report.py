@@ -75,14 +75,15 @@ def report(folder: Path) -> str:
         say(f"| Decisions trained per second | {summary['trained_per_second']:,.0f} |")
         say(f"| Share of played decisions trained on (all seats' decisions count as played) | {summary['trained_share']:.1%} |")
         say(f"| The same against the decisions of the current network's seats only | {summary['trained_share_own_seats']:.1%} |")
-        say(f"| GPU before | {summary['gpu_before']} |")
-        say(f"| GPU after | {summary['gpu_after']} |")
+        # An empty reading: nvidia-smi gave nothing the trainer could read (spec 015).
+        say(f"| GPU before | {summary['gpu_before'] or 'not read'} |")
+        say(f"| GPU after | {summary['gpu_after'] or 'not read'} |")
         split = ", ".join(f"{name} {share:.1%}" for name, share in summary["time_shares"].items())
         say(f"| Time split (criterion 10) | {split}; together {summary['time_shares_sum']:.1%} |")
         say(f"| Peak GPU memory of the run's tensors (criterion 11; `max_memory_allocated`) | {summary['peak_gpu_memory_mib']} MiB |")
         say(f"| Peak GPU memory held by PyTorch's allocator (`max_memory_reserved`) | {summary['peak_gpu_memory_reserved_mib']} MiB |")
         used = (summary["gpu_after"] or {}).get("memory_used_mib")
-        say(f"| Memory in use on the whole card at the end, all programs (nvidia-smi) | {used} MiB |")
+        say(f"| Memory in use on the whole card at the end, all programs (nvidia-smi) | {'not read' if used is None else f'{used} MiB'} |")
     for what in ("decisions", "tokens"):
         mean = series(f"rollout/{what}_per_seat_deal_mean")
         largest = series(f"rollout/{what}_per_seat_deal_max")
@@ -139,10 +140,18 @@ def report(folder: Path) -> str:
         result = _load(path)
         who = "untrained network" if result["checkpoint"] is None else f"`{result['checkpoint']}`"
         say()
+        if "beats_random" in result:
+            verdict = f"Beats random: {'yes' if result['beats_random'] else 'no'}."
+        elif result["above_zero"]:  # a checkpoint as the opponent (spec 015)
+            verdict = "The whole interval is above zero."
+        elif result["below_zero"]:
+            verdict = "The whole interval is below zero."
+        else:
+            verdict = "The interval includes zero."
         say(
             f"Evaluation, {who}: {result['deals']} deals in four seatings against {result['opponents']}, seed {result['seed']}. "
             f"Mean reward per deal {result['mean']:+.4f}, 95% interval {result['low']:+.4f} to {result['high']:+.4f}. "
-            f"Beats random: {'yes' if result['beats_random'] else 'no'}. "
+            f"{verdict} "
             f"Records: {result['records_replayed_equal']} of {result['records_exported']} replay to the same entries."
         )
     return "\n".join(lines)

@@ -18,6 +18,7 @@ checkpoint_every = 1      # test size: a checkpoint after every update, for the 
 out_dir = "runs"          # under src/train; not tracked by git (spec 008: nothing is released)
 time_limit_minutes = 10   # test size: far above what two updates take
 fault = "none"            # spec 008, criterion 8: the control run sets "rewards_to_next_seat" with --fault and a name that starts with "control-"
+gpu_memory_limit_mib = 0  # spec 015: limit of PyTorch's allocator on the GPU in MiB, 0 = no limit; the test config runs on the CPU
 
 [env]
 kind = "engine"           # spec 008: the Rust engine through tarok_train/env.py (spec 006), deal flow A

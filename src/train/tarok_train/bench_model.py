@@ -41,6 +41,7 @@ import argparse
 import datetime
 import gc
 import json
+import math
 import re
 import statistics
 import subprocess
@@ -522,8 +523,10 @@ QUICK_BATCHES = {key: ((4,), (4,)) for key in GPU_BATCHES}
 
 
 def gpu_snapshot() -> dict:
-    """GPU load and memory right now, from nvidia-smi. Empty if nvidia-smi is missing.
+    """GPU load and memory right now, from nvidia-smi.
 
+    Empty if nvidia-smi is missing, hangs, or prints something this code cannot read.
+    The caller says so (spec 015): an empty reading must not pass for a reading.
     Numbers only. Process names are not recorded: the result files are committed.
     """
     try:
@@ -537,12 +540,17 @@ def gpu_snapshot() -> dict:
             text=True,
             timeout=20,
         ).stdout.strip()
-        util, used, total, temp = (int(part) for part in line.split(","))
+        # One card, one line of four numbers. Two cards print two lines: that is not read (README).
+        util, used, total, temp = (part.strip() for part in line.split(","))
+        # Some driver versions print the temperature with decimals ("54.30"), others whole ("54").
+        temperature = float(temp)
+        if not math.isfinite(temperature):  # float() reads "nan" and "inf"; JSON has no such number
+            raise ValueError(f"temperature {temp!r}")
         return {
-            "utilization_percent": util,
-            "memory_used_mib": used,
-            "memory_total_mib": total,
-            "temperature_c": temp,
+            "utilization_percent": int(util),
+            "memory_used_mib": int(used),
+            "memory_total_mib": int(total),
+            "temperature_c": temperature,
         }
     except (OSError, ValueError, subprocess.SubprocessError):
         return {}

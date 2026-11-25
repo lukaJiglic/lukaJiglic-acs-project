@@ -21,7 +21,7 @@ Built so far: the pinned environment, the GPU check, a PyO3 probe and a throughp
 | `tarok_train/env.py` | The real environment: the Rust engine behind the mock's interface (`EngineEnv`, `make`), and the environment-only benchmark. |
 | `tarok_env/` | Rust crate with the PyO3 bindings of the engine (`src/engine`). Built with maturin into the venv as the module `tarok_env`. |
 | `tarok_train/train.py` | The loop on the mock or the engine, config check, checkpoints, TensorBoard logs, `run-info.json` and `summary.json` per run. |
-| `tarok_train/evaluate.py` | A checkpoint against random legal play on seeded deals, with a 95% interval; exports game records. |
+| `tarok_train/evaluate.py` | A checkpoint on seeded deals, against random legal play or against another checkpoint (`--opponent`, spec 015), with a 95% interval; exports game records. |
 | `tarok_train/smoke_report.py` | Reads the files of a run folder and prints the numbers of spec 008 as Markdown. |
 | `configs/` | One TOML file per run (D79). Every hyperparameter is in the file; the code has no defaults. `mock.toml` (spec 007), `smoke-a-mlp.toml`, `smoke-a-transformer.toml` and the small `smoke-a-ci.toml` for the tests (spec 008). `long-a-mlp.toml` and `long-a-transformer.toml`: the same runs with 2,000 updates (spec 014). |
 | `runs/` | Checkpoints and TensorBoard files of local runs. Not tracked by git. |
@@ -162,7 +162,17 @@ A run writes into its folder under `src\train\runs\`:
 
 A run stops with exit code 3 when it passes `time_limit_minutes` and is reported as not finished. A logged number that is not finite stops the run with an error; `summary.json` then names it and counts only the updates before it.
 
-More training options for these runs: `--name`, `--fault` and `--time-limit-minutes`, each overriding the value of `[run]`.
+More training options for these runs: `--name`, `--fault`, `--time-limit-minutes` and `--gpu-memory-limit-mib`, each overriding the value of `[run]`.
+
+**The limit on GPU memory (spec 015).** `[run] gpu_memory_limit_mib` limits PyTorch's allocator on the GPU to that many MiB; 0 is no limit. Use it for the transformer on the 6 GB card:
+
+```bat
+python -m tarok_train.train --config src\train\configs\smoke-a-transformer.toml --gpu-memory-limit-mib 5000 --name limit-test
+```
+
+Why it is needed. On Windows the driver does not refuse memory above what the card has free: it places the excess in shared system memory, and the run slows down without an error. PyTorch's allocator keeps freed blocks as a cache, and in the transformer run that cache grew past the card (measured: tensors 2.2 GB between the phases and 4.4 GB at their peak, allocator up to 6.5 GB, spill from about 5.4 GB on). With the limit the allocator frees its cache and retries when a new block would pass the limit. Only if the tensors themselves do not fit does the run stop with an out-of-memory error; then raise the limit or resume. The limit changes nothing that is trained. It holds for the whole process and is printed at the start of a GPU run. It is set before anything is put on the card, also on `--resume`. A limit a little above what PyTorch reports as the card's size (6,143.7 MiB for this card of 6,144 MiB) is read as the whole card; more than 1% above is refused. If one process runs a trainer with a limit and then one without, the second sets the limit back to the whole card and says "lifted": that is the widest setting PyTorch takes, and it is not the same as a process that never set a limit, where the driver may hand out more than the card has.
+
+The value. 5,000 MiB is measured for 512 tables and 2,048 seat-deals per update on the GTX 1660 SUPER with under 700 MiB of other programs on the card. Other sizes or another card need their own value: above the tensors' peak (`gpu/peak_memory_mib`) and under what the card has free. The config files of the finished runs (`smoke-a-*.toml`, `long-a-*.toml`) keep 0, the value those runs had. A checkpoint from before the key existed is read as 0, and `--resume` takes `--gpu-memory-limit-mib` to set one. A config file without the key is refused, like any missing key.
 
 Evaluate a checkpoint against random legal play, then the same network before its first update:
 
@@ -172,6 +182,18 @@ python -m tarok_train.evaluate --checkpoint src\train\runs\<run folder>\checkpoi
 ```
 
 Every deal is played four times, with the agent in each seat and random legal play in the other three. The value of a deal is the mean of the agent's four rewards. The output is the mean over the deals and its 95% interval; "beats random" means the whole interval is above zero. The result goes to `evaluation-NNNNNN.json` (or `evaluation-untrained.json`) in the run folder. `--records 100` writes 100 of the deals as game records into `records-NNNNNN\` and replays each one. The deals are played in chunks of `--tables` tables; chunk c uses the engine seed `--seed` + c. No chunk may use the seed of the training run, or its deals would be deals the agent trained on: such a call is refused.
+
+Evaluate a checkpoint against another checkpoint (spec 015). Checkpoint A plays one seat, checkpoint B the three others, each deal in four seatings:
+
+```bat
+python -m tarok_train.evaluate --checkpoint src\train\runs\<run folder of A>\checkpoint-002000.pt --opponent src\train\runs\<run folder of B>\checkpoint-000200.pt --deals 2000 --seed 5151
+```
+
+Both sample from their policy, each from its own seeded generator (`--seed` for A, `--seed` + 1 for B). The value of a deal is the mean of what A's seat earns in the four seatings. Above zero means: one seat of A among three seats of B earns more than a seat of B does there. A checkpoint against itself has an expected value of zero: its 95% interval includes zero for about 19 of 20 seeds, not for every seed.
+
+The result goes to `evaluation-NNNNNN-vs-<run folder of B>-MMMMMM.json` next to A (N: A's updates, M: B's updates), and `--records` to a folder `records-...` of the same name. The run folder carries the date and time of the run, so two runs with one name (one config, several seeds) give two files. The files of the evaluation against random play are never replaced. The same pair with another `--seed`, `--deals` or `--tables` has the same file name: such a call is refused with one line that names the file, unless `--overwrite` is given. The file holds both checkpoints, the seed, the deals, `tables` and `threads`. Refused with one line: a path that is no checkpoint; a checkpoint of a run on the mock environment; an opponent of another encoding version; a `--seed` whose chunks hold the training seed of A or of B. The two networks may be of different kinds and sizes (a transformer against an MLP); each plays with the model config of its own checkpoint.
+
+The random numbers. Each network draws from one generator for the whole evaluation, so no chunk of deals and no seating gets the numbers of another one. The result does not depend on `--threads`. It does depend on `--tables`, which sets what a chunk is. Until 2026-11-24 every chunk and every seating started again from the same seed. The deal values of one table index were then tied to each other (correlation +0.72 for a network after two updates against itself) and the interval was too narrow for policies that depend little on the cards. For the trained checkpoints of specs 008 and 014 the tie is under 0.03, and their intervals stand. An evaluation repeated now does not give the digits of a file made before that date. This holds for the evaluation against random play too: its file has the same name as before and is replaced as before.
 
 The numbers of a run for the spec's Results, as Markdown:
 
@@ -198,7 +220,8 @@ Monitors on real deals (TensorBoard tags, one value per update):
 | `time/environment_share`, `time/acting_share`, `time/bookkeeping_share`, `time/update_share` | Where the wall time of the update went. |
 | `aux/partner_accuracy`, `aux/partner_guess`; `aux/card_accuracy`, `aux/card_guess` | Accuracy of the two auxiliary heads, each next to what a uniform guess over the places still possible would get. |
 | `reward/deal_sum_abs_max`, `env/illegal_actions` | Both must be 0: the four rewards of a deal add up to zero, and the engine refused no action. |
-| `gpu/peak_memory_mib`, `gpu/peak_memory_reserved_mib` | GPU runs only, peak so far. The first is the largest sum of the run's tensors (`torch.cuda.max_memory_allocated`). The second is what PyTorch's allocator held from the card for them (`max_memory_reserved`); it is the larger one and the one that must fit. `summary.json` has both, and under `gpu_before` and `gpu_after` what `nvidia-smi` shows for the whole card, every program on it. |
+| `gpu/peak_memory_mib`, `gpu/peak_memory_reserved_mib` | GPU runs only, peak so far. The first is the largest sum of the run's tensors (`torch.cuda.max_memory_allocated`). The second is what PyTorch's allocator held from the card for them (`max_memory_reserved`); it is the larger one and the one that must fit. `summary.json` has both, and under `gpu_before` and `gpu_after` what `nvidia-smi` shows for the whole card, every program on it: load in percent, memory used and total in MiB, temperature. If `nvidia-smi` gives nothing the trainer can read, the reading is empty (`{}`) and the trainer prints one line that says so (spec 015). The reading is for one card: a PC with two cards prints two lines, which is not read, so every run there has an empty reading. A temperature that is not a number ("nan") is not a reading either. |
+| `gpu/reserved_after_acting_mib`, `gpu/allocated_after_acting_mib`, `gpu/reserved_after_update_mib`, `gpu/allocated_after_update_mib` | GPU runs only, the size at that moment, not a peak (spec 015). Read twice per update: when acting is over (the acting cache is at its largest), and when the update step is over. "reserved" is what PyTorch's allocator holds from the card (`torch.cuda.memory_reserved`), "allocated" the tensors in it (`memory_allocated`). The difference is the allocator's cache: memory it keeps for reuse. |
 
 The entropy controller (D127) is set in `[entropy_control]` of the config. It keeps one entropy weight per phase. After every update, for each phase that had decisions:
 

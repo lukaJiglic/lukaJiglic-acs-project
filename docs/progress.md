@@ -12,6 +12,85 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 **Next:** the next step.
 ```
 
+## 2026-11-25 — after a usage-limit stop: D150 built, Batch 20 answered, spec 017's runs ended (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 9)
+
+**Done:** the user answered Batch 19 (D150, evening of 24 November) and Batch 20 (D151). The `engine-core` session built D150 on the branch `spec-009` (`d2e4c1b`; by its report 235 tests, 71 planted wrong rules caught, the `engine` workflow green). While checking it found that case (iii) of D148 was no longer true next to D150 and corrected it, and that "two seats shown as opponents, so the third is the partner" does not follow. A second separate review pass over the code that works out the public sides was ordered. The usage limit stopped the `train-env` session and that review at about 21:00; both are resumed today.
+**Spec 017, state from the files, not yet the Results:** all seven runs reached 500 updates (six MLP runs between 19:14 and 20:45, the transformer run from 20:47), and the evaluations finished.
+**Found:** the program that took 3 to 5 GB of the card in bursts is a headless browser started by a video render of another project of the user's on this PC. A watcher of the main session saw it at 21:15 to 21:21, during the transformer run. It probably also was the "other program" of the runs of spec 014 and of the first measurement of spec 015, which had been put down to Blender.
+**Broken or open:**
+- All six MLP runs of spec 017 are disturbed in speed; their checkpoints are used (criterion 5).
+- The limit of spec 015 does not protect a run against another program on the card.
+- A seat shown as an opponent that has announced nothing is not in the state vector, which is all the MLP control reads. For the training spec of flow B.
+**Next:** the Results of spec 017, verification, review pass, commit. Then the rebuild of the binding (stage (d) of spec 009), the review findings, the merge. Then specs 018 and 016.
+
+## 2026-11-24 — spec 015 committed; spec 017 started (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log rows 8, 8b, 8d)
+
+**Done:** the `train-env` session fixed the eight points of the review, tests first (23 new tests failed on the code as it was). The defect: one generator per network for the whole evaluation; on the reviewer's recipe the correlation of deal values across chunks fell from +0.72 to −0.005, and `test_c15` now checks the control over 20 seeds. Checked by the main session: the not-slow suite with the GPU on the fixed code, 222 passed; the table of the twelve pairs rerun from the fixed code (all overlap the scratch intervals and those of the code before the fix; the largest correlation across chunks is 0.042). Committed as `65cc565` (code, tests, configs, README, Results) and pushed; `ci`, `engine` and `train` are green on it. Spec 015 is done.
+**Measurements of spec 015 (details in its Results):**
+- The transformer's excess memory sits in Windows shared GPU memory and starts at an allocator size of about 5,400 MiB.
+- With `gpu_memory_limit_mib = 5000`, 200 updates of `smoke-a-transformer.toml`: allocator's peak 4,910 MiB, median 8.35 s per update over the updates 101 to 200 (smoke run 9.82), update step 4.09 s (4.48). Against random legal play +0.5997 (+0.5914 to +0.6080) with the fixed evaluation; +0.6015 before the fix; smoke run +0.6049.
+- The twelve pairs from committed code, seed 5151: both controls include zero; transformer 2,000 against its update 200 +0.1205 (+0.1032 to +0.1378); MLP 2,000 among three transformer 2,000 seats −0.0596 (−0.0709 to −0.0483).
+**Broken or open:**
+- One commit holds all three parts; the spec planned three. The parts share `train.py` and one test file.
+- The commit's trailer names ai-log row 8a. That is wrong: the work is row 8b (the side sessions) and row 8 (verification).
+- `test_c20` of spec 006 is load-dependent on this PC: it failed in two of the main session's four runs today (both while a review agent ran its own tests) and, by its report, three of three for the `train-env` session on the idle PC. Not from this diff. Still open.
+- The intervals of the untrained network against random play in spec 008 are too narrow by a factor of about 1.3 (the old seeding). The numbers of spec 008 are not changed.
+- No config sets the limit of 5,000 MiB yet. Batch 19, item 2, asks for it in the trial of spec 017.
+**Next:** spec 017 in the `train-env` session (the MLP runs first). The user's answers to Batch 19. Then the rebuild of the binding and the merge of spec 009, spec 018, spec 016.
+
+## 2026-11-24 — spec 015 verified; its review pass; spec 009 at `6bce5d8` (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 8)
+
+**Done:** the `train-env` session reported spec 015 executed. The main session read the numbers of criteria 7 and 8 from the run files (`src/train/runs/spec015/c7-smoke-limit5000-transformer`, not tracked): median 8.347 s per update over the updates 101 to 200 (smoke run of spec 008: 9.818), update step 4.086 s (4.477), allocator's peak 4,910 MiB (5,156), no illegal action, +0.6015 (+0.5931 to +0.6099) against random legal play (smoke run: +0.6049, +0.5968 to +0.6130). The not-slow suite with the GPU, run by the main session: 204 passed, 1 failed; the failure is `test_c20` of spec 006 under load from the review agent's own test run, and it passes alone. A separate agent reviewed the uncommitted diff; its CPU run of the not-slow suite: 194 passed, 11 skipped.
+**Review findings, sent to the `train-env` session; nothing is committed before they are fixed:**
+- A defect in the evaluation with a checkpoint as opponent: the sampling noise of both networks is seeded anew, with the same seed, in every seating and chunk. For a policy that reads the cards weakly the deal values are then not independent and the 95% interval is too narrow. The reviewer measured the recipe of `test_c15` on 20 seeds: the control's interval excludes zero in 8 of 20. In the files of the twelve pairs and of all trained checkpoints the effect is within ±0.03 correlation, so those intervals stand; for the untrained network against random play (spec 008) the standard error was understated 1.3 to 1.4 times. The seeding of the agent was there before spec 015.
+- No test has the two checkpoints of different kinds or model configs; two wrong changes survive. The code is right by the reviewer's hand check.
+- Evaluation files of the same pair with another seed, or of two opponents with one run name, overwrite each other.
+- Lesser: the limit is set after a resumed checkpoint is on the card; a limit of 0 does not lift an earlier limit in one process; a limit equal to the card's size may be refused; `nan` passes as a temperature; a wrong path ends in a traceback.
+**Not covered by the review:** nothing ran on the GPU; the measured numbers of the Results were not derived again by the reviewer (the main session read those of criteria 7 and 8).
+**Spec 009:** the branch `spec-009` is at `6bce5d8`: D147, D148 and the tests the review asked for; 233 engine tests, 64 planted wrong rules caught, the `engine` workflow green (session's report and the workflow list). The new code gets a review pass with stage (d). Its question 4 is Batch 19, item 1.
+**Broken or open:** both sessions and the review agent were stopped once more by the usage limit and resumed.
+**Next:** the fixes of spec 015, then its commits; then spec 017. The user's answers to Batch 19.
+
+## 2026-11-24 — Batches 17 and 18 answered; spec 018 approved (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 8)
+
+**Done:** the user answered Batch 17 (D148) and Batch 18 (D149) with a for every item. Spec 018 (first runs on flow B: monitors of the round, a silent random opponent, two runs of 200 updates, a rule fixed beforehand for when the flood of announced valats counts as ended) is drafted and approved. The three more cases of the public partner and the guard by engine version (criterion 53) went to the `engine-core` session for spec 009.
+**Broken or open:** nothing of specs 009 and 015 is verified or merged yet. The timed 200-update run of spec 015 started at about 13:40.
+**Next, in the order of the GPU work:** spec 015 (report, verification, review pass, commits), spec 017, the rebuild of the binding and the merge of spec 009, spec 018, spec 016.
+
+## 2026-11-24 — review pass over spec 009 (separate agent; ordered and read by the main session; ai-log row 8)
+
+**Done:** a separate agent reviewed `719a968..5f198bc` of the branch `spec-009` in an export of its own. Result: no rule defect against the spec in criteria 1 to 44, 50 and 51. It ran `cargo test` (231 passed), `fmt` and `clippy`; computed the examples of criteria 30 and 31 by hand; ran seven scoring cases of its own with hand-computed results (all match); planted 16 wrong rules. The findings went to the `engine-core` session.
+**Findings:**
+- Tests, hidden partner: a wrong rule that makes the true partner public on a non-declarer's re on a bonus fails no named test, only a coverage counter. The no-leak test changes the partner in 50 of 9,352 cases.
+- Tests, scoring: an announced king or pagat played early, and a talon card next to an opponent's announced trula or kralji, are held only by the second scorer on random deals. The second scorer has the same shape as `score.rs`.
+- The bound of 187 actions per deal is argued, not walked by a test.
+- A checkpoint of the engine 0.2.0 passes the trainer's guard on 0.3.0 (Batch 17, item 2).
+- With uniform random legal actions a valat is announced in 19,806 of 20,000 deals; the mean entry of the declarer is 4,462 points (Batch 17, item 3).
+- Three more cases in which the sides follow from what was said (Batch 17, item 1).
+**Not covered by the review:** Python, the binding build, the GPU, the workflows; pagat.com was not read again; 16 wrong rules, not the 30 of criterion 49 (the session's own run has 52).
+**Broken or open:** the review agent's `cargo test` ran while the `train-env` session had a timed run going. The engine session now reads the card before every build.
+**Next:** the engine session closes the weak tests and builds the fifth case of D147. The user's answers to Batch 17.
+
+## 2026-11-24 — reports on specs 009 and 015; Batches 15 and 16 answered (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 8)
+
+**Done:** the `engine-core` session reported spec 009 built as far as Rust goes on the branch `spec-009` (last commit `dd012d9`). Checked by the main session from the branch: a test exists for each of the criteria 1 to 44, 50 and 51; the `engine` workflow is green on the branch tip; no `unsafe`; the version is 0.3.0. From the session's Results, not checked again: 231 engine tests, 52 of 52 planted wrong rules caught, 87.5 decisions per random deal (56.8 in flow A), 35% of them in the round. The user answered Batches 15 and 16 with a for every item (D146, D147): specs 016 and 017 are approved.
+**Spec 015, from the session's interim notes, not verified:** the twelve comparisons ran from committed code and agree with the scratch numbers. With a limit of 5,200 MiB on the allocator nothing spills into shared memory and the update step stays at 4.1 to 4.3 s (long run: 5.2 to 5.8 s). A trial with 5,000 MiB was running at 13:12.
+**Broken or open:**
+- The review agent's `cargo test` ran at 13:12 to 13:20, at the start of that trial. Its first updates are disturbed in timing. The main session runs no build during a timed run from now on.
+- Spec 009: criteria 45, 46 and the Python side of 52 need the module build. The review pass over its code is not back.
+- Flow B and rewards: a lost announced valat at mort is a reward of −160. Random play announces valat in about 40% of deals. For the training spec of flow B.
+**Next:** the review findings to the `engine-core` session, with the fifth case of D147. Spec 015: report, verification, review pass, commits. Then spec 017, then the rebuild and the merge of spec 009, then spec 016.
+
+## 2026-11-24 — after the usage limit: sessions restarted; specs 016 and 017 drafted (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 8)
+
+**Done:** both side sessions had stopped at the usage limit; both were started again after its reset. A review pass over the engine code of spec 009 (commits `719a968..5f198bc` of the branch `spec-009`) was ordered from a separate agent. Specs 016 and 017 drafted from D142 and asked as Batch 15.
+**State of the side sessions, from their notes, not verified:**
+- Spec 009: stages (a), (b), (c), (e) and the property tests of (d) are on the branch `spec-009`, seven commits, 231 engine tests. The wrong-rule run stood at 41 of 52 and the Results section was not in the spec.
+- Spec 015: part A done; part C done on the CPU, its twelve comparisons queued for the card; part B: the excess of the transformer's allocator sits in shared GPU memory and starts at about 5,400 MiB of allocator size, at update 3. About 2 GB of the allocator is cache. Another program of the user's (Blender) took about 500 MiB of the card from update 29 of that measurement; four updates then took 24 to 503 s.
+**Found while drafting (checked in `train.py`):** the trained deals are not a fair sample of the played deals. A deal is stored only when it starts and ends inside one collection, so short deals are stored more often. Not measured; criterion 17 of spec 016 measures it.
+**Broken or open:** after spec 009 the engine plays the round of announcements in every deal. There is no switch back to flow A. Runs after the merge are not comparable with the runs of specs 008 and 014. This sets the order of spec 017 (Batch 15, item 5).
+**Next:** the reports of both sessions; verification, review pass, commits (D144). The user's answers to Batch 15.
+
 ## 2026-11-24 — Batches 13 and 14 answered; spec 009 approved and handed out; the repo public (session 3, Claude Code 2.1.306, claude-fable-5-2; ai-log row 8)
 
 **Done:** the user answered Batch 13 (D141) and Batch 14 (D142), approved spec 009 (D143), dropped the question before every commit (D144) and ordered the repo public (D145). Spec 009 carries the answers: criterion 17 is now free play (B13-3 b, against the recommendation), and criteria 50 to 52 add the hold flag for aligned updates. The repo was made public with the GitHub CLI after a check for secrets. Spec 009 went to the `engine-core` session on the branch `spec-009` in its own worktree. CI is green on `bb917ce`; spec 014 is done (`7206f9d`).

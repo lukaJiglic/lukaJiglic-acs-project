@@ -38,6 +38,17 @@
 - 2026-11-24, later: the longer run ended at 08:12 (both networks 2,000 updates; +0.619 and +0.617 against random legal play). Verified, reviewed, committed on the user's go-ahead (D139). The user ordered an analysis of the training, proposals for improvements, fixes of the problems found, and to go on with development (D140). The fixes are spec 015. The message does not answer Batch 13.
 - 2026-11-24, later: the analysis of the run is in spec 015. One checkpoint against another shows what random play hid: both networks were still improving at update 2,000 and the transformer is ahead of the MLP. Spec 015 (the GPU reading, the transformer's memory, a checkpoint as opponent) is in the `train-env` session. Batch 14 below holds the improvements that are not fixes.
 - 2026-11-24, later: Batch 13 answered (D141; 3 b against the recommendation: no duty to keep an announced ultimo card), Batch 14 answered (D142, all a), spec 009 approved (D143). Claude no longer asks before every commit (D144). The repo is public (D145).
+- 2026-11-24, afternoon: both side sessions stopped at the usage limit and were started again after its reset. Spec 009 has stages (a), (b), (c), (e) and the property tests on the branch `spec-009` (231 engine tests); the wrong-rule run and the Results are left. Spec 015 has parts A and C done; part B found the excess in shared GPU memory, from about 5,400 MiB of allocator size. Specs 016 (aligned updates) and 017 (the trial of the lower entropy limit) are drafted from D142; Batch 15 below.
+- 2026-11-24, 13:20: the `engine-core` session reported spec 009 built as far as Rust goes (branch `spec-009`, last commit `dd012d9`; 231 engine tests; 52 of 52 planted wrong rules caught; the `engine` workflow green on the branch). Open: criteria 45, 46 and the Python side of 52, which need the module build. Its three questions are Batch 16 below. The `train-env` session reported the twelve comparisons of spec 015 done from committed code and the first memory trial: with a limit of 5,200 MiB on the allocator nothing spills and the update step stays at 4.1 to 4.3 s. Neither report is verified yet.
+- 2026-11-24, 13:25: Batches 15 and 16 answered, a for every item (D146, D147). Specs 016 and 017 are approved. Order of the GPU work: spec 015, then spec 017 on the engine 0.2.0, then the rebuild of the binding for spec 009 and its merge, then spec 016.
+- 2026-11-24, 13:40: the review pass over spec 009 is back: no rule defect; weak tests and two points for the user. Batch 17 below.
+- 2026-11-24, 13:50: Batch 17 answered, a for every item (D148). Spec 018 (first runs on flow B) is drafted; Batch 18 below. The timed 200-update run of spec 015 is going since about 13:40.
+- 2026-11-24, 13:55: Batch 18 answered, a for every item (D149). Spec 018 is approved. Order of the GPU work: spec 015, spec 017, the rebuild and merge of spec 009, spec 018, spec 016.
+- 2026-11-24, evening: spec 015 is executed and verified from its run files; its review pass was cut by the usage limit and resumed. Spec 009 is at `6bce5d8` on its branch (D147, D148 and the review's tests built; 233 tests). Batch 19 below.
+- 2026-11-24, 19:10: spec 015 is committed as `65cc565` after the review fixes; CI green. Spec 017 is handed to the `train-env` session: the MLP runs first; the transformer run waits for Batch 19, item 2.
+- 2026-11-24, evening: Batch 19 answered, a for both (D150). The `engine-core` session builds the seat shown as an opponent on the branch; the `train-env` session runs spec 017 (the MLP runs are queued, the transformer run follows with the limit of 5,000 MiB).
+- 2026-11-24, 21:00: the `engine-core` session built D150 (branch `spec-009` at `d2e4c1b`, 235 tests, 71 wrong rules caught, the `engine` workflow green; its report, not verified). While checking it found that case (iii) of D148 was no longer true next to D150 and corrected it. It found two more conclusions of the same kind and did not build them: Batch 20. A second review pass, over the code that works out the public sides, is ordered. Spec 017: the six MLP runs are done; all six count as disturbed in speed, because a headless browser (`chrome-headless-shell`, Playwright) took 3 to 5 GB of the card in bursts. What starts it is not known.
+- 2026-11-25, 15:10: Batch 20 answered, a for both (D151). The usage limit stopped the `train-env` session and the second review pass on the evening of 24 November; both are resumed. All seven runs of spec 017 and their evaluations had finished before; the Results are not written yet. The headless browser is a video render (Remotion) of another project of the user's on this PC; it ran during the transformer run of spec 017 too.
 - **Waiting on the user, to decide:** C13 (the new figure of G3; better after spec 015); C16 (which entropy mean the controller steers on); the open points A, B and D of spec 014; later C14.
 - **Dates:** the repo must be public or shared with the instructor on Mon 23 Nov (R5); it is private on 2026-11-23. The proposal, wireframe and pitch slide were due Wed 18 Nov; the files hold no record that they were handed in.
 - **Waiting on the user:** corrections to the wireframe and `pitch.md`; the proposal format. Later: C13 (the new figure of G3, after the smoke run), C14 (tier of the trula toggle).
@@ -57,6 +68,75 @@ Open:
 - **C13. The new figure of G3** (D128). Measured in spec 008, end to end on this PC with 512 tables and two epochs: transformer 6,506 decisions played per second and 3,194 trained; MLP 34,743 and 17,050. (a) at least 5,000 decisions played per second with the transformer; (b) at least 6,000 played; (c) at least 3,000 trained. Recommended: (a); it is met with a margin of 30%, which flow B's longer sequences will use up in part. Asked 2026-11-12.
 - **C16. Which entropy mean the controller steers on.** Now: the mean over all decisions of a phase, forced ones included. In the smoke runs the share of forced decisions in the bidding went from 28% to 0%, so the mean moved without the policy getting firmer or looser. (a) the mean over decisions with two or more legal actions, with the targets set again as a quarter of random play under that mean; (b) keep the mean over all decisions. Recommended: (a). Asked 2026-11-12.
 - **C14. Tier of S40's other option** ("in any order"). Recommended: like S14 and S18 in D98: selectable in T0 with the note "agent ni učen s tem pravilom". Asked when the engine gets its toggles.
+
+## Batch 20 — a standing rule for what all know about the sides (asked 2026-11-24, answered 2026-11-25: a for both; see D151)
+
+Four times today the user chose that the engine shows a fact about the sides when it follows from what was said (D147, D148, D150). The engine session has found two more. The first option is the recommendation.
+
+| # | Question | Options | Recommended, and why |
+|---|---|---|---|
+| B20-1 | A standing rule instead of a question each time. The new case: a seat says re on a bonus that was announced by a seat already shown as an opponent. Only that bonus's own side may say re, so this seat is an opponent too | (a) standing rule: the engine shows every fact about the sides that every seat can work out strictly from what was said and from who may say what. The engine session checks each case with two deals that look the same from outside before it builds it, and reports it; it does not ask. This case is built under the rule. (b) build this case and keep asking for each further one. (c) stop here: this case and later ones are left to the network | a: the user's four answers follow this rule already, and each further case costs a round of asking. The check stays: a case that does not follow strictly is not built |
+| B20-2 | What only one seat can work out. Example: a declarer without the called king sees two seats shown as opponents and knows, alone, that the third seat is its partner. The other seats cannot know it | (a) the engine does not use private conclusions; the network may draw them. (b) the engine uses them for that seat's legal actions and observation | a: such a conclusion depends on the seat's own cards, so what that seat then does would tell the others about its cards in a way that is hard to check for leaks. The engine session recommends leaving it too |
+
+Noticed, no decision asked now: a seat shown as an opponent that has announced nothing appears in the legal actions and the tokens, but not in the state vector. The MLP control reads only the state vector. For the training spec of flow B.
+
+## Batch 19 — a seat shown as an opponent; the memory limit in the trial (asked 2026-11-24, answered 2026-11-24: a for both; see D150)
+
+The first option is the recommendation.
+
+| # | Question | Options | Recommended, and why |
+|---|---|---|---|
+| B19-1 | Found by the engine session while it checked the cases of D148. A seat that says kontra on the game, or on a bonus the declarer announced, is an opponent, and every seat sees it. The engine does not use this. Example: D says kontra on the game and then announces trula. The declarer does not hold the called king and the partner is hidden. At the table the declarer knows the trula is the opponents' and may say kontra on it; in the engine it may not | (a) the engine keeps "shown as an opponent" per seat: a seat may raise a bonus of such a seat, the observation shows that seat's announcements on the opponents' side, and when all three other seats are shown so, the declarer is publicly alone. Built now on the branch, before the merge. (b) the same, built after the merge as a spec change. (c) leave it | a: the same reason as D147 and D148. Before the merge, because it changes who may say kontra; built later it would change the game under the first runs on flow B (spec 018). The engine session has the time while spec 017 holds the card |
+| B19-2 | Spec 017, criterion 1, says the trial's transformer config differs from `long-a-transformer.toml` in four values only. Spec 015 has since added the key `gpu_memory_limit_mib`; the run of spec 014 had no limit and spilled into shared memory | (a) the trial's transformer config sets the limit 5,000 MiB; criterion 1 allows that key. (b) no limit, as in the run of spec 014 | a: the limit is a setting of the machine and changes no number of the training; without it the run is about a third slower. The MLP configs keep 0 |
+
+## Batch 18 — spec 018, first runs on flow B (asked 2026-11-24, answered 2026-11-24: a for all four; see D149)
+
+Spec 018 follows from D148 (B17-3 a). The first option is the recommendation.
+
+| # | Question | Options | Recommended, and why |
+|---|---|---|---|
+| B18-1 | Spec 018: the 24 acceptance criteria | (a) approve. (b) changes | a |
+| B18-2 | Spec 018 A: the target entropy of the phase "announcements". Today 0.25, a placeholder | (a) a quarter of the measured entropy of random legal play in the round. (b) 0.25 stays | a: the rule approved for the six other phases (D136) |
+| B18-3 | Spec 018 B: when "the flood ends by itself" | (a) over the updates 151 to 200 a valat is announced in under 5% of deals and the mean reward size is under 2. (b) other numbers | a: a good player announces a valat far less often than one deal in twenty; 2 is twice the reward size of flow A |
+| B18-4 | Spec 018 C: the length of the two runs | (a) 200 updates each. (b) 500 | a: as the smoke run of spec 008; about ten minutes for the MLP and under an hour for the transformer, estimated |
+
+## Batch 17 — after the review of spec 009 (asked 2026-11-24, answered 2026-11-24: a for all three; see D148)
+
+From the separate review pass over the branch `spec-009`. The first option is the recommendation.
+
+| # | Question | Options | Recommended, and why |
+|---|---|---|---|
+| B17-1 | Three more cases in which the sides follow from what was said, of the kind of D147. (i) A non-declarer says kontra on another non-declarer's bonus while the partner is hidden: it may do that only if it holds the called king, so it is the partner. (ii) A non-declarer says re on the declarer's bonus: only the declarer's side may, so it is the partner. (iii) The declarer says kontra on a non-declarer's bonus while the partner is hidden: it may only if it holds the called king itself, so it plays alone | (a) show the partner (or "alone") as public in all three. (b) leave them; only the five cases so far | a: the same reason as D147. The fact is public at the table; without it other seats are refused a re they could say by logic. The engine session checks the three cases against the code before it builds them |
+| B17-2 | A checkpoint made on the engine 0.2.0 passes the trainer's guard on the engine 0.3.0, because the guard reads the encoding version, which stays 1 (D141). But six state inputs that were always 0 are now 1, a phase and twelve slots are new, and the saved table state has another shape | (a) a guard by engine version: resuming such a checkpoint is refused with both versions named; the evaluation takes it as an opponent only with a flag and prints a warning. Built in stage (d) of spec 009. (b) raise the encoding version to 2. (c) leave it | a: the encoding contract did not change, the engine now fills what the contract reserved, so the version of D141 stays right; the guard names the real reason |
+| B17-3 | Training on flow B. With uniform random legal actions, which is about what an untrained network plays, a valat is announced in 19,806 of 20,000 deals and the game is under kontra in 19,552. The mean reward of the declarer is about 89 in size, against under 1 in flow A. Random legal play as the evaluation opponent does the same | (a) measure first: a spec "first runs on flow B" before the measurement of spec 016. 200 updates per network, with the rates of each announcement and kontra level and the sizes of the rewards per update. The evaluation gets a second fixed opponent: random legal cards, silent in the round. Remedies are proposed from the numbers. (b) change something before any run, for example a start bias toward "done". (c) a switch in the engine that turns the round off, so that a flow A mode exists | a: a lost valat is a strong signal and the network may drop it within a few updates; a 200-update MLP run takes minutes and shows it. (b) picks a remedy without a measurement. (c) is a rule switch to build and test for a state the product does not have |
+
+For information, no decision asked: no game record written by the engine 0.2.0 replays on 0.3.0, because every deal now has the round. This is what criterion 40 of spec 009 says (the error names both versions). The saved records of the run of spec 014 are of that kind.
+
+## Batch 16 — three readings found while building spec 009 (asked 2026-11-24, answered 2026-11-24: a for all three; see D147)
+
+From the Results of spec 009 on the branch `spec-009`. The code follows the spec as approved; each item would change it. The first option is the recommendation.
+
+| # | Question | Options | Recommended, and why |
+|---|---|---|---|
+| B16-1 | Rewards are 32-bit numbers. With a valat under kontra a reward is above 100 and its last place is about 1e-5, so "the four rewards add up to zero within 1e-6" no longer holds | (a) the room grows with the largest reward of the deal (as built). (b) rewards as 64-bit numbers through the binding and the trainer. (c) a smaller reward scale | a: the entries are whole numbers in the engine and stay exact there; only the scaled reward rounds. (b) changes array types on both sides for no gain in training |
+| B16-2 | A declarer who holds the called king announces kralj ultimo. Only the holder may announce it, so every seat then knows the declarer plays alone. Reading 3 of spec 009 names four cases in which the partner is public; this is not one of them, so the observation still shows the partner as hidden | (a) add it as a fifth case: the declarer is shown as alone. (b) leave it | a: it is public knowledge at the table; without it the network has to learn it from the token |
+| B16-3 | An announced pagat ultimo shows who holds the pagat; an announced kralj ultimo shows who holds the called king. The state features that track where cards can be (block F) do not use this | (a) use it, built with the training spec for flow B. (b) leave it; the token is in the sequence | a: block F exists so that the network does not have to work out such facts; no hurry, the engine's rules do not depend on it |
+
+## Batch 15 — specs 016 and 017 (asked 2026-11-24, answered 2026-11-24: a for all seven; see D146)
+
+Both specs follow from D142. Each needs the approval of its acceptance criteria (D73). The first option is the recommendation.
+
+| # | Question | Options | Recommended, and why |
+|---|---|---|---|
+| B15-1 | Spec 016, aligned updates: the 24 acceptance criteria | (a) approve. (b) changes | a |
+| B15-2 | Spec 016 A: the old collection | (a) keep it behind a config key `collection`. (b) remove it | a: the configs of specs 008 and 014 can still be run as they were, and the two modes can be compared |
+| B15-3 | Spec 016 B: the speed gate | (a) the transformer's update is at least 10% faster, else stop and report. (b) no gate, only the report | a: under 10% the change does not pay for a second code path. Estimate before the measurement: 14% to 23% |
+| B15-4 | Spec 017, the trial of the lower limit 0.001: the 18 acceptance criteria | (a) approve. (b) changes | a |
+| B15-5 | Spec 017 A: when the trial runs | (a) right after spec 015, on the installed engine 0.2.0, before the binding is rebuilt for spec 009. (b) after the merge of spec 009, on flow B | a: it compares with the checkpoints of spec 014, and the card is free while spec 009 is verified and reviewed. Cost: if spec 009 is ready first, its rebuild waits up to three and a half hours |
+| B15-6 | Spec 017 B: the seeds | (a) three MLP seeds per arm, one transformer seed. (b) one seed everywhere. (c) two transformer seeds per arm as well | a: the MLP runs take 15 minutes each and show how far two runs with the same settings lie apart; a second transformer pair costs about three more hours |
+| B15-7 | Spec 017 C: what follows when no difference is shown | (a) the limit 0.01 stays. (b) take 0.001 if the entropy of the play came closer to its target | a: no change of a setting without a measured gain |
+
+Noticed while drafting, no decision needed now: the lower limit is one value for all phases, so the trial lowers it for every phase. After spec 009 the engine plays the round of announcements in every deal, so the measurement of spec 016 is the first training on flow B; the look at flow B itself (reward size under kontra) is a spec of its own.
 
 ## Batch 14 — improvements after the longer run (asked 2026-11-24, answered 2026-11-24: a for all three; see D142)
 

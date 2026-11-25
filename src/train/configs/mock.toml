@@ -14,6 +14,7 @@ checkpoint_every = 100    # updates between checkpoints; one more at the end
 out_dir = "runs"          # under src/train; not tracked by git
 time_limit_minutes = 0    # spec 008: the run stops after this many minutes and is reported as not finished; 0 = no limit
 fault = "none"            # spec 008: a planted fault for control runs; refused unless the name starts with "control-"
+gpu_memory_limit_mib = 0  # spec 015: limit of PyTorch's allocator on the GPU in MiB, 0 = no limit; the key was added later, the mock runs of spec 007 had none
 
 [env]
 kind = "mock"

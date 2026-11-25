@@ -17,6 +17,7 @@ checkpoint_every = 50     # Claude's choice: four checkpoints per run
 out_dir = "runs"          # under src/train; not tracked by git (spec 008: nothing is released)
 time_limit_minutes = 90   # spec 008, settings of the run: a run that hits it is reported as not finished
 fault = "none"            # spec 008, criterion 8: the control run sets "rewards_to_next_seat" with --fault and a name that starts with "control-"
+gpu_memory_limit_mib = 0  # spec 015: limit of PyTorch's allocator on the GPU in MiB, 0 = no limit; the key was added later, this run (2026-11-12) had no limit
 
 [env]
 kind = "engine"           # spec 008: the Rust engine through tarok_train/env.py (spec 006), deal flow A
