@@ -12,6 +12,12 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 **Next:** the next step.
 ```
 
+## 2026-11-25 — spec 009 merged (session 3, Claude Code 2.1.306, claude-opus-5-5; ai-log row 10)
+
+**Done:** the `engine-core` session fixed the six points of the review of stage (d) and two more faults it found while checking them (`af92922`, Results `11d071e`; by its report 260 CPU and 14 GPU tests in the worktree's environment). The checks of pull request 1 on `11d071e` were green (engine twice, pytest-cpu, repo-checks). Merged by the main session on the user's word (D154) as `8a65214`, a merge commit with trailers; `check_trailers.py` and `check_skeleton.py` pass; pull request 1 shows merged. Spec 009 is done.
+**Broken or open:** the shared `.venv` still holds the engine 0.2.0 until the `engine-core` session rebuilds it; every engine run stops at the stale-module check until then. The worktree `.worktrees/spec-009` and its environment are still on disk.
+**Next:** the rebuild and the test suites in the shared `.venv`; then spec 018 (first runs on flow B) in the `train-env` session; then spec 016.
+
 ## 2026-11-25 — spec 009, stage (d) done on the branch; its Fable review (session 3, Claude Code 2.1.306, claude-opus-5-5; ai-log rows 10, 10a, 10b)
 
 **Done:** the `engine-core` session finished stage (d) of spec 009 in its own virtual environment in the worktree: the hold flag in `EngineEnv.step`, the engine version in checkpoints with the guard of criterion 53, the earlier Python tests that had to change, a smoke run of `smoke-a-ci.toml` with the round in play, benchmarks on a quiet machine. Branch `spec-009` at `8c41543`, pull request 1 to `main`, not merged. Two of its commits were made on Fable 5.2, two on Opus 5.5 (D152). The user answered Batch 21 and confirmed B20-2 (D153).

@@ -42,7 +42,7 @@ Tool and model: ...
 | 006 | [Encoding, environment, bindings, record](006-bindings-and-environment.md) | done 2026-11-12 |
 | 007 | [Model and PPO learner](007-model-and-learner.md) | done 2026-11-11 |
 | 008 | [Pipeline smoke run](008-pipeline-smoke-run.md) | done 2026-11-23 |
-| 009 | [Deal flow B: announcements and kontra](009-deal-flow-b.md) | approved 2026-11-24 (D143); in execution (session `engine-core`, branch `spec-009`) |
+| 009 | [Deal flow B: announcements and kontra](009-deal-flow-b.md) | done 2026-11-25 (merge `8a65214`) |
 | 013 | [Three rulings of 12 November](013-rulings-of-12-nov.md) | done 2026-11-12 |
 | 014 | [Longer run on deal flow A](014-longer-run-flow-a.md) | done 2026-11-24 |
 | 015 | [Findings of the longer run](015-findings-of-the-longer-run.md) | done 2026-11-24 (`65cc565`) |

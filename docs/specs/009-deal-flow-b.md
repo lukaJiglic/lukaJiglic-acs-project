@@ -1,6 +1,6 @@
 # 009 — Deal flow B: announcements and kontra
 
-Status: **approved** (2026-11-24, D143), with the answers to Batch 13 (D141) and the wait of D142 written in. Executed on 2026-11-24 in the `engine-core` session on the branch `spec-009` as far as Rust goes: stages (a), (b), (c), (e) and the property tests of (d) are committed there, and so are the answers of D147, D148, D150 and D151 and the points of the review pass. Stage (d) is built too (2026-11-25): the Python side of criteria 45, 52 and 53 and the numbers of 46; see "Results". Not merged. Needs specs 005, 006 and 013 (done).
+Status: **done** (2026-11-25). Merged into `main` as `8a65214` (pull request 1) after three separate review passes and green checks on `11d071e` (D154). Approved 2026-11-24 (D143) with the answers of D141 and the wait of D142; extended by D147, D148, D150, D151. Executed on 2026-11-24 and 25 in the `engine-core` session on the branch `spec-009`.
 
 Build-plan row 009. Tool and model: Claude Code 2.1.306, `claude-fable-5-2`.
 
