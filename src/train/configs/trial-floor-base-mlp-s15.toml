@@ -1,0 +1,92 @@
+# Run config: spec 017, the trial of the entropy controller's lower limit; the base arm (lower limit 0.01), mlp, seed 15.
+#
+# This is configs/long-a-mlp.toml of spec 014 with these values changed: name, updates, time_limit_minutes, seed.
+# Every other value and its origin is as there. A test (tests/test_spec017.py) compares the files key by key.
+#
+# Every setting of the run is in this file. The code has no defaults: a missing key
+# stops the run with an error. The comment on each line names the origin of the value.
+# "as mock.toml" means the value of configs/mock.toml, whose comments give its source.
+#
+# Run it (cmd, from the repo root, venv active, the module tarok_env built):
+#   python -m tarok_train.train --config src\train\configs\trial-floor-base-mlp-s15.toml
+
+[run]
+name = "trial-floor-base-s15" # spec 017: the arm and the seed; the run folder is <name>-<network>-<date and time> under out_dir
+seed = 15                 # spec 017 (D146 B): one of the three seeds 14, 15, 16 of the MLP; the evaluations use other seeds
+network = "mlp"           # D124 C: both networks run; this file is the control network of D18
+updates = 500             # spec 017 (D146): 500 updates per run; the run of spec 014 had 2,000
+device = "auto"           # as mock.toml: the GPU when CUDA is usable, else the CPU
+checkpoint_every = 100    # spec 014, Claude's choice; measured in the run of 2026-11-24: 100 updates take about 3 minutes (slowest 3.8), so a sudden stop loses at most that
+out_dir = "runs"          # under src/train; not tracked by git (spec 008: nothing is released)
+time_limit_minutes = 45   # spec 017, Claude's choice: about twice the expected duration; at the limit the trainer saves a checkpoint and stops with exit code 3, and going on needs --resume
+fault = "none"            # spec 008, criterion 8: the control run sets "rewards_to_next_seat" with --fault and a name that starts with "control-"
+gpu_memory_limit_mib = 0  # spec 015: limit of PyTorch's allocator on the GPU in MiB, 0 = no limit; the key was added later, this run (2026-11-24) had no limit
+
+[env]
+kind = "engine"           # spec 008: the Rust engine through tarok_train/env.py (spec 006), deal flow A
+tables = 512              # D124 B; spec 007: the acting cache of 1,024 tables does not fit in 6 GB
+threads = 6               # Claude's choice: one per core of the training PC (speed only; the deals do not depend on it)
+
+[model]
+width = 256               # D18 (as mock.toml)
+layers = 4                # D18 (as mock.toml)
+heads = 4                 # D18 (as mock.toml)
+feed_forward = 1024       # D18 (as mock.toml)
+mlp_hidden = [512, 512, 256]      # D18, the MLP control (as mock.toml)
+critic_hidden = [512, 512, 256]   # as mock.toml: the critic is an MLP (D119 B) of the control's size
+policy_init_scale = 0.3   # D127: first scale of the policy head, then measured on the smoke run
+cache_initial_tokens = 32 # as mock.toml (speed only)
+act_bucket_tokens = 8     # as mock.toml (speed only)
+
+[ppo]
+seat_deals_per_update = 2048   # D124 B: one deal of every table
+clip_range = 0.2          # as mock.toml (research/05 G1)
+epochs = 2                # as mock.toml (D119 A)
+gamma = 1.0               # as mock.toml: one reward per deal
+gae_lambda = 0.95         # as mock.toml
+learning_rate = 3e-4      # as mock.toml
+adam_beta1 = 0.9          # as mock.toml (PyTorch default)
+adam_beta2 = 0.999        # as mock.toml (PyTorch default)
+adam_eps = 1e-8           # as mock.toml (PyTorch default)
+update_batch = 256        # as mock.toml (spec 003: fastest L2 batch, in seat-deals)
+entropy_weight = 0.01     # as mock.toml; the first weight of every phase, then the entropy controller moves it
+critic_weight = 0.5       # as mock.toml
+value_head_weight = 0.1   # D127: weight of the actor's own value head
+q_weight = 0.5            # as mock.toml
+partner_weight = 0.1      # as mock.toml (research/05 C2)
+card_location_weight = 0.1   # as mock.toml (research/05 C2)
+value_loss = "huber"      # as mock.toml
+huber_delta = 1.0         # as mock.toml
+gradient_clip = 0.5       # as mock.toml; actor and critic are clipped apart
+normalise_advantage = true   # as mock.toml (spec 007)
+
+[opponents]
+past_share = 0.2          # as mock.toml (D14)
+max_frozen_seats = 3      # as mock.toml
+pool_size = 10            # as mock.toml
+snapshot_every = 20       # as mock.toml
+
+[entropy_control]
+# The entropy controller (D127; spec 008, criteria 16 and 17). After every update, for each phase:
+#   error    = (target - entropy) / target, cut to [-1, 1]
+#   integral <- integral * exp(gain * error),         kept inside [min_weight, max_weight]
+#   weight    = integral * exp(proportional * error), kept inside [min_weight, max_weight]
+enabled = true            # D127; spec 008, settings of the run
+gain = 0.2                # as mock.toml: Claude's proposal, tuned on the mock's token task (spec 008, Results)
+proportional = 1.0        # as mock.toml: Claude's proposal, tuned on the mock's token task
+min_weight = 0.01         # as mock.toml: Claude's proposal, [ppo] entropy_weight; the controller never lowers the weight under it
+max_weight = 1.0          # as mock.toml: Claude's proposal, a hundred times the start weight
+band = 0.75               # as mock.toml: Claude's proposal; "in the band" means within 75% of the target
+
+[entropy_control.targets]
+# Target policy entropy per phase, in nats. Approved for the smoke run by the user (D136).
+# Each is about a quarter of the entropy of random legal play in that phase, measured on
+# the engine (35,832 deals, 2026-11-12): bidding 0.87, contract choice 0.11, king call 1.39,
+# talon pick 1.74, discard 2.43, play 0.95.
+bidding = 0.2             # D136 (random play: 0.87)
+"contract choice" = 0.03  # D136 (random play: 0.11; 88% of these decisions have one legal slot)
+"king call" = 0.35        # D136 (random play: 1.39, four kings)
+"talon pick" = 0.45       # D136 (random play: 1.74)
+discard = 0.6             # D136 (random play: 2.43)
+announcements = 0.25      # Claude's choice, as play: deal flow A has no announcements, but every phase needs a target
+play = 0.25               # D136 (random play: 0.95)
