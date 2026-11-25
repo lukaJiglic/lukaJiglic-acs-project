@@ -289,6 +289,98 @@ fn c17_a_finished_deal_is_followed_by_the_next_with_the_dealer_one_seat_on() {
     }
 }
 
+/// Nothing of a deal reaches the next deal of the table (the second review
+/// of spec 009, point 2). At every step, for every table, the observation
+/// of the environment is the one of a fresh game of that deal's seed and
+/// dealer that takes the deal's actions so far: tokens, state, mask and
+/// the critic's features. So a table that kept anything of the deal
+/// before, such as the seats shown as opponents in its round of
+/// announcements, would differ in the deal after.
+#[test]
+fn c17_every_decision_of_a_table_is_that_of_a_fresh_game_of_its_deal() {
+    const TABLES: usize = 4;
+    const BASE: u64 = 1709;
+    let mut env = VecEnv::new(TABLES, BASE, 2).unwrap();
+    let mut choices = Choices(1709);
+    // The actions of each table's deal so far.
+    let mut played: Vec<Vec<Action>> = vec![Vec::new(); TABLES];
+    let mut deals = 0u32;
+    // Decisions with the partner hidden, in a deal that follows a deal in
+    // which a seat was shown as an opponent: there a kept flag would show.
+    let mut after_a_shown_seat = 0u32;
+    let mut shown_now = [false; TABLES];
+    let mut shown_before = [false; TABLES];
+    for _ in 0..12_000 {
+        let before = env.observe().clone();
+        let mut actions = random_actions(&before, &mut choices);
+        for table in 0..TABLES {
+            let (run, deal_in_run, _) = env.position(table).unwrap();
+            let seed = deal_seed(BASE, table as u64, run, u64::from(deal_in_run));
+            let dealer = first_dealer(table as u64, run).plus(deal_in_run as usize);
+            let mut fresh = Game::from_seed(seed, dealer);
+            for &action in &played[table] {
+                fresh.apply(action).expect("legal in a fresh game");
+            }
+            let seat = fresh.to_act().expect("a decision");
+            assert_eq!(before.seat[table], seat.index() as i64);
+            // In the auction the lowest legal action three times out of
+            // four, as `common::flow::play_random` does: drawn uniformly,
+            // nearly every auction ends in a solo and no partner is ever
+            // hidden.
+            if matches!(fresh.phase(), Phase::Bidding | Phase::ContractChoice)
+                && !choices.next().is_multiple_of(4)
+            {
+                let lowest = mask_of(&before, table).iter().position(|&bit| bit);
+                actions[table] = lowest.expect("a legal action") as i64;
+            }
+
+            let own = encode::observe(&fresh, seat);
+            assert_eq!(mask_of(&before, table), &own.mask[..], "table {table}");
+            let state =
+                &before.state[table * encode::STATE_FEATURES..(table + 1) * encode::STATE_FEATURES];
+            assert_eq!(state, &own.state[..], "table {table}");
+            let critic = &before.critic
+                [table * encode::CRITIC_FEATURES..(table + 1) * encode::CRITIC_FEATURES];
+            assert_eq!(critic, &own.critic[..], "table {table}");
+            assert_eq!(before.n_tokens[table] as usize, own.tokens.len());
+            let tokens = &before.tokens[table * 640..(table + 1) * 640];
+            for (row, token) in own.tokens.iter().enumerate() {
+                assert_eq!(&tokens[row * 5..row * 5 + 5], &token[..], "table {table}");
+            }
+
+            let public = fresh.public();
+            let hidden = public.called_king().is_some()
+                && public.partner() == tarok_engine::PublicPartner::NotKnown;
+            if hidden && shown_before[table] {
+                after_a_shown_seat += 1;
+            }
+            shown_now[table] |= hidden
+                && Seat::ALL
+                    .into_iter()
+                    .any(|seat| public.side_of(seat) == Some(false));
+        }
+        let done = env.step(&actions).unwrap().done.clone();
+        for table in 0..TABLES {
+            if done[table] {
+                played[table].clear();
+                deals += 1;
+                shown_before[table] = shown_now[table];
+                shown_now[table] = false;
+            } else {
+                let action = Action::from_slot(actions[table] as usize).expect("a slot");
+                played[table].push(action);
+            }
+        }
+    }
+    println!(
+        "{deals} deals at {TABLES} tables, every decision compared with a fresh game; \
+         {after_a_shown_seat} decisions with the partner hidden in a deal that follows a deal \
+         with a seat shown as an opponent"
+    );
+    assert!(deals >= 400, "{deals} deals");
+    assert!(after_a_shown_seat >= 500, "{after_a_shown_seat}");
+}
+
 #[test]
 fn c18_rewards_and_parts_are_delivered_once_per_deal() {
     const TABLES: usize = 16;

@@ -544,6 +544,31 @@ fn c36_state_block_d_holds_the_announcements_by_side_and_the_kontra_levels() {
         check_block_d(&game, observer, &observation);
     }
 
+    // A private conclusion is not used (D151, item 2). A does not hold
+    // the called king; B and D are shown as opponents. A can work out
+    // that C is its partner, but the other seats cannot tell whether A
+    // holds the king. So C's kralji stay on both sides for A, as for B
+    // and D. Only C itself knows whose they are.
+    let mut game = round_game(C, Tri);
+    say(&mut game, A, &[ann(Bonus::Trula)]);
+    say(&mut game, B, &[k(Target::Trula)]);
+    say(&mut game, C, &[ann(Bonus::Kralji)]);
+    say(&mut game, D, &[k(Target::Game)]);
+    assert_eq!(game.public().partner(), PublicPartner::NotKnown);
+    assert_eq!(
+        Seat::ALL.map(|seat| game.public().side_of(seat)),
+        [Some(true), Some(false), None, Some(false)]
+    );
+    let not_known = bits(&[TRULA, KRALJI, OPPONENTS + KRALJI]);
+    for observer in [A, B, D] {
+        assert_eq!(d1(&game, observer), not_known, "{observer:?}");
+        assert_eq!(game.private(observer).knows_side_of(C), None);
+    }
+    assert_eq!(d1(&game, C), bits(&[TRULA, KRALJI]));
+    for observer in Seat::ALL {
+        check_block_d(&game, observer, &observe(&game, observer));
+    }
+
     // Random deals of flow B: at every decision, for every seat, block D
     // is what follows from the public state and the seat's own view.
     let mut with_both_bits = 0u32;
