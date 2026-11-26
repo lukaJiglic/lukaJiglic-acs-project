@@ -72,7 +72,7 @@ Open:
 - **C16. Which entropy mean the controller steers on.** Now: the mean over all decisions of a phase, forced ones included. In the smoke runs the share of forced decisions in the bidding went from 28% to 0%, so the mean moved without the policy getting firmer or looser. (a) the mean over decisions with two or more legal actions, with the targets set again as a quarter of random play under that mean; (b) keep the mean over all decisions. Recommended: (a). Asked 2026-11-12.
 - **C14. Tier of S40's other option** ("in any order"). Recommended: like S14 and S18 in D98: selectable in T0 with the note "agent ni učen s tem pravilom". Asked when the engine gets its toggles.
 
-## Batch 22 — the transformer's memory on flow B (asked 2026-11-25; open)
+## Batch 22 — the transformer's memory on flow B (asked 2026-11-25, answered 2026-11-26: a, then b and c if needed; see D155)
 
 The transformer run of spec 018 stopped at update 2 in the update step: PyTorch held 4.69 GiB of the 4.88 GiB allowed and wanted 132 MiB more. The card was free. Flow B deals are longer, and the update step's memory grows with the longest sequence of a minibatch. Criterion 13 of spec 018 says stop and report; the limit and the number of tables are not to be changed to get through. The first option is the recommendation.
 
