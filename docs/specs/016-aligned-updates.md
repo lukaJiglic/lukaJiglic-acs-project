@@ -1,8 +1,8 @@
 # 016 — Aligned updates: every played deal is trained on
 
-Status: **approved** (2026-11-24, D146). Waits for the merge of spec 009.
+Status: **approved** (2026-11-24, D146); **in execution** from 2026-11-27 in the `train-env` session. Its needs are met: spec 009 merged (`8a65214`), spec 015 and spec 018 done.
 
-Tool and model: Claude Code, claude-fable-5-2. Drafted by the main session; executed in the `train-env` session.
+Tool and model: Claude Code. Drafted by the main session with claude-fable-5-2; executed in the `train-env` session with claude-opus-5-5 (D152, D154).
 
 ## Goal
 
