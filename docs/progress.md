@@ -12,6 +12,23 @@ One entry per session (D71). Newest first. Measurements are numbers that were ac
 **Next:** the next step.
 ```
 
+## 2026-11-27 — spec 018, the first runs on flow B (session 3, Claude Code 2.1.306, claude-opus-5-5; ai-log rows 10, 10c)
+
+**Done:** spec 018 in the `train-env` session; verified and committed by the main session (`41c6f29` code, `453885c` configs). The transformer ran out of memory in update 3; the user chose to free the acting cache during the update step (Batch 22, D155). That alone was enough; `update_batch` and the limit were not changed.
+**Run log** (D79):
+- 2026-11-25 21:20 to 21:27, `smoke-b-mlp.toml`, engine 0.3.0, GPU: 200 updates in 419 s, 32,900 decisions played per second. Not disturbed. Folder `smoke-b-mlp-20261125-212012`. Valat in 0.1% of deals, mean reward size 1.21 (updates 151 to 200).
+- 2026-11-25 21:27, `smoke-b-transformer.toml`: out of memory in update 3. The acting cache, 2,080 MiB, stayed allocated through the update step. Stopped (criterion 13).
+- 2026-11-27 01:13 to 01:26, the same config after D155 (a): disturbed by a video render, stopped after 54 updates. Peak 2,871 MiB. Kept as the memory record only.
+- 2026-11-27 02:22 to 02:56, the same config: 200 updates in 2,062 s, 6,845 decisions played per second. Not disturbed. Peak 2,871 MiB, reserved 4,766 MiB. Folder `smoke-b-transformer-20261127-022207`. Valat in 0.3% of deals, mean reward size 1.37.
+**Measurements** (2,000 deals in four seatings each; 95% intervals):
+- Against the silent random opponent: MLP +0.874 (+0.863 to +0.885); transformer +0.713 (+0.703 to +0.723). Untrained: −2.37 and −2.43.
+- Against random play: MLP +8.13 (+7.36 to +8.89); transformer +8.79 (+7.98 to +9.59). Too wide to compare networks: ±0.1 would need about 116,000 to 129,000 deals.
+- Update 200 against update 100 (D153): MLP +0.079 and −0.084, both intervals off zero, so a lead; half the difference +0.081 (+0.046 to +0.116). Transformer +0.066 and −0.097, both intervals include zero, so no lead by the old rule; half the difference +0.082 (+0.020 to +0.144).
+- The valat flood ends by itself in both networks (criterion 19): under 5% of deals from update 8 (MLP) and 14 (transformer).
+- Tests: 321 passed and 14 skipped with CUDA hidden; 14 GPU tests passed on a clean card; 14 of 14 wrong changes caught, and the 2 of D155.
+**Broken or open:** a video render of another project takes 1 to 5 GB of the GPU at night in bursts; timed runs wait for two free readings. Criterion 10 has one stated exception: the transformer config's memory limit.
+**Next:** spec 016 (aligned updates); then specs 010, 011, 012.
+
 ## 2026-11-25 — spec 009 merged (session 3, Claude Code 2.1.306, claude-opus-5-5; ai-log row 10)
 
 **Done:** the `engine-core` session fixed the six points of the review of stage (d) and two more faults it found while checking them (`af92922`, Results `11d071e`; by its report 260 CPU and 14 GPU tests in the worktree's environment). The checks of pull request 1 on `11d071e` were green (engine twice, pytest-cpu, repo-checks). Merged by the main session on the user's word (D154) as `8a65214`, a merge commit with trailers; `check_trailers.py` and `check_skeleton.py` pass; pull request 1 shows merged. Spec 009 is done.
