@@ -397,7 +397,7 @@ def test_r2_no_config_says_that_the_engine_has_no_announcements():
                 assert "deal flow B" in line and "0.3.0" in line, path.name
             if line.startswith("announcements ="):
                 assert "D149" in line and "spec 018" in line, path.name
-    assert engine_configs == 12
+    assert engine_configs >= 12  # the twelve engine configs that existed when spec 009 was merged; new ones add to it
 
 
 def test_r2_the_readme_says_which_engine_the_runs_of_flow_a_were_made_on():

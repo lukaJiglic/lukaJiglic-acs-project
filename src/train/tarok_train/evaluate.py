@@ -6,6 +6,15 @@ Run (cmd, from the repo root, venv active):
     python -m tarok_train.evaluate --checkpoint src\\train\\runs\\<run folder>\\checkpoint-000200.pt --deals 2000 --seed 2008 --records 100
     python -m tarok_train.evaluate --checkpoint <the same> --deals 2000 --seed 2008 --untrained
     python -m tarok_train.evaluate --checkpoint <A> --opponent <B> --deals 2000 --seed 5151
+    python -m tarok_train.evaluate --checkpoint <the same> --opponent silent-random --deals 2000 --seed 2008
+
+`--opponent` names who plays the three other seats: `random` (the default), `silent-random`
+or a checkpoint. `silent-random` (spec 018) is random legal play that says "done" at every
+turn of the round of announcements: random legal play announces a valat in almost every deal
+of deal flow B, the silent one never says anything in the round. Its result goes to
+`evaluation-NNNNNN-vs-silent-random.json` and reports where the interval lies (above zero,
+below zero, or neither), not "beats random". The JSON's `opponent_kind` is random,
+silent-random or checkpoint.
 
 Every deal is played four times: with the agent in seat 0, 1, 2 and 3, and random
 legal play in the other three seats. The cards of a deal depend only on the seed and
@@ -86,6 +95,30 @@ class RandomLegal:
         scores = self.rng.random(mask.shape, dtype=np.float32)
         scores[~mask] = -1.0
         return scores.argmax(axis=1)
+
+
+DONE_SLOT = C.ACTION_GROUPS["ANNOUNCE_DONE"][0]  # legal in the round of announcements, and only there
+
+
+class SilentRandom(RandomLegal):
+    """Random legal play that says nothing in the round of announcements (spec 018, criterion 6).
+
+    Outside the round: every legal slot with the same chance, the same numbers as `RandomLegal`
+    with the same seed. In the round ("done" is legal there and nowhere else): "done" at every
+    turn, so no announcement and no kontra. The numbers are drawn for every table whatever its
+    phase, so the stream does not depend on how many tables stand in the round.
+    """
+
+    def __call__(self, rows, obs) -> np.ndarray:
+        action = super().__call__(rows, obs)
+        return np.where(obs["mask"][rows][:, DONE_SLOT], DONE_SLOT, action)
+
+
+# The fixed opponents of `--opponent`, by name: the file name of the result and its JSON name it.
+FIXED_OPPONENTS = {
+    "random": ("random legal play", RandomLegal),
+    "silent-random": ("random legal play, \"done\" at every turn of the round of announcements (silent-random)", SilentRandom),
+}
 
 
 def network_agent(net, cfg_model: dict, device, seed: int):
@@ -348,8 +381,10 @@ def main(argv=None) -> int:
     parser.add_argument("--untrained", action="store_true", help="the same network before its first update")
     parser.add_argument(
         "--opponent",
-        default=None,
-        help="a checkpoint that plays the three other seats (spec 015); without it they are random legal play",
+        default="random",
+        help="who plays the three other seats: random (random legal play, the default), silent-random "
+        "(random legal play that says \"done\" at every turn of the round of announcements, spec 018) "
+        "or a checkpoint (spec 015)",
     )
     parser.add_argument(
         "--overwrite",
@@ -377,7 +412,8 @@ def main(argv=None) -> int:
         )
         return 2
     opponent_path = opponent_data = None
-    if args.opponent is not None:
+    fixed = args.opponent if args.opponent in FIXED_OPPONENTS else None  # else: the path of a checkpoint
+    if fixed is None:
         opponent_path = Path(args.opponent)
         opponent_data = load_checkpoint(opponent_path, "the opponent's checkpoint", args.other_engine)
         if opponent_data is None:
@@ -389,6 +425,8 @@ def main(argv=None) -> int:
             )
             return 2
     label = "untrained" if args.untrained else f"{data['updates']:06d}"
+    if fixed == "silent-random":
+        label = f"{label}-vs-silent-random"  # against random play the name stays the one of before
     if opponent_data is not None:
         # The opponent's run folder, not its run name: the folder carries the date and time of the run,
         # so two runs of one name (one config, several seeds) give two files.
@@ -399,7 +437,8 @@ def main(argv=None) -> int:
             print(f"{existing.name} exists next to the checkpoint: it is replaced only with --overwrite")
             return 2
     else:
-        # Against random play the file of an earlier call is replaced, as before, with one exception
+        # Against a fixed opponent (random play, silent random play) the file of an earlier call is
+        # replaced, as before, with one exception
         # (spec 009): the earlier file, or this checkpoint, belongs to another engine version. Results
         # of two engines must not mix without a word. A file without the key was written on 0.2.0.
         existing = path.parent / f"evaluation-{label}.json"
@@ -418,17 +457,22 @@ def main(argv=None) -> int:
     make_agent = network_agent(net, cfg["model"], device, args.seed)
 
     if opponent_data is None:
-        opponents = "random legal play"
+        opponents, kind = FIXED_OPPONENTS[fixed]
         result = evaluate(
             make_agent,
             args.deals,
             args.tables,
             args.seed,
             args.threads,
-            RandomLegal(args.seed + 1),
+            kind(args.seed + 1),
             args.records,
             training_seed=cfg["run"]["seed"],
         )
+        if fixed != "random":
+            # "Beats random" belongs to the evaluation against random play. Here: where the interval lies.
+            del result["beats_random"]
+            result["above_zero"] = bool(result["low"] > 0)
+            result["below_zero"] = bool(result["high"] < 0)
     else:
         # The opponent samples from its policy, as the agent does, from a generator of its own.
         opponent_net = load_network(opponent_data, device)
@@ -466,6 +510,7 @@ def main(argv=None) -> int:
             "updates": 0 if args.untrained else data["updates"],
             "fault": cfg["run"]["fault"],
             "opponents": opponents,
+            "opponent_kind": fixed or "checkpoint",  # random, silent-random or checkpoint (spec 018)
             # The opponent's checkpoint; `folder` is its run folder, which tells two runs of one name apart.
             "opponent": None
             if opponent_data is None
@@ -492,7 +537,7 @@ def main(argv=None) -> int:
 
     who = "the untrained network" if args.untrained else f"{path.name} ({result['updates']} updates)"
     if opponent_data is None:
-        print(f"{result['run']}, {who}: {args.deals} deals, each in four seatings, against random legal play")
+        print(f"{result['run']}, {who}: {args.deals} deals, each in four seatings, against {opponents}")
     else:
         print(f"{result['run']}, {who}, in one seat: {args.deals} deals, each in four seatings, against three seats of {opponents}")
     print(
@@ -500,7 +545,7 @@ def main(argv=None) -> int:
         f"(reward 1 = 50 points of the paper score)"
     )
     print("by seat of the agent: " + ", ".join(f"{value:+.4f}" for value in result["mean_by_seat"]))
-    if opponent_data is None:
+    if fixed == "random":
         print("beats random: " + ("yes, the whole interval is above zero" if result["beats_random"] else "no"))
     elif result["above_zero"] or result["below_zero"]:
         print(f"the whole interval is {'above' if result['above_zero'] else 'below'} zero")

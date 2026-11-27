@@ -573,6 +573,9 @@ class Trainer:
         if getattr(self.env, "real_deals", False):
             stats.update(ppo.deal_stats(deals))
         memory = [gpu_memory_now(self.device)]  # acting is over: the acting cache is at its largest
+        # D155: free the acting cache before the update step. Its keys and values become stale
+        # in the update anyway; on deal flow B the full cache does not fit beside the update.
+        self.actor.release()
         lap = self._lap("bookkeeping", lap)
         stats.update(
             ppo.update(

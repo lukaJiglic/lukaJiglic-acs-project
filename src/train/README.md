@@ -21,11 +21,12 @@ Built so far: the pinned environment, the GPU check, a PyO3 probe and a throughp
 | `tarok_train/env.py` | The real environment: the Rust engine behind the mock's interface (`EngineEnv`, `make`), and the environment-only benchmark. |
 | `tarok_env/` | Rust crate with the PyO3 bindings of the engine (`src/engine`). Built with maturin into the venv as the module `tarok_env`. |
 | `tarok_train/train.py` | The loop on the mock or the engine, config check, checkpoints, TensorBoard logs, `run-info.json` and `summary.json` per run. |
-| `tarok_train/evaluate.py` | A checkpoint on seeded deals, against random legal play or against another checkpoint (`--opponent`, spec 015), with a 95% interval; exports game records. |
+| `tarok_train/evaluate.py` | A checkpoint on seeded deals, against random legal play, silent random play (`--opponent silent-random`, spec 018) or another checkpoint (`--opponent`, spec 015), with a 95% interval; exports game records. |
 | `tarok_train/smoke_report.py` | Reads the files of a run folder and prints the numbers of spec 008 as Markdown. |
 | `tarok_train/trial_report.py` | Reads the files of a run folder and prints the numbers of spec 017 as Markdown: the entropy of the play and its weight over the run, every phase beside its target, the phases whose weight went under 0.01, means over the last 100 updates, the dips under the band. |
 | `tarok_train/trial_compare.py` | Reads the two evaluation files of a pair of checkpoints (one seat against three, both ways) and prints both, with half their sum and half their difference, paired over the deals (spec 017). |
-| `configs/` | One TOML file per run (D79). Every hyperparameter is in the file; the code has no defaults. `mock.toml` (spec 007), `smoke-a-mlp.toml`, `smoke-a-transformer.toml` and the small `smoke-a-ci.toml` for the tests (spec 008). `long-a-mlp.toml` and `long-a-transformer.toml`: the same runs with 2,000 updates (spec 014). `trial-floor-*.toml`: the seven runs of the trial of the entropy controller's lower limit (spec 017). |
+| `tarok_train/flowb_report.py` | Spec 018: measures the entropy of random legal play per phase on the engine (`--random-entropy`), and reads the run folders of the first runs on flow B: the round's monitors at eight updates, when the valat share stays under 50%, 20% and 5%, the reading of criterion 19, the evaluations. |
+| `configs/` | One TOML file per run (D79). Every hyperparameter is in the file; the code has no defaults. `mock.toml` (spec 007), `smoke-a-mlp.toml`, `smoke-a-transformer.toml` and the small `smoke-a-ci.toml` for the tests (spec 008). `long-a-mlp.toml` and `long-a-transformer.toml`: the same runs with 2,000 updates (spec 014). `trial-floor-*.toml`: the seven runs of the trial of the entropy controller's lower limit (spec 017). `smoke-b-mlp.toml`, `smoke-b-transformer.toml`: the first runs on deal flow B (spec 018). |
 | `runs/` | Checkpoints and TensorBoard files of local runs. Not tracked by git. |
 | `pyo3_probe/` | Throwaway Rust crate: fills an array on 12 threads with the GIL released, returns NumPy arrays. |
 | `bench_results/` | Raw rows of each benchmark run, JSON. Numbers only: no process names, no paths. |
@@ -228,7 +229,7 @@ Monitors on real deals (TensorBoard tags, one value per update):
 | `aux/partner_accuracy`, `aux/partner_guess`; `aux/card_accuracy`, `aux/card_guess` | Accuracy of the two auxiliary heads, each next to what a uniform guess over the places still possible would get. |
 | `reward/deal_sum_abs_max`, `env/illegal_actions` | Both must be 0: the four rewards of a deal add up to zero, and the engine refused no action. |
 | `gpu/peak_memory_mib`, `gpu/peak_memory_reserved_mib` | GPU runs only, peak so far. The first is the largest sum of the run's tensors (`torch.cuda.max_memory_allocated`). The second is what PyTorch's allocator held from the card for them (`max_memory_reserved`); it is the larger one and the one that must fit. `summary.json` has both, and under `gpu_before` and `gpu_after` what `nvidia-smi` shows for the whole card, every program on it: load in percent, memory used and total in MiB, temperature. If `nvidia-smi` gives nothing the trainer can read, the reading is empty (`{}`) and the trainer prints one line that says so (spec 015). The reading is for one card: a PC with two cards prints two lines, which is not read, so every run there has an empty reading. A temperature that is not a number ("nan") is not a reading either. |
-| `gpu/reserved_after_acting_mib`, `gpu/allocated_after_acting_mib`, `gpu/reserved_after_update_mib`, `gpu/allocated_after_update_mib` | GPU runs only, the size at that moment, not a peak (spec 015). Read twice per update: when acting is over (the acting cache is at its largest), and when the update step is over. "reserved" is what PyTorch's allocator holds from the card (`torch.cuda.memory_reserved`), "allocated" the tensors in it (`memory_allocated`). The difference is the allocator's cache: memory it keeps for reuse. |
+| `gpu/reserved_after_acting_mib`, `gpu/allocated_after_acting_mib`, `gpu/reserved_after_update_mib`, `gpu/allocated_after_update_mib` | GPU runs only, the size at that moment, not a peak (spec 015). Read twice per update: when acting is over (the acting cache is at its largest), and when the update step is over. "reserved" is what PyTorch's allocator holds from the card (`torch.cuda.memory_reserved`), "allocated" the tensors in it (`memory_allocated`). The difference is the allocator's cache: memory it keeps for reuse. From D155 (spec 018) the transformer frees its acting cache after the reading "after acting" and before the update step. So `gpu/allocated_after_update_mib` no longer holds the acting cache, and its values are not comparable with readings of flow A runs, which held it. The cache grows again from its first size in every acting phase; that costs a little time per update. |
 
 The entropy controller (D127) is set in `[entropy_control]` of the config. It keeps one entropy weight per phase. After every update, for each phase that had decisions:
 
@@ -305,3 +306,40 @@ python -m tarok_train.trial_compare src\train\runs\<run X> src\train\runs\<run Y
 Between two different runs the single seat tends to lose in both directions (spec 017, Results). Half the difference is a lead of X only if that handicap is the same in both directions.
 
 The trial was run on engine 0.2.0, deal flow A. On engine 0.3.0 the same configs train deal flow B (spec 009); `trial_compare` refuses two files that name different engines (a file without the key counts as 0.2.0). Its results compare checkpoints of these runs with each other; they say nothing more about playing strength.
+
+## The first runs on flow B (spec 018; cmd, venv active, from the repo root)
+
+`smoke-b-mlp.toml` and `smoke-b-transformer.toml` are the smoke configs of flow A key by key, but for the run's name and the target of the phase "announcements". The transformer's file also sets the memory limit of 5,000 MiB (spec 015, D150). `tests\test_spec018.py` checks this. The target follows D136's rule: a quarter of the entropy of random legal play in the round, rounded to 0.05. Measure that entropy, per phase:
+
+```bat
+python -m tarok_train.flowb_report --random-entropy --deals 32000 --seed 3018
+```
+
+```bat
+python -m tarok_train.train --config src\train\configs\smoke-b-mlp.toml
+python -m tarok_train.train --config src\train\configs\smoke-b-transformer.toml
+```
+
+**The monitors of the round** (`ppo.round_stats`, logged every update on the engine). They are read from the tokens 146 to 156 of the trained deals. A deal counts once, whatever number of its seats is trained.
+
+| Tag | What it is |
+|-----|------------|
+| `round/announced_<bonus>` | Share of deals in which the bonus was announced: `trula`, `kralji`, `kralj_ultimo`, `pagat_ultimo`, `valat`. |
+| `round/game_<level>` | Share of deals with the game at that level at the end of the round: `none`, `kontra`, `re`, `sub`, `mort`. Each kontra token on the game raises it by one. The five add up to 1. |
+| `round/bonus_kontra` | Share of deals with a kontra on any bonus. |
+| `reward/abs_mean`, `reward/abs_max`, `reward/share_above_10` | Size of the rewards, over the trained seat-deals (each seat counts). |
+| `round/decision_share`, `round/decisions_per_seat_deal` | Trained decisions in the phase "announcements": their share of all trained decisions, and their number per trained seat-deal. |
+
+**The silent opponent.** `--opponent silent-random` plays uniform random legal actions outside the round and "done" at every turn in the round, so it never announces and never says kontra. Random legal play announces a valat in almost every deal of flow B. The result goes to `evaluation-NNNNNN-vs-silent-random.json`. It reports where the interval lies, not "beats random". `--opponent random` is the default and writes `evaluation-NNNNNN.json` as before. Every result file has `opponent_kind`: random, silent-random or checkpoint.
+
+```bat
+python -m tarok_train.evaluate --checkpoint src\train\runs\<run folder>\checkpoint-000200.pt --opponent silent-random --deals 2000 --seed 2008
+python -m tarok_train.evaluate --checkpoint src\train\runs\<run folder>\checkpoint-000200.pt --opponent silent-random --untrained --deals 2000 --seed 2008
+python -m tarok_train.evaluate --checkpoint src\train\runs\<run folder>\checkpoint-000200.pt --opponent src\train\runs\<run folder>\checkpoint-000100.pt --deals 2000 --seed 5151
+```
+
+The numbers of the runs (criteria 12 and 14 to 19), with the evaluation files next to their checkpoints:
+
+```bat
+python -m tarok_train.flowb_report src\train\runs\<MLP run folder> src\train\runs\<transformer run folder>
+```

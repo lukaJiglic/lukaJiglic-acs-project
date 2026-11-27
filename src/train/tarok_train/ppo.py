@@ -8,7 +8,7 @@ Pieces, each tested on its own:
 - `compute_losses`: all parts and their weighted total.
 - `update`: epochs of minibatches of seat-deals.
 - `EntropyController`: one entropy weight per phase, steered toward a target entropy (spec 008).
-- `rollout_stats`, `deal_stats`, `possible_places`, `possible_partners`: the monitors.
+- `rollout_stats`, `deal_stats`, `round_stats`, `possible_places`, `possible_partners`: the monitors.
 
 No hyperparameter has a default here. All come from the config's [ppo] table.
 """
@@ -478,6 +478,7 @@ def deal_stats(deals: SeatDeals) -> dict:
     - "reward/deal_sum_abs_max": the largest sum of a deal's four rewards (criterion 4: zero).
     - "deals/declarer_wins": the declarer's side won the game: its game part is positive,
       or its valat part where a valat replaces the game.
+    - the monitors of the round of announcements and the reward size (`round_stats`, spec 018).
 
     Not meaningful on the mock, whose state features are noise.
     """
@@ -509,6 +510,56 @@ def deal_stats(deals: SeatDeals) -> dict:
     sums = np.zeros(len(counts))
     np.add.at(sums, inverse.reshape(-1), deals.true_parts.sum(axis=1, dtype=np.float64))
     stats["reward/deal_sum_abs_max"] = float(np.abs(sums[counts == 4]).max(initial=0.0))
+    stats.update(round_stats(deals))
+    return stats
+
+
+# The round of announcements (deal flow B): the token ids it writes (docs/encoding.md, sections 3 and 4b).
+ANNOUNCED = ("trula", "kralji", "kralj_ultimo", "pagat_ultimo", "valat")  # the order of the ANNOUNCE ids
+GAME_LEVELS = ("none", "kontra", "re", "sub", "mort")  # the level of a target after 0 to 4 kontra tokens
+
+
+def round_stats(deals: SeatDeals) -> dict:
+    """Monitors of the round of announcements and of the size of the rewards (spec 018, criteria 1 to 5).
+
+    Read from the tokens 146 to 156 of each seat-deal, up to its last visible token. The round
+    is public, so every seat of a deal has the same such tokens; a deal is counted once
+    (criterion 5), from its first stored seat-deal.
+    - "round/announced_<bonus>": the share of deals in which the bonus was announced.
+    - "round/game_<level>": the share of deals with the game at that level at the end of the
+      round. Each KONTRA token on the game raises the level by one, so the number of such
+      tokens is the level the last one left. The five shares add up to 1.
+    - "round/bonus_kontra": the share of deals with a kontra on any of the five bonuses.
+    Over the trained seat-deals (each one counts, not once per deal):
+    - "reward/abs_mean", "reward/abs_max", "reward/share_above_10": the size of the rewards.
+    - "round/decision_share": the share of the trained decisions in the phase "announcements".
+    - "round/decisions_per_seat_deal": such decisions per trained seat-deal.
+    """
+    _, first = np.unique(_deal_keys(deals), return_index=True)
+    events = deals.tokens[first, :, 0].astype(np.int64)
+    seen = deals.points[first].max(axis=1)
+    events = np.where(np.arange(events.shape[1])[None, :] < seen[:, None], events, C.EVENT_GROUPS["PAD"][0])
+    n = len(first)
+    stats = {}
+    announce, _ = C.EVENT_GROUPS["ANNOUNCE"]
+    for index, name in enumerate(ANNOUNCED):
+        stats[f"round/announced_{name}"] = float((events == announce + index).any(axis=1).mean())
+    kontra, count = C.EVENT_GROUPS["KONTRA"]
+    level = (events == kontra).sum(axis=1)
+    if level.max(initial=0) >= len(GAME_LEVELS):
+        raise ValueError(f"a deal holds {int(level.max())} kontra tokens on the game; mort, the highest level, is 4")
+    for index, name in enumerate(GAME_LEVELS):
+        stats[f"round/game_{name}"] = float((level == index).sum() / n)
+    stats["round/bonus_kontra"] = float(((events > kontra) & (events < kontra + count)).any(axis=1).mean())
+
+    size = np.abs(deals.reward.astype(np.float64))
+    stats["reward/abs_mean"] = float(size.mean())
+    stats["reward/abs_max"] = float(size.max())
+    stats["reward/share_above_10"] = float((size > 10).mean())
+    phase = deals.state[..., C.PHASE_BLOCK[0] : C.PHASE_BLOCK[0] + C.PHASE_BLOCK[1]].argmax(axis=-1)
+    in_round = ((phase == C.PHASES.index("announcements")) & deals.valid).sum()
+    stats["round/decision_share"] = float(in_round / deals.valid.sum())
+    stats["round/decisions_per_seat_deal"] = float(in_round / len(deals))
     return stats
 
 

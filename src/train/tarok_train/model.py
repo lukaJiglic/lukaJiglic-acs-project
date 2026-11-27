@@ -116,17 +116,25 @@ class KVCache:
     Position p of a row holds token p of that seat's view of its current deal. The
     position after the last token holds the state token of the current decision; the
     next token overwrites it. The last position is a dump for padding rows. The
-    cache starts small and grows to the longest sequence met.
+    cache starts small and grows to the longest sequence met. `release` frees it;
+    it then grows again from its first size.
     """
 
     def __init__(self, n_slots: int, layers: int, heads: int, head_dim: int, device, initial_tokens: int):
         self.shape = (n_slots, heads)
         self.head_dim = head_dim
         self.device = device
+        self.initial = initial_tokens
         self.capacity = 0
         self.k = [None] * layers
         self.v = [None] * layers
         self.ensure(initial_tokens)
+
+    def release(self) -> None:
+        """Free the keys and values (D155: on deal flow B the full cache does not fit beside the update step)."""
+        self.k = [None] * len(self.k)
+        self.v = [None] * len(self.v)
+        self.capacity = 0
 
     def ensure(self, positions: int) -> None:
         """Make room for `positions` positions (tokens, the state token and the dump)."""
@@ -135,7 +143,7 @@ class KVCache:
             raise ValueError(f"a sequence of {positions - 2} tokens is over the limit of {C.MAX_TOKENS}")
         if positions <= self.capacity:
             return
-        new = min(limit, max(positions, 2 * self.capacity))
+        new = min(limit, max(positions, 2 * self.capacity, self.initial))
         for store in (self.k, self.v):
             for i, old in enumerate(store):
                 grown = torch.zeros(*self.shape, new, self.head_dim, device=self.device)
@@ -334,6 +342,12 @@ class Actor:
         """Forget the cache. Called after an update: the weights that made it have changed."""
         if self.cached:
             self.t0[:] = 0
+
+    def release(self) -> None:
+        """Forget the cache and free its memory before an update step (D155). Acting grows it again."""
+        if self.cached:
+            self.reset()
+            self.cache.release()
 
     @torch.inference_mode()
     def act(self, tables, seat, deal, n_tokens, frozen_rows, tokens, state, mask, generator):
